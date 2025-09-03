@@ -10,6 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Use absolute paths for directories
 APP_DIR="$SCRIPT_DIR/apps/client"
+GIT_DIR="$SCRIPT_DIR/apps"
 BACKUP_DIR="$SCRIPT_DIR/backups"
 MAX_BACKUPS=3  # Maximum number of backups to keep
 DEBUG=false  # Enable debug output
@@ -133,7 +134,7 @@ cleanup_containers() {
 deploy_backend() {
     print_header "Deploying Backend"
     
-    cd backend || print_error "Backend directory not found"
+    cd ${APP_DIR}/backend || print_error "Backend directory not found"
     
     print_action "Building backend production image..."
     if ! docker build -t imaginaries-backend:prod .; then
@@ -149,7 +150,7 @@ deploy_backend() {
         print_error "Failed to start backend container"
     fi
     
-    cd ..
+    cd ${SCRIPT_DIR}
     
     print_success "Backend deployed successfully"
 }
@@ -158,7 +159,7 @@ deploy_backend() {
 deploy_frontend() {
     print_header "Deploying Frontend"
 
-    cd frontend || print_error "Frontend directory not found"
+    cd ${APP_DIR}/frontend || print_error "Frontend directory not found"
     
     print_action "Building frontend production image..."
     if ! docker build -t imaginaries-frontend:prod .; then
@@ -174,7 +175,7 @@ deploy_frontend() {
         print_error "Failed to start frontend container"
     fi
 
-    cd ..
+    cd ${SCRIPT_DIR}
     
     print_success "Frontend deployed successfully"
 }
@@ -344,9 +345,9 @@ ensure_ssh_agent() {
     
     # Try to use keychain-managed agent
     print_action "Checking for keychain-managed SSH agent..."
-    if sudo -u "$REAL_USER" keychain --quiet --nogui --eval /home/ubuntu/.ssh/id_rsa >/dev/null 2>&1; then
+    if sudo -u "$REAL_USER" keychain --quiet --nogui --eval "${SSH_KEY}" >/dev/null 2>&1; then
         print_action "Loading keychain environment..."
-        eval "$(sudo -u "$REAL_USER" keychain --quiet --nogui --eval /home/ubuntu/.ssh/id_rsa)" >/dev/null
+        eval "$(sudo -u "$REAL_USER" keychain --quiet --nogui --eval "${SSH_KEY}")" >/dev/null
         print_success "Using keychain-managed SSH agent"
         # Verify key is loaded
         if sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" ssh-add -l | grep -q "$(ssh-keygen -lf "$SSH_KEY" | awk '{print $2}')"; then
@@ -406,7 +407,7 @@ run_git_operations() {
     # Run Git commands as REAL_USER with SSH_AUTH_SOCK
     print_action "Initializing Git repository..."
     local init_output
-    init_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git init . 2>&1")
+    init_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git init . 2>&1")
     print_output "$init_output"
     if [ $? -ne 0 ]; then
         print_error "Failed to initialize git repository"
@@ -415,10 +416,10 @@ run_git_operations() {
 
     # Check if remote exists
     print_action "Checking if remote exists..."
-    if ! sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git remote get-url origin >/dev/null 2>&1"; then
+    if ! sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git remote get-url origin >/dev/null 2>&1"; then
         print_action "Adding remote..."
         local add_remote_output
-        add_remote_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git remote add origin $GIT_REPO 2>&1")
+        add_remote_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git remote add origin $GIT_REPO 2>&1")
         print_output "$add_remote_output"
         if [ $? -ne 0 ]; then
             print_error "Failed to add remote"
@@ -428,12 +429,12 @@ run_git_operations() {
         print_success "Remote already exists"
         # Ensure remote URL is correct
         local current_remote
-        current_remote=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git remote get-url origin")
+        current_remote=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git remote get-url origin")
         print_output "$current_remote"
         if [ "$current_remote" != "$GIT_REPO" ]; then
             print_action "Updating remote URL to $GIT_REPO..."
             local update_remote_output
-            update_remote_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git remote set-url origin $GIT_REPO 2>&1")
+            update_remote_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git remote set-url origin $GIT_REPO 2>&1")
             print_output "$update_remote_output"
             if [ $? -ne 0 ]; then
                 print_error "Failed to update remote URL"
@@ -445,13 +446,13 @@ run_git_operations() {
     # Show remote configuration
     print_action "Getting remote configuration..."
     local remote_config
-    remote_config=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git remote -v 2>&1")
+    remote_config=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git remote -v 2>&1")
     print_output "$remote_config"
 
     # Fetch updates
     print_action "Fetching from origin..."
     local fetch_output
-    fetch_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git fetch origin main 2>&1")
+    fetch_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git fetch origin main 2>&1")
     print_output "$fetch_output"
     if [ $? -ne 0 ]; then
         print_error "Failed to fetch from origin"
@@ -460,15 +461,15 @@ run_git_operations() {
     # Show remote and local main branch state
     local remote_head
     local local_head
-    remote_head=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git rev-parse origin/main")
-    local_head=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git rev-parse main 2>/dev/null || echo 'none'")
+    remote_head=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git rev-parse origin/main")
+    local_head=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git rev-parse main 2>/dev/null || echo 'none'")
     print_info "Remote main: $remote_head"
     print_info "Local main: $local_head"
 
     # Ensure we're on main branch
     print_action "Checking out main branch..."
     local checkout_output
-    checkout_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git checkout main 2>/dev/null || git checkout -b main")
+    checkout_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git checkout main 2>/dev/null || git checkout -b main")
     print_output "$checkout_output"
     if [ $? -ne 0 ]; then
         print_error "Failed to checkout main branch"
@@ -476,7 +477,7 @@ run_git_operations() {
 
     # Capture HEAD before pull
     local old_head
-    old_head=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git rev-parse HEAD")
+    old_head=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git rev-parse HEAD")
     print_action "Current HEAD: $old_head"
 
     # Force reset the working directory to match the remote repository
@@ -484,25 +485,25 @@ run_git_operations() {
     
     # Capture old HEAD before any operations
     local old_head
-    old_head=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git rev-parse HEAD 2>/dev/null || echo 'none'")
+    old_head=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git rev-parse HEAD 2>/dev/null || echo 'none'")
     print_action "Current HEAD: $old_head"
     
     # Fetch all changes from the remote
     local fetch_all_output
-    fetch_all_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git fetch --all 2>&1")
+    fetch_all_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git fetch --all 2>&1")
     print_output "$fetch_all_output"
     
     # Show what files will change before reset (if we have a valid HEAD)
     if [ "$old_head" != "none" ]; then
         print_action "Files changed since last deployment:"
         local diff_output
-        diff_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git diff --name-status $old_head origin/main 2>&1")
+        diff_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git diff --name-status $old_head origin/main 2>&1")
         print_output "$diff_output"
     fi
     
     # Hard reset to origin/main - this will discard all local changes
     local reset_output
-    reset_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git reset --hard origin/main 2>&1")
+    reset_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git reset --hard origin/main 2>&1")
     print_output "$reset_output"
     if [ $? -ne 0 ]; then
         print_error "Failed to reset to origin/main"
@@ -510,7 +511,7 @@ run_git_operations() {
     
     # Clean untracked files and directories
     local clean_output
-    clean_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git clean -fd 2>&1")
+    clean_output=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git clean -fd 2>&1")
     print_output "$clean_output"
     if [ $? -ne 0 ]; then
         print_error "Failed to clean untracked files"
@@ -521,19 +522,19 @@ run_git_operations() {
     # Show last commit message only if HEAD changed
     if [ "$old_head" != "$new_head" ]; then
         local last_commit
-        last_commit=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git log -1 --pretty=%s")
+        last_commit=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git log -1 --pretty=%s")
         print_info "Last Commit: $last_commit"
     fi
 
    # Capture HEAD after pull
     local new_head
-    new_head=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd /home/ubuntu/deploy/imaginaries/app && git rev-parse HEAD")
+    new_head=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git rev-parse HEAD")
     print_info "New HEAD: $new_head"
 
     print_success "Git operations completed successfully"
 
     # Set ownership
-    sudo chown -R "$REAL_USER:$REAL_USER" "/home/ubuntu/deploy/imaginaries/app/.git"
+    sudo chown -R "$REAL_USER:$REAL_USER" "${GIT_DIR}/.git"
 }
 
 # Function to view logs for a specific container

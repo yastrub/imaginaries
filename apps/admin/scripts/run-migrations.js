@@ -113,6 +113,7 @@ async function run() {
   }
 
   const migrationsDir = path.join(__dirname, '..', 'migrations');
+  console.log(`[migrations] Using migrations directory: ${migrationsDir}`);
   await ensureDir(migrationsDir);
 
   const pool = new Pool({ connectionString, ssl: process.env.ADMIN_DATABASE_USE_SSL === 'true' ? { rejectUnauthorized: false } : undefined });

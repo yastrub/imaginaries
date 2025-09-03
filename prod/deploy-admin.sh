@@ -5,6 +5,7 @@ set -euo pipefail
 APP_NAME=imaginaries-admin
 EXPOSE_PORT=7770
 GIT_REPO="git@github.com:yastrub/imaginaries.git"
+ENV_FILENAME="${ENV_FILENAME}"
 
 # Get the script directory (where deploy.sh is located)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -159,11 +160,11 @@ deploy() {
     
     # Determine which env file to pass as BuildKit secret for build-time inlining
     local env_secret_arg=""
-    if [ -f "$SCRIPT_DIR/.env.admin" ]; then
-        env_secret_arg="--secret id=appenv,src=$SCRIPT_DIR/.env.admin"
-        print_info "Using BuildKit secret: $SCRIPT_DIR/.env.admin"
+    if [ -f "$SCRIPT_DIR/${ENV_FILENAME}" ]; then
+        env_secret_arg="--secret id=appenv,src=$SCRIPT_DIR/${ENV_FILENAME}"
+        print_info "Using BuildKit secret: $SCRIPT_DIR/${ENV_FILENAME}"
     else
-        print_warning "No .env.admin found in $SCRIPT_DIR; build will not receive client envs via secret"
+        print_warning "No ${ENV_FILENAME} found in $SCRIPT_DIR; build will not receive client envs via secret"
     fi
 
     print_action "Building Next.js App production image..."
@@ -176,12 +177,9 @@ deploy() {
     local env_file_arg=""
     if [ -f "${APP_DIR}/.env" ]; then
         env_file_arg="--env-file ${APP_DIR}/.env"
-        print_info "Using env file: apps/admin/.env"
-    elif [ -f "${APP_DIR}/.env" ]; then
-        env_file_arg="--env-file ${APP_DIR}/.env"
-        print_info "Using env file: apps/admin/.env"
+        print_info "Using env file: ${APP_DIR}/.env"
     else
-        print_warning "No env file found under apps/admin; relying on baked-in env and defaults"
+        print_warning "No .env found under ${APP_DIR}; relying on baked-in env and defaults"
     fi
 
     # Start a temporary container on a secondary port for health-check (near-zero downtime)
@@ -708,13 +706,13 @@ main() {
     
     # Copy next env files into apps/admin so they are available at build time
     sudo -u "$REAL_USER" mkdir -p "$APP_DIR"
-    if [ -f "$SCRIPT_DIR/.env.admin" ]; then
-        print_action "Found .env.admin in deploy directory, copying to apps/admin/.env..."
-        sudo -u "$REAL_USER" cp -f "$SCRIPT_DIR/.env.admin" "$APP_DIR/.env"
-        print_success "Next.js .env.admin copied"
+    if [ -f "$SCRIPT_DIR/${ENV_FILENAME}" ]; then
+        print_action "Found ${ENV_FILENAME} in deploy directory, copying to ${APP_DIR}/.env..."
+        sudo -u "$REAL_USER" cp -f "$SCRIPT_DIR/${ENV_FILENAME}" "$APP_DIR/.env"
+        print_success "Next.js ${ENV_FILENAME} copied to ${APP_DIR}/.env"
     fi
-    if [ ! -f "$SCRIPT_DIR/.env.admin" ]; then
-        print_warning "No .env.admin found in deploy directory ($SCRIPT_DIR); using repo defaults"
+    if [ ! -f "$SCRIPT_DIR/${ENV_FILENAME}" ]; then
+        print_warning "No ${ENV_FILENAME} found in deploy directory ($SCRIPT_DIR); using repo defaults"
     fi
     
     # Backup current deployment

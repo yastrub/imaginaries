@@ -1,13 +1,11 @@
 {
-  "name": "imaginaries-client",
+  "name": "imaginaries-frontend",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
-    "dev:frontend": "vite",
-    "dev:backend": "cd backend && npm run dev",
+    "dev": "npm run dev",
     "build": "vite build",
-    "start": "npm run build && cd server && npm start"
+    "start": "npm run build && npm start"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.0.5",

@@ -234,13 +234,18 @@ deploy() {
     # --------- health-check temp ---------
     print_action "Health-checking ${temp_name} at http://127.0.0.1:${temp_port} ..."
     local ok=""
-    local http_code="000"
+    local url="http://127.0.0.1:${temp_port}"
+    local http_code="000" ok_streak=0
     for _ in $(seq 1 30); do
-        http_code="$(_http_code "http://127.0.0.1:${temp_port}")"
+        http_code="$(_http_code "${url}")"
         if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
-        print_success "${temp_name} is healthy (HTTP ${http_code})"
-        ok=1
-        break
+        ((ok_streak++))
+        if (( ok_streak >= 2 )); then
+            print_success "${temp_name} is healthy (HTTP ${http_code})"
+            return 0
+        fi
+        else
+        ok_streak=0
         fi
         sleep 2
     done
@@ -298,7 +303,7 @@ deploy() {
     done
 
     # Clean up the temporary container
-    print_action "Cleaning up temporary container ${TEMP_NAME}..."
+    print_action "Cleaning up temporary container ${temp_name}..."
     
     # optional: remove temp after successful swap
     docker rm -f "${temp_name}" >/dev/null 2>&1 || true
@@ -316,22 +321,18 @@ verify_deployment() {
   # small helper to get HTTP code safely
   _http_code() {
     local url="$1"
-    curl -sS -o /dev/null -w '%{http_code}' -L \
+    curl -s -o /dev/null -w '%{http_code}' -L \
          --connect-timeout 2 --max-time 3 \
-         "$url" || echo 000
+         "$url" 2>/dev/null || echo 000
   }
 
-  print_action "Waiting for service on port ${EXPOSE_PORT}..."
-  sleep 5
-
-  local http_code
-  http_code="$(_http_code "http://127.0.0.1:${EXPOSE_PORT}")"
-
+  local url="http://127.0.0.1:${EXPOSE_PORT}"
+  print_action "Verifying deployed primary container at ${url} ..."
+  local http_code="$(_http_code "${url}")"
   if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
-    print_success "Next.js App is accessible (HTTP ${http_code})"
-    return 0
+    print_success "Deployed primary container is accessible (HTTP ${http_code})"
   else
-    print_error "Next.js App check failed (HTTP ${http_code})"
+    print_error "Deployed primary container check failed (HTTP ${http_code})"
     return 1
   fi
 }

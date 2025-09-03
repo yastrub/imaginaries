@@ -14,6 +14,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 # Copy postinstall scripts (required by package.json's postinstall)
 COPY scripts/ ./scripts/
+# Copy migrations (required by run-migrations.js)
+COPY migrations/ ./migrations/
 # Use BuildKit cache for npm cache to speed up repeated installs
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --prefer-offline --no-audit --fund=false
@@ -40,5 +42,6 @@ COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
 COPY --from=build /app/scripts ./scripts
+COPY --from=build /app/migrations ./migrations
 # Start the standalone server (standalone copies server.js to the root of the target directory)
-CMD ["node","./scripts/run-migrations.js","&&","node","server.js"]
+CMD ["node","./scripts/run-migrations.js","&&","node","./server.js"]

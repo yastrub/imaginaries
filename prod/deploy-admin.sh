@@ -142,9 +142,9 @@ cleanup_containers() {
     
     # Stop and remove Next.js App container with exact name match
     local ids
-    ids=$(docker ps -aq -f name="^${APP_NAME}-next$")
+    ids=$(docker ps -aq -f name="^${APP_NAME}$")
     if [ -n "$ids" ]; then
-        print_action "Stopping/removing existing Next.js App container ${APP_NAME}-next..."
+        print_action "Stopping/removing existing Next.js App container ${APP_NAME}..."
         docker rm -f $ids >/dev/null 2>&1 || true
     fi
     
@@ -167,7 +167,7 @@ deploy() {
     fi
 
     print_action "Building Next.js App production image..."
-    if ! DOCKER_BUILDKIT=1 docker build --progress=plain $env_secret_arg -f apps/web/Dockerfile -t ${APP_NAME}-next:prod "${APP_DIR}" 2>&1 | highlight_npm; then
+    if ! DOCKER_BUILDKIT=1 docker build --progress=plain $env_secret_arg -f "${APP_DIR}/Dockerfile" -t ${APP_NAME}:prod "${APP_DIR}" 2>&1 | highlight_npm; then
         print_error "Failed to build Next.js App image"
     fi
     
@@ -185,7 +185,7 @@ deploy() {
     fi
 
     # Start a temporary container on a secondary port for health-check (near-zero downtime)
-    local TEMP_NAME="${APP_NAME}-next-new"
+    local TEMP_NAME="${APP_NAME}-new"
     local TEMP_PORT=$((EXPOSE_PORT+1))
 
     # Ensure no stale temp container exists
@@ -203,7 +203,7 @@ deploy() {
         --restart unless-stopped \
         -e NEXT_TELEMETRY_DISABLED=1 \
         $env_file_arg \
-        ${APP_NAME}-next:prod; then
+        ${APP_NAME}:prod; then
         print_error "Failed to start temporary container ${TEMP_NAME}"
         return 1
     fi
@@ -232,19 +232,19 @@ deploy() {
     # Swap: remove old exact-name container and start new one on the primary port
     print_action "Swapping traffic to new version on port ${EXPOSE_PORT}..."
     local old_ids
-    old_ids=$(docker ps -aq -f name="^${APP_NAME}-next$")
+    old_ids=$(docker ps -aq -f name="^${APP_NAME}$")
     if [ -n "$old_ids" ]; then
-        print_action "Stopping/removing existing container ${APP_NAME}-next..."
+        print_action "Stopping/removing existing container ${APP_NAME}..."
         docker rm -f $old_ids >/dev/null 2>&1 || true
     fi
 
     if ! docker run -d \
-        --name ${APP_NAME}-next \
+        --name ${APP_NAME} \
         -p ${EXPOSE_PORT}:3000 \
         --restart unless-stopped \
         -e NEXT_TELEMETRY_DISABLED=1 \
         $env_file_arg \
-        ${APP_NAME}-next:prod; then
+        ${APP_NAME}:prod; then
         print_error "Failed to start Next.js App container on port ${EXPOSE_PORT}. Temp ${TEMP_NAME} still running on ${TEMP_PORT} for manual fallback."
         return 1
     fi
@@ -318,13 +318,13 @@ create_backup() {
     fi
     
     # Backup docker images (Next.js App only) - write file as REAL_USER
-    if docker image inspect "${APP_NAME}-next:prod" >/dev/null 2>&1; then
-        print_action "Saving Docker image ${APP_NAME}-next:prod to backup..."
-        if ! docker save "${APP_NAME}-next:prod" | sudo -u "$REAL_USER" tee "$backup_path/next.tar" >/dev/null; then
+    if docker image inspect "${APP_NAME}:prod" >/dev/null 2>&1; then
+        print_action "Saving Docker image ${APP_NAME}:prod to backup..."
+        if ! docker save "${APP_NAME}:prod" | sudo -u "$REAL_USER" tee "$backup_path/${APP_NAME}.tar" >/dev/null; then
             print_warning "Failed to save Docker image to backup (continuing)"
         fi
     else
-        print_info "Docker image ${APP_NAME}-next:prod not found; skipping image backup"
+        print_info "Docker image ${APP_NAME}:prod not found; skipping image backup"
     fi
     
     # Set proper ownership
@@ -392,8 +392,13 @@ rollback() {
     fi
     
     # Restore docker images
-    if [ -f "${backup_path}/next.tar" ]; then
-        docker load < "${backup_path}/next.tar"
+    if [ -f "${backup_path}/${APP_NAME}.tar" ]; then
+        print_action "Restoring Docker image ${APP_NAME}:prod from backup..."
+        if ! docker load < "${backup_path}/${APP_NAME}.tar"; then
+            print_warning "Failed to restore Docker image from backup (continuing)"
+        fi
+    else
+        print_info "${APP_NAME}.tar not found in backups; skipping image restore"
     fi
     
     # Restart service
@@ -659,12 +664,7 @@ if [ $# -gt 0 ]; then
             exit 0
             ;;
         logs)
-            view_logs "${APP_NAME}-next" "Next.js App"
-            exit 0
-            ;;
-        # Backward compatible alias
-        logs-next)
-            view_logs "${APP_NAME}-next" "Next.js App"
+            view_logs "${APP_NAME}" "Next.js App"
             exit 0
             ;;
         *)
@@ -708,11 +708,6 @@ main() {
     
     # Copy next env files into apps/admin so they are available at build time
     sudo -u "$REAL_USER" mkdir -p "$APP_DIR"
-    if [ -f "$SCRIPT_DIR/.env.admin" ]; then
-        print_action "Found .env.admin in deploy directory, copying to apps/admin/.env..."
-        sudo -u "$REAL_USER" cp -f "$SCRIPT_DIR/.env.admin" "$APP_DIR/.env"
-        print_success "Next.js .env.admin copied"
-    fi
     if [ -f "$SCRIPT_DIR/.env.admin" ]; then
         print_action "Found .env.admin in deploy directory, copying to apps/admin/.env..."
         sudo -u "$REAL_USER" cp -f "$SCRIPT_DIR/.env.admin" "$APP_DIR/.env"

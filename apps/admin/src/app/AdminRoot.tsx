@@ -16,6 +16,7 @@ import { usePathname, useRouter } from "next/navigation";
 const FallbackRedirect: React.FC = () => {
   const router = useRouter();
   const { token } = theme.useToken();
+  const bgColor = token.colorBgLayout;
   React.useEffect(() => {
     router.replace('/login');
   }, [router]);

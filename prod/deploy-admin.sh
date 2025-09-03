@@ -188,14 +188,6 @@ deploy() {
     local temp_name="${app}-new"
     local temp_port=$((primary_port+1))
 
-     # small helper to curl with timeouts and never hard-fail under set -e
-    _http_code() {
-        local url="$1"
-        curl -sS -o /dev/null -w '%{http_code}' -L \
-            --connect-timeout 2 --max-time 3 \
-            "$url" || echo 000
-    }
-
     # --------- ensure no stale temp container ---------
     local temp_ids
     temp_ids="$(docker ps -aq --filter "name=^${temp_name}$" || true)"
@@ -231,32 +223,47 @@ deploy() {
         return 1
     fi
 
-    # --------- health-check temp ---------
-    print_action "Health-checking ${temp_name} at http://127.0.0.1:${temp_port} ..."
-    local ok=""
-    local url="http://127.0.0.1:${temp_port}"
-    local http_code="000" ok_streak=0
-    for _ in $(seq 1 30); do
-        http_code="$(_http_code "${url}")"
-        if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
-        ((ok_streak++))
-        if (( ok_streak >= 2 )); then
-            print_success "${temp_name} is healthy (HTTP ${http_code})"
-            return 0
-        fi
-        else
-        ok_streak=0
-        fi
-        sleep 2
-    done
+    # --------- TEMP CONTAINER HEALTH CHECK (2 consecutive OKs) ---------
+    health_check_temp() {
+        local temp_name="${1:?temp_name required}"
+        local temp_port="${2:?temp_port required}"
 
-    if [[ -z "${ok}" ]]; then
+        # small helper to curl with timeouts and never hard-fail under set -e
+        _http_code() {
+            local url="$1"
+            curl -s -o /dev/null -w '%{http_code}' -L \
+                --connect-timeout 2 --max-time 3 \
+                "$url" || echo 000
+        }
+
+        print_action "Health-checking ${temp_name} at http://127.0.0.1:${temp_port} ..."
+        local url="http://127.0.0.1:${temp_port}"
+        local http_code="000"
+        local ok_streak=0
+
+        for _ in $(seq 1 30); do
+            http_code="$(_http_code "${url}")"
+            if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
+                ((ok_streak++))
+                if (( ok_streak >= 2 )); then
+                    print_success "${temp_name} is healthy (HTTP ${http_code})"
+                    return 0
+                fi
+            else
+                ok_streak=0
+            fi
+            sleep 2
+        done
+
+        # failed
         print_error "Temporary container failed health-check; keeping existing deployment running"
         print_action "Recent logs from ${temp_name}:"
         docker logs --tail=100 "${temp_name}" 2>&1 | highlight_npm || true
         docker rm -f "${temp_name}" >/dev/null 2>&1 || true
         return 1
-    fi
+    }
+
+    health_check_temp "${temp_name}" "${temp_port}" || return 1
 
     # --------- swap traffic to primary port ---------
     print_action "Swapping traffic to new version on port ${primary_port}..."
@@ -291,17 +298,6 @@ deploy() {
         return 1
     fi
 
-    # --------- quick primary health-check ---------
-    print_action "Verifying new primary container at http://127.0.0.1:${primary_port} ..."
-    for _ in $(seq 1 10); do
-        http_code="$(_http_code "http://127.0.0.1:${primary_port}")"
-        if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
-        print_success "Primary container is healthy (HTTP ${http_code})"
-        break
-        fi
-        sleep 1
-    done
-
     # Clean up the temporary container
     print_action "Cleaning up temporary container ${temp_name}..."
     
@@ -313,28 +309,33 @@ deploy() {
 
 # Verify service is running (next only)
 verify_deployment() {
-  print_header "Verifying Deployment"
+    print_header "Verifying Deployment"
 
-  # sanity: make sure EXPOSE_PORT is set
-  : "${EXPOSE_PORT:?EXPOSE_PORT must be set}"
+    # sanity: make sure EXPOSE_PORT is set
+    : "${EXPOSE_PORT:?EXPOSE_PORT must be set}"
 
-  # small helper to get HTTP code safely
-  _http_code() {
-    local url="$1"
-    curl -s -o /dev/null -w '%{http_code}' -L \
-         --connect-timeout 2 --max-time 3 \
-         "$url" 2>/dev/null || echo 000
-  }
+    # small helper to get HTTP code safely
+    _http_code() {
+        local url="$1"
+        curl -s -o /dev/null -w '%{http_code}' -L \
+            --connect-timeout 2 --max-time 3 \
+            "$url" 2>/dev/null || echo 000
+    }
 
-  local url="http://127.0.0.1:${EXPOSE_PORT}"
-  print_action "Verifying deployed primary container at ${url} ..."
-  local http_code="$(_http_code "${url}")"
-  if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
-    print_success "Deployed primary container is accessible (HTTP ${http_code})"
-  else
-    print_error "Deployed primary container check failed (HTTP ${http_code})"
+    local url="http://127.0.0.1:${EXPOSE_PORT}"
+
+    print_action "Verifying primary container at http://127.0.0.1:${EXPOSE_PORT} ..."
+    local http_code="000"
+    for _ in $(seq 1 10); do
+        http_code="$(_http_code "http://127.0.0.1:${EXPOSE_PORT}")"
+        if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
+            print_success "Primary container is healthy (HTTP ${http_code})"
+            return 0
+        fi
+        sleep 1
+    done
+    print_error "Primary container check failed (last HTTP ${http_code})"
     return 1
-  fi
 }
 
 # Create deployment backup

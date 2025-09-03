@@ -241,20 +241,19 @@ deploy() {
         local http_code="000"
         local ok_streak=0
 
-        for _ in $(seq 1 30); do
-            http_code="$(_http_code "${url}")"
-            if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
-                ((ok_streak++))
-                if (( ok_streak >= 2 )); then
-                    print_success "${temp_name} is healthy (HTTP ${http_code})"
-                    return 0
-                fi
-            else
-                ok_streak=0
+        sleep 5
+        http_code="$(_http_code "${url}")"
+        if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
+            ((ok_streak++))
+            if (( ok_streak >= 2 )); then
+                print_success "${temp_name} is healthy (HTTP ${http_code})"
+                return 0
             fi
-            sleep 2
-        done
-
+        else
+            ok_streak=0
+        fi
+        sleep 1
+        
         # failed
         print_error "Temporary container failed health-check; keeping existing deployment running"
         print_action "Recent logs from ${temp_name}:"
@@ -326,14 +325,13 @@ verify_deployment() {
 
     print_action "Verifying primary container at http://127.0.0.1:${EXPOSE_PORT} ..."
     local http_code="000"
-    for _ in $(seq 1 10); do
-        http_code="$(_http_code "http://127.0.0.1:${EXPOSE_PORT}")"
-        if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
-            print_success "Primary container is healthy (HTTP ${http_code})"
-            return 0
-        fi
-        sleep 1
-    done
+    sleep 5
+    http_code="$(_http_code "http://127.0.0.1:${EXPOSE_PORT}")"
+    if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
+        print_success "Primary container is healthy (HTTP ${http_code})"
+        return 0
+    fi
+    sleep 1
     print_error "Primary container check failed (last HTTP ${http_code})"
     return 1
 }

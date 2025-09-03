@@ -43,6 +43,7 @@ async function getAppliedMigrations() {
 
 // Get all migration files
 async function getMigrationFiles() {
+  console.log(`[migrations] Using migrations directory: ${MIGRATIONS_DIR}`);
   const files = await fs.readdir(MIGRATIONS_DIR);
   return files
     .filter(f => f.endsWith('.sql'))

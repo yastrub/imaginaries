@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Confirmation | Imaginaries</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background-color: #000;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    
+    .container {
+      background-color: #18181b;
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 {
+      font-size: 24px;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    
+    p {
+      color: #a1a1aa;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    
+    .button {
+      display: inline-block;
+      background-color: #3b82f6;
+      color: white;
+      font-weight: 500;
+      padding: 10px 20px;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: background-color 0.2s;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+    }
+    
+    .button:hover {
+      background-color: #2563eb;
+    }
+    
+    .success-icon, .error-icon, .loading-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    
+    .success-icon {
+      color: #22c55e;
+    }
+    
+    .error-icon {
+      color: #ef4444;
+    }
+    
+    .loading-icon {
+      color: #3b82f6;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    #loading-view, #success-view, #error-view {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Loading View -->
+    <div id="loading-view">
+      <div class="loading-icon">⟳</div>
+      <h1>Confirming Your Email</h1>
+      <p>Please wait while we confirm your email address...</p>
+    </div>
+    
+    <!-- Success View -->
+    <div id="success-view">
+      <div class="success-icon">✓</div>
+      <h1>Email Confirmed Successfully</h1>
+      <p>Thank you for confirming your email. You can now return to the application and sign in.</p>
+      <button class="button" onclick="returnToApp()">Return to Application</button>
+    </div>
+    
+    <!-- Error View -->
+    <div id="error-view">
+      <div class="error-icon">✗</div>
+      <h1>Confirmation Failed</h1>
+      <p id="error-message">There was a problem confirming your email. Please try again or contact support.</p>
+      <button class="button" onclick="returnToApp()">Return to Application</button>
+    </div>
+  </div>
+  
+  <script>
+    // Track if we've already attempted confirmation
+    let hasAttemptedConfirmation = false;
+    
+    // Show the loading view initially
+    document.getElementById('loading-view').style.display = 'block';
+    
+    // Function to show a specific view
+    function showView(viewId, errorMessage = null) {
+      // Hide all views
+      document.getElementById('loading-view').style.display = 'none';
+      document.getElementById('success-view').style.display = 'none';
+      document.getElementById('error-view').style.display = 'none';
+      
+      // Show the requested view
+      document.getElementById(viewId).style.display = 'block';
+      
+      // Set error message if provided
+      if (errorMessage && viewId === 'error-view') {
+        document.getElementById('error-message').textContent = errorMessage;
+      }
+    }
+    
+    // Function to return to the main app
+    function returnToApp() {
+      window.location.href = '/';
+    }
+    
+    // Function to confirm email
+    async function confirmEmail() {
+      // Only attempt confirmation once
+      if (hasAttemptedConfirmation) {
+        console.log('Already attempted confirmation, skipping');
+        return;
+      }
+      
+      hasAttemptedConfirmation = true;
+      
+      // Get the token from the URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      
+      // Check if we have a token
+      if (!token) {
+        console.log('No token found');
+        showView('error-view', 'No confirmation token provided. Please check your email link.');
+        return;
+      }
+      
+      try {
+        console.log('Making API request to confirm email');
+        const response = await fetch(`/api/auth/confirm-email?token=${encodeURIComponent(token)}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+        
+        console.log('Response received, status:', response.status);
+        const data = await response.json();
+        console.log('Response data:', data);
+        
+        if (response.status === 200) {
+          console.log('Email confirmed successfully');
+          showView('success-view');
+        } else if (response.status === 400) {
+          if (data.error && data.error.includes('already confirmed')) {
+            console.log('Email already confirmed');
+            showView('success-view');
+          } else {
+            console.log('Error confirming email:', data.error);
+            showView('error-view', data.error || 'Invalid confirmation token');
+          }
+        } else {
+          console.log('Unexpected response status:', response.status);
+          showView('error-view', data.error || 'Failed to confirm email');
+        }
+      } catch (err) {
+        console.error('Confirmation error:', err);
+        showView('error-view', 'Network error. Please try again later.');
+      }
+    }
+    
+    // Start the confirmation process when the page loads
+    window.addEventListener('DOMContentLoaded', confirmEmail);
+  </script>
+</body>
+</html>

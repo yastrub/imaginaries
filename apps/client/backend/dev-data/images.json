@@ -1,0 +1,17 @@
+{
+  "images": [
+    {
+      "id": "36345932-7582-4f39-b5cc-745a0efdf27c",
+      "user_id": "admin-id-123",
+      "prompt": "Pendant, 18k white gold, single stone, futuristic",
+      "image_url": "36345932-7582-4f39-b5cc-745a0efdf27c.png",
+      "watermarked_url": "36345932-7582-4f39-b5cc-745a0efdf27c-wm.png",
+      "metadata": {
+        "generator": "openai",
+        "generated_at": "2025-03-27T10:18:19.328Z"
+      },
+      "created_at": "2025-03-27T10:18:19.328Z",
+      "is_private": false
+    }
+  ]
+}

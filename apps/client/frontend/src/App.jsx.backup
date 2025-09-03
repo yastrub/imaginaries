@@ -1,0 +1,852 @@
+import React, { useState, useCallback, useEffect, useRef, Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, useParams, useLocation } from 'react-router-dom';
+import { generateImage } from './services/api';
+import { Modal } from './components/Modal';
+import { PresetsGrid } from './components/PresetsGrid';
+import { ConfirmDialog } from './components/ConfirmDialog';
+import { Header } from './components/Header';
+import { MainContent } from './components/MainContent';
+import { SharePage } from './components/SharePage';
+import { EmailConfirmation } from './components/EmailConfirmation';
+import { PureConfirmation } from './components/PureConfirmation';
+import { PasswordResetPage } from './components/PasswordResetPage';
+import { useStableAuth } from './hooks/useStableAuth';
+import { useImageDownload } from './hooks/useImageDownload';
+import { useImageHistory } from './hooks/useImageHistory';
+import { usePublicGallery } from './hooks/usePublicGallery';
+import { useLikes } from './hooks/useLikes';
+import { useShareImage } from './hooks/useShareImage';
+import { Toaster } from './components/ui/Toaster';
+import { useToast } from './components/ui/use-toast';
+import { checkForUpdates } from './config/app';
+import { BugReportButton } from './components/BugReportButton';
+import { presets } from './config/presets';
+import { PromptProvider, usePromptContext } from './contexts/PromptContext';
+import { CompletelyIsolatedAuth, openAuthModal } from './components/CompletelyIsolatedAuth';
+import { GlobalConfetti } from './components/GlobalConfetti';
+// Using standalone auth modal instead of context
+
+// Import Gallery directly to prevent lazy loading issues
+import { Gallery } from './components/Gallery';
+
+// Lazy load components that aren't needed immediately
+// Use proper named imports to fix React error #306
+const ImageHistory = lazy(() => import('./components/ImageHistory').then(module => ({ default: module.ImageHistory })));
+
+// We don't need a wrapper anymore - SharePage will be mounted directly by the router
+// This prevents unnecessary component nesting and potential re-renders
+
+// Root App component that only handles routing
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* ISOLATED ROUTES: No context providers = better performance */}
+        <Route path="/confirm-email" element={<PureConfirmation />} />
+        <Route path="/reset-password" element={<PasswordResetPage />} />
+        <Route path="/share/:imageId" element={<SharePage />} />
+        
+        {/* MAIN APP ROUTE: Wrapped in PromptProvider */}
+        <Route path="*" element={
+          <PromptProvider>
+            <MainAppContent />
+          </PromptProvider>
+        } />
+      </Routes>
+      {/* Render CompletelyIsolatedAuth outside of Routes to ensure it's always available */}
+      <CompletelyIsolatedAuth />
+      <Toaster />
+    </BrowserRouter>
+  );
+}
+
+// CRITICAL FIX: MainApp is now just a wrapper for MainAppContent
+// This component is no longer used directly - we render MainAppContent inside MainAppWithAuth
+function MainApp() {
+  return <MainAppContent />;
+}
+
+// This component contains all the main app logic
+// It will ONLY be rendered when we're not on the confirmation page
+function MainAppWithAuth() {
+  // Use MainAppContent directly
+  return <MainAppContent />;
+}
+
+function MainAppContent() {
+  const { toast } = useToast();
+  const { session, isEmailConfirmed, signOut } = useStableAuth();
+  
+  // Explicitly derive isAuthenticated from session for consistent use across components
+  const isAuthenticated = !!session?.user;
+  
+  // Declare all state variables at the top level to avoid temporal dead zone issues
+  const [showGallery, setShowGallery] = useState(false);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const promptInputRef = useRef(null);
+  
+  // Use refs to track state changes without causing re-renders
+  const showGalleryRef = useRef(showGallery);
+  
+  // Initialize hooks at the top level to avoid temporal dead zone issues
+  const { handleDownload, downloadingImageId } = useImageDownload();
+  const { images: userImages, isLoading: isLoadingHistory, loadImages: loadUserImages, clearHistory } = useImageHistory(session?.user?.id);
+  const { images: publicImages, isLoading: isLoadingPublic, loadImages: loadPublicImages, hasMore: hasMorePublic, view: currentView, switchView: switchGalleryView } = usePublicGallery();
+  const { likedImages, likeCounts, toggleLike, fetchLikes } = useLikes();
+  
+  // Update ref when state changes - AFTER all hooks are initialized
+  useEffect(() => {
+    showGalleryRef.current = showGallery;
+  }, [showGallery]);
+  
+  // Debug function to log current state
+  const logState = useCallback(() => {
+    console.log('Current App State:', {
+      isAuthenticated: !!session?.user,
+      showGallery,
+      isHistoryOpen,
+      showSignOutConfirm
+    });
+  }, [session?.user, showGallery, isHistoryOpen, showSignOutConfirm]);
+  
+  // Only log auth state changes for debugging
+  useEffect(() => {
+    console.log('Auth state changed:', { isAuthenticated, userId: session?.user?.id });
+  }, [isAuthenticated, session?.user?.id]);
+  
+  // MOVED: This useEffect now appears after all hooks are initialized
+  useEffect(() => {
+    console.log('Gallery state CHANGED:', { showGallery, isHistoryOpen, showSignOutConfirm });
+    
+    // Debug what's being rendered based on these states
+    if (showGallery) {
+      console.log('Should be showing Gallery view');
+      // Only load public images if we don't already have them
+      if (publicImages.length === 0 && !isLoadingPublic) {
+        console.log('Loading public images for Gallery view - none exist yet');
+        loadPublicImages();
+      } else {
+        console.log('Gallery view - using existing public images:', publicImages.length);
+      }
+    } else {
+      console.log('Should be showing Imagine view');
+    }
+    
+    if (isHistoryOpen) {
+      console.log('Should be showing History modal');
+    }
+    
+    if (showSignOutConfirm) {
+      console.log('Should be showing Sign Out confirmation');
+    }
+  }, [showGallery, isHistoryOpen, showSignOutConfirm, loadPublicImages, publicImages.length, isLoadingPublic]);
+  
+  // Track if we've already loaded public images to prevent unnecessary API calls
+  const initialPublicImagesLoadedRef = useRef(false);
+  
+  // Track if we've already attempted to load images for each view
+  const initialLoadAttemptsRef = useRef({
+    public: false,
+    user: false
+  });
+  
+  // Ensure public images are loaded when the component mounts, but only once
+  useEffect(() => {
+    // Skip if we're already loading
+    if (isLoadingPublic) {
+      console.log('Already loading public images, skipping initial load');
+      return;
+    }
+    
+    // Skip if we've already attempted to load public images
+    if (initialLoadAttemptsRef.current.public) {
+      console.log('Already attempted to load public images before');
+      return;
+    }
+    
+    // Mark that we've attempted to load public images
+    initialLoadAttemptsRef.current.public = true;
+    
+    console.log('Loading initial public images - first time only');
+    loadPublicImages();
+  }, [isLoadingPublic, loadPublicImages]);
+  
+  // Ensure user images are loaded when authenticated and component mounts
+  useEffect(() => {
+    // Skip if not authenticated or already loading
+    if (!isAuthenticated || isLoadingHistory) {
+      return;
+    }
+    
+    // Skip if we've already attempted to load user images
+    if (initialLoadAttemptsRef.current.user) {
+      console.log('Already attempted to load user images before');
+      return;
+    }
+    
+    // Mark that we've attempted to load user images
+    initialLoadAttemptsRef.current.user = true;
+    
+    console.log('Loading initial user images - first time only');
+    loadUserImages();
+  }, [isAuthenticated, isLoadingHistory, loadUserImages]);
+  
+  // CRITICAL PERFORMANCE OPTIMIZATION:
+  // COMPLETE SEPARATION OF MAIN APP AND ISOLATED ROUTES
+  //
+  // 1. NO CONDITIONAL HOOK CALLS - Each component has its own dedicated hooks
+  // 2. NO SHARED STATE BETWEEN ROUTES - Prevents unnecessary re-renders
+  // 3. FLAT ROUTER STRUCTURE - Prevents cascading re-renders
+  //
+  // This pattern completely eliminates the possibility of hook-related errors
+  
+
+  
+
+  // CRITICAL PERFORMANCE OPTIMIZATION:
+  // ISOLATE HISTORY MODAL LIKE FUNCTIONALITY!
+  //
+  // 1. CREATE SPECIALIZED FUNCTION - Prevent event bubbling to router
+  // 2. USE TIMEOUT TO BREAK EVENT CHAIN - Completely isolate from main app
+  // 3. MAINTAIN STATE CONSISTENCY - Update local state immediately
+  //
+  // This prevents the history modal from causing page reloads
+  const toggleLikeInHistory = useCallback(async (imageId) => {
+    // Use setTimeout to break the event chain completely
+    return new Promise((resolve) => {
+      setTimeout(async () => {
+        try {
+          // Call the original toggleLike function
+          const success = await toggleLike(imageId);
+          resolve(success);
+        } catch (error) {
+          console.error('Error toggling like in history:', error);
+          resolve(false);
+        }
+      }, 0);
+    });
+  }, [toggleLike]);
+  
+  const [prompt, setPrompt] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Immediately load user images when history modal is opened
+  useEffect(() => {
+    if (isHistoryOpen && session?.user?.id) {
+      loadUserImages();
+    }
+  }, [isHistoryOpen, session?.user?.id, loadUserImages]);
+  // Auth modal is now completely isolated
+  const [error, setError] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  // Bug report modal state is now managed in BugReportButton component
+
+  // Check for updates on mount
+  useEffect(() => {
+    const update = checkForUpdates();
+    if (update) {
+      toast({
+        title: "App Updated",
+        description: `The app has been updated from v${update.from} to v${update.to}`,
+      });
+    }
+  }, [toast]);
+  
+  // We no longer need to fetch likes separately since the server now includes
+  // like_count and liked_by_user directly in the image objects
+  // This reduces unnecessary API calls and improves performance
+
+  // Jewelry selection is now handled in MainContent component
+
+  const handlePromptChange = useCallback((newPrompt) => {
+    setPrompt(newPrompt);
+  }, []);
+
+  // Preset toggling is now handled in MainContent component
+
+  // We'll use a ref to store the context functions that will be passed from the wrapped component
+  const promptContextRef = useRef({ clearAll: () => {}, getFinalPrompt: () => prompt.trim(), setPrompt: (text) => setPrompt(text) });
+  
+  const handleSubmit = useCallback(async (e, drawingData = {}) => {
+    e.preventDefault();
+    if (isLoading) return;
+
+    if (!session) {
+      // Open the auth modal
+      openAuthModal();
+      return;
+    }
+
+    if (!isEmailConfirmed) {
+      return;
+    }
+
+    setError(null);
+    setIsGenerating(true);
+    
+    // Get the final prompt from the ref first
+    const submissionPrompt = promptContextRef.current.getFinalPrompt();
+    
+    // We'll rely on the isGenerating state to show a loading indicator
+    // instead of trying to modify the userImages array directly
+    
+    try {
+      // Use the combined prompt from MainContent
+      const fullPrompt = submissionPrompt;
+
+      // Extract drawing data if available
+      const { drawingPng, drawingSvg } = drawingData;
+
+      // Pass drawing data to the API call
+      const imageUrl = await generateImage(fullPrompt, session?.user?.id, drawingPng, drawingSvg);
+      
+      // Load user images again to get the newly generated image
+      await loadUserImages();
+      
+      // Clear the prompt and presets
+      promptContextRef.current.clearAll();
+      setPrompt('');
+    } catch (error) {
+      console.error('Failed to generate image:', error);
+      
+      // Handle generation limit error specifically
+      if (error.isLimitError) {
+        toast({
+          title: "Generation Limit Reached",
+          description: `You've reached your daily limit of ${error.limit} generations. Upgrade your plan for more!`,
+          variant: "limit",
+        });
+      }
+      
+      setError(error.message || 'Failed to generate image. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [prompt, isLoading, session?.user?.id, isEmailConfirmed, toast, loadUserImages]);
+
+  const handleReusePrompt = useCallback((promptText, fromGallery = false) => {
+    // Update the prompt in the local state
+    setPrompt(promptText);
+    
+    // Also update the prompt in the context
+    if (promptContextRef.current && promptContextRef.current.setPrompt) {
+      promptContextRef.current.setPrompt(promptText);
+    } else {
+      console.warn('setPrompt function not available in promptContextRef');
+    }
+    
+    if (fromGallery) {
+      setShowGallery(false);
+      if (promptInputRef.current) {
+        promptInputRef.current.focus();
+        promptInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, []);
+
+  const handleQuoteRequest = useCallback((image) => {
+    if (!isEmailConfirmed) {
+      toast({
+        title: "Email confirmation required",
+        description: "Please confirm your email address to request quotes.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSelectedImage(image);
+    setShowQuoteModal(true);
+  }, [isEmailConfirmed]);
+
+  // This function is called when the user confirms sign out in the dialog
+  const handleSignOut = async () => {
+    try {
+      console.log('Signing out user...');
+      // Make a direct API call to sign out instead of using the context function
+      const response = await fetch('/api/auth/signout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to sign out');
+      }
+      
+      // Close the confirmation dialog
+      setShowSignOutConfirm(false);
+      
+      // Force a page reload to update the auth state
+      window.location.reload();
+    } catch (error) {
+      console.error('Sign out error:', error);
+      toast({
+        title: "Failed to sign out",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Effect to open the auth modal for unconfirmed users
+  useEffect(() => {
+    if (session && !isEmailConfirmed) {
+      // Open the isolated auth modal for unconfirmed users
+      openAuthModal();
+    }
+  }, [session, isEmailConfirmed]);
+
+  // Memoize the MainApp component to prevent unnecessary re-renders
+  const MainApp = useCallback(() => {
+    if (session && !isEmailConfirmed) {
+      // Return an empty div as a placeholder
+      // The auth modal will be shown via the useEffect above
+      return <div className="min-h-screen bg-black"></div>;
+    }
+
+    return (
+      <div className="min-h-screen bg-black flex flex-col">
+        {/* Header is now rendered at the top level to prevent duplication */}
+
+        {/* Test component to debug rendering */}
+        {showGallery ? (
+          <div style={{ backgroundColor: 'red', color: 'white', padding: '20px', margin: '20px', textAlign: 'center', fontSize: '24px' }}>
+            <h1>THIS IS THE GALLERY VIEW</h1>
+            <p>Public Images: {publicImages?.length || 0}</p>
+            <p>Is Loading: {isLoadingPublic ? 'Yes' : 'No'}</p>
+            <p>Show Gallery State: {showGallery ? 'True' : 'False'}</p>
+            <button 
+              onClick={() => {
+                console.log('Manual gallery toggle clicked');
+                setShowGallery(false);
+              }}
+              style={{ padding: '10px', backgroundColor: 'white', color: 'black', margin: '10px' }}
+            >
+              Switch to Main View
+            </button>
+          </div>
+        ) : (
+          <MainContent
+            prompt={prompt}
+            setPrompt={handlePromptChange}
+            handleSubmit={handleSubmit}
+            isLoading={isLoading}
+            error={error || isLoadingHistory}
+            images={userImages}
+            publicImages={publicImages} 
+            isGenerating={isGenerating}
+            isAuthenticated={!!session}
+            onReusePrompt={handleReusePrompt}
+            promptInputRef={promptInputRef}
+            onToggleLike={toggleLike}
+            likedImages={likedImages}
+            likeCounts={likeCounts}
+            onOpenHistory={() => setIsHistoryOpen(true)}
+          />
+        )}
+
+        {/* Modal is now handled in MainContent component */}
+
+        {/* Modals moved to MainAppWithAuth component */}
+        
+        {/* Footer with copyright */}
+        <footer className="mt-auto py-4 px-6">
+          <div className="flex justify-between items-center">
+            <div className="text-zinc-600 text-sm">© OCTADIAM FZCO</div>
+            {isAuthenticated && <BugReportButton />}
+          </div>
+        </footer>
+        
+        {/* Bug Report Modal is now handled by the BugReportButton component in the footer */}
+      </div>
+    );
+  }, [session, isEmailConfirmed, showGallery, publicImages, isLoadingPublic, handleQuoteRequest, handleDownload, downloadingImageId, handleReusePrompt, toggleLike, likedImages, likeCounts, loadPublicImages, hasMorePublic, currentView, switchGalleryView, prompt, handlePromptChange, handleSubmit, isLoading, error, isLoadingHistory, userImages, isGenerating, promptInputRef, isHistoryOpen, showSignOutConfirm, selectedImage, showQuoteModal, setShowQuoteModal, loadUserImages]);
+
+
+  
+  // CRITICAL FIX: Move MainAppWithAuth outside of MainAppContent to make it globally accessible
+}
+    // Get prompt context functions and store them in the ref
+    const { getFinalPrompt, clearAll, setPromptDirectly } = usePromptContext();
+    useEffect(() => {
+      promptContextRef.current = { clearAll, getFinalPrompt, setPrompt: setPromptDirectly };
+    }, [clearAll, getFinalPrompt, setPromptDirectly]);
+    
+    // Log when this component renders
+    console.log('MainAppWithAuth rendering, showGallery:', showGallery, 'isHistoryOpen:', isHistoryOpen);
+    
+    return (
+      <>
+        {/* CRITICAL FIX: Render content directly instead of through MainApp */}
+        <div className="min-h-screen bg-black flex flex-col">
+          {/* Header is now rendered at the top level to prevent duplication */}
+          <Header
+            session={session}
+            isAuthenticated={isAuthenticated}
+            isEmailConfirmed={isEmailConfirmed}
+            signOut={signOut}
+            userImages={userImages}
+            clearHistory={clearHistory}
+            isLoadingHistory={isLoadingHistory}
+            loadUserImages={loadUserImages}
+            currentView={currentView}
+            switchGalleryView={switchGalleryView}
+            onToggleGallery={useCallback(async () => {
+              console.log('Top-level onToggleGallery called, current showGallery:', showGalleryRef.current);
+              // Use the ref value to ensure we have the latest state
+              const newValue = !showGalleryRef.current;
+              console.log('Setting showGallery to:', newValue);
+              
+              // Create a loading promise that we'll await before updating UI
+              let loadingPromise = Promise.resolve();
+              
+              // Force immediate loading of public images if switching to gallery view
+              if (!showGalleryRef.current) {
+                console.log('Preloading public images for gallery view');
+                // Only load if we don't have images or if we're not already loading
+                if (publicImages.length === 0 && !isLoadingPublic) {
+                  try {
+                    // Create a loading promise that will resolve when images are loaded
+                    loadingPromise = loadPublicImages(1, 'recent')
+                      .then(result => {
+                        console.log('Successfully preloaded public images');
+                        return result;
+                      })
+                      .catch(error => {
+                        console.error('Failed to preload public images:', error);
+                        // Don't reject the promise, just log the error
+                        return null;
+                      });
+                  } catch (error) {
+                    console.error('Failed to start public image preload:', error);
+                  }
+                } else {
+                  console.log('Using existing public images:', publicImages.length);
+                }
+              } else {
+                // If switching to Imagine view, load user images first
+                console.log('Should be showing Imagine view');
+                if (isAuthenticated && userImages.length === 0 && !isLoadingHistory) {
+                  try {
+                    // Create a loading promise that will resolve when images are loaded
+                    loadingPromise = loadUserImages()
+                      .then(result => {
+                        console.log('Successfully preloaded user images for Imagine view');
+                        return result;
+                      })
+                      .catch(error => {
+                        console.error('Failed to preload user images:', error);
+                        // Don't reject the promise, just log the error
+                        return null;
+                      });
+                  } catch (error) {
+                    console.error('Failed to start user image preload:', error);
+                  }
+                }
+              }
+              
+              try {
+                // Wait for loading to complete with a timeout to prevent UI from hanging
+                const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
+                await Promise.race([loadingPromise, timeoutPromise]);
+              } catch (error) {
+                console.error('Error waiting for images to load:', error);
+              } finally {
+                // Always update state, even if loading failed
+                console.log('Updating UI state after loading (or timeout)');
+                setShowGallery(newValue);
+              }
+            }, [loadPublicImages, publicImages.length, isLoadingPublic, isAuthenticated, userImages.length, isLoadingHistory, loadUserImages])}
+            showGallery={showGallery}
+            onOpenHistory={useCallback(() => {
+              console.log('Top-level onOpenHistory called, setting isHistoryOpen to true');
+              setIsHistoryOpen(true);
+            }, [])}
+            onSignOut={useCallback(() => {
+              console.log('Top-level onSignOut called, setting showSignOutConfirm to true');
+              setShowSignOutConfirm(true);
+            }, [])}
+          />
+
+          {/* Gallery or Main Content based on showGallery state */}
+          {showGallery ? (
+            <Gallery
+              images={publicImages || []}
+              isLoading={isLoadingPublic}
+              isAuthenticated={!!session}
+              onQuoteRequest={handleQuoteRequest}
+              onDownload={handleDownload}
+              downloadingImageId={downloadingImageId}
+              onReusePrompt={handleReusePrompt}
+              onToggleLike={toggleLikeInHistory}
+              likedImages={likedImages}
+              likeCounts={likeCounts}
+              loadImages={loadPublicImages}
+              hasMore={hasMorePublic}
+              currentView={currentView}
+              switchView={switchGalleryView}
+            />
+          ) : (
+            <MainContent
+              prompt={prompt}
+              setPrompt={handlePromptChange}
+              handleSubmit={handleSubmit}
+              isLoading={isLoading}
+              error={error || isLoadingHistory}
+              images={userImages}
+              publicImages={publicImages} 
+              isGenerating={isGenerating}
+              isAuthenticated={!!session}
+              onReusePrompt={handleReusePrompt}
+              promptInputRef={promptInputRef}
+              onToggleLike={toggleLike}
+              likedImages={likedImages}
+              likeCounts={likeCounts}
+              onOpenHistory={() => setIsHistoryOpen(true)}
+            />
+          )}
+
+          {/* Footer with copyright */}
+          <footer className="mt-auto py-4 px-6">
+            <div className="flex justify-between items-center">
+              <div className="text-zinc-600 text-sm">© OCTADIAM FZCO</div>
+              {isAuthenticated && <BugReportButton />}
+            </div>
+          </footer>
+        </div>
+        
+        {/* Render modals here to ensure they're included in the component tree */}
+        {isHistoryOpen && session && (
+          <Suspense fallback={<div className="flex justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div></div>}>
+            <ImageHistory
+              images={userImages}
+              userId={session?.user?.id}
+              onClose={() => setIsHistoryOpen(false)}
+              onDownload={handleDownload}
+              isDownloading={downloadingImageId}
+              isLoading={isLoadingHistory}
+              onClearHistory={clearHistory}
+              onReusePrompt={handleReusePrompt}
+              onToggleLike={toggleLikeInHistory}
+              likedImages={likedImages}
+              likeCounts={likeCounts}
+              onQuoteRequest={handleQuoteRequest}
+              selectedImage={selectedImage}
+              showQuoteModal={showQuoteModal}
+              setShowQuoteModal={setShowQuoteModal}
+              onTogglePrivacy={() => {}}
+              loadNextPage={() => {}}
+              hasMore={false}
+            />
+          </Suspense>
+        )}
+        
+        <ConfirmDialog
+          isOpen={showSignOutConfirm}
+          onClose={() => setShowSignOutConfirm(false)}
+          onConfirm={handleSignOut}
+          title="Sign out"
+          message="Are you sure you want to sign out?"
+        />
+        
+        <CompletelyIsolatedAuth />
+        <GlobalConfetti />
+        <Toaster />
+      </>
+    );
+  };
+  
+  // This function is no longer needed since we're rendering MainAppWithAuth directly
+  // const AppWithContext = () => {
+  //   // Get prompt context functions and store them in the ref
+  //   const { getFinalPrompt, clearAll, setPromptDirectly } = usePromptContext();
+  //   useEffect(() => {
+  //     promptContextRef.current = { clearAll, getFinalPrompt, setPrompt: setPromptDirectly };
+  //   }, [clearAll, getFinalPrompt, setPromptDirectly]);
+  //   
+  //   // Return the main app component with routes - but NOT the share page
+  //   // This prevents the share page from being affected by context changes
+  //   return (
+  //     <Routes>
+  //       <Route path="/" element={<MainAppWithAuth />} />
+  //     </Routes>
+  //   );
+  // };
+  
+  // ███████╗████████╗ ██████╗ ██████╗     ██╗
+  // ██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗    ██║
+  // ███████╗   ██║   ██║   ██║██████╔╝    ██║
+  // ╚════██║   ██║   ██║   ██║██╔═══╝     ╚═╝
+  // ███████║   ██║   ╚██████╔╝██║         ██╗
+  // ╚══════╝   ╚═╝    ╚═════╝ ╚═╝         ╚═╝
+  //                                           
+  // CRITICAL PERFORMANCE OPTIMIZATION:
+  // DO NOT NEST ROUTERS OR ADD UNNECESSARY CONTEXT PROVIDERS!
+  //
+  // 1. KEEP THIS FLAT ROUTER STRUCTURE - Nested routers cause multiple renders
+  // 2. ISOLATE ROUTES THAT DON'T NEED CONTEXT - Don't wrap everything in providers
+  // 3. COMPONENT ORDER MATTERS - Define components before using them in JSX
+  //
+  return (
+    <>
+      <Header
+        session={session}
+        isAuthenticated={isAuthenticated}
+        isEmailConfirmed={isEmailConfirmed}
+        signOut={signOut}
+        userImages={userImages}
+        clearHistory={clearHistory}
+        isLoadingHistory={isLoadingHistory}
+        loadUserImages={loadUserImages}
+        currentView={currentView}
+        switchGalleryView={switchGalleryView}
+        onToggleGallery={useCallback(async () => {
+          console.log('Top-level onToggleGallery called, current showGallery:', showGalleryRef.current);
+          // Use the ref value to ensure we have the latest state
+          const newValue = !showGalleryRef.current;
+          console.log('Setting showGallery to:', newValue);
+          
+          // Create a loading promise that we'll await before updating UI
+          let loadingPromise = Promise.resolve();
+          
+          // Force immediate loading of public images if switching to gallery view
+          if (!showGalleryRef.current) {
+            console.log('Preloading public images for gallery view');
+            // Only load if we don't have images or if we're not already loading
+            if (publicImages.length === 0 && !isLoadingPublic) {
+              try {
+                // Create a loading promise that will resolve when images are loaded
+                loadingPromise = loadPublicImages(1, 'recent')
+                  .then(result => {
+                    console.log('Successfully preloaded public images');
+                    return result;
+                  })
+                  .catch(error => {
+                    console.error('Failed to preload public images:', error);
+                    // Don't reject the promise, just log the error
+                    return null;
+                  });
+              } catch (error) {
+                console.error('Failed to start public image preload:', error);
+              }
+            } else {
+              console.log('Using existing public images:', publicImages.length);
+            }
+          } else {
+            // If switching to Imagine view, load user images first
+            console.log('Should be showing Imagine view');
+            if (isAuthenticated && userImages.length === 0 && !isLoadingHistory) {
+              try {
+                // Create a loading promise that will resolve when images are loaded
+                loadingPromise = loadUserImages()
+                  .then(result => {
+                    console.log('Successfully preloaded user images for Imagine view');
+                    return result;
+                  })
+                  .catch(error => {
+                    console.error('Failed to preload user images:', error);
+                    // Don't reject the promise, just log the error
+                    return null;
+                  });
+              } catch (error) {
+                console.error('Failed to start user image preload:', error);
+              }
+            }
+          }
+          
+          try {
+            // Wait for loading to complete with a timeout to prevent UI from hanging
+            const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
+            await Promise.race([loadingPromise, timeoutPromise]);
+          } catch (error) {
+            console.error('Error waiting for images to load:', error);
+          } finally {
+            // Always update state, even if loading failed
+            console.log('Updating UI state after loading (or timeout)');
+            setShowGallery(newValue);
+          }
+        }, [loadPublicImages, publicImages.length, isLoadingPublic, isAuthenticated, userImages.length, isLoadingHistory, loadUserImages])}
+        showGallery={showGallery}
+        onOpenHistory={useCallback(() => {
+          console.log('Top-level onOpenHistory called, setting isHistoryOpen to true');
+          setIsHistoryOpen(true);
+        }, [])}
+        onSignOut={useCallback(() => {
+          console.log('Top-level onSignOut called, setting showSignOutConfirm to true');
+          setShowSignOutConfirm(true);
+        }, [])}
+      />
+
+      <MainContent
+        session={session}
+        isAuthenticated={isAuthenticated}
+        isEmailConfirmed={isEmailConfirmed}
+        publicImages={publicImages}
+        isLoadingPublic={isLoadingPublic}
+        loadPublicImages={loadPublicImages}
+        hasMorePublic={hasMorePublic}
+        currentView={currentView}
+        userImages={userImages}
+        isLoadingHistory={isLoadingHistory}
+        loadUserImages={loadUserImages}
+        likedImages={likedImages}
+        likeCounts={likeCounts}
+        toggleLike={toggleLike}
+        fetchLikes={fetchLikes}
+        handleDownload={handleDownload}
+        downloadingImageId={downloadingImageId}
+        handlePromptChange={handlePromptChange}
+        handleSubmit={handleSubmit}
+        isLoading={isLoading}
+        error={error}
+        isGenerating={isGenerating}
+        promptInputRef={promptInputRef}
+        handleReusePrompt={handleReusePrompt}
+      />
+      
+      {/* Modals and dialogs */}
+      <EmailConfirmation />
+      <ConfirmDialog 
+        isOpen={showSignOutConfirm}
+        onClose={() => setShowSignOutConfirm(false)}
+        onConfirm={handleSignOut}
+        title="Sign out"
+        message="Are you sure you want to sign out?"
+      />
+      
+      {/* Debug modal state - removed to prevent infinite rendering */}
+      
+      {/* History Modal */}
+      {isHistoryOpen && session && (
+        <Suspense fallback={<div className="flex justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div></div>}>
+          <ImageHistory
+            images={userImages}
+            userId={session?.user?.id}
+            onClose={() => setIsHistoryOpen(false)}
+            onDownload={handleDownload}
+            isDownloading={downloadingImageId}
+            isLoading={isLoadingHistory}
+            onClearHistory={clearHistory}
+            onReusePrompt={handleReusePrompt}
+            onToggleLike={toggleLikeInHistory}
+            likedImages={likedImages}
+            likeCounts={likeCounts}
+            onQuoteRequest={handleQuoteRequest}
+            selectedImage={selectedImage}
+            showQuoteModal={showQuoteModal}
+            setShowQuoteModal={setShowQuoteModal}
+            onTogglePrivacy={() => {}}
+            loadNextPage={() => {}}
+            hasMore={false}
+          />
+        </Suspense>
+      )}
+    </>
+  );
+}
+
+export default App;

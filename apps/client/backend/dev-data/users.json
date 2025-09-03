@@ -1,0 +1,13 @@
+{
+  "users": [
+    {
+      "id": "admin-id-123",
+      "email": "admin@yastrub.com",
+      "password": "$2a$10$.9Jzxl7ZMvzUcOvxAE6P4.NMMEOSBL5RAXS79KJQ8uIZt2ozrvLsC",
+      "emailConfirmed": true,
+      "createdAt": "2025-03-27T06:35:10.054Z",
+      "subscription_plan": "free",
+      "subscription_updated_at": "2025-04-02T14:29:26.968Z"
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Confirmation</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: black;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .card {
+      background-color: #18181b;
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 450px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+    .icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      margin: 0 auto 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+    }
+    .loading {
+      border: 4px solid #3b82f6;
+      border-top-color: transparent;
+      animation: spin 1s linear infinite;
+    }
+    .success {
+      background-color: #22c55e;
+    }
+    .error {
+      background-color: #ef4444;
+    }
+    h1 {
+      margin: 0 0 16px;
+      font-size: 24px;
+      font-weight: 600;
+    }
+    p {
+      margin: 0 0 32px;
+      color: #a1a1aa;
+      line-height: 1.5;
+    }
+    button {
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #2563eb;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="confirmation-card">
+    <div class="icon loading" id="status-icon"></div>
+    <h1 id="status-title">Confirming Your Email</h1>
+    <p id="status-message">Please wait while we confirm your email address...</p>
+    <button onclick="window.location.href = '/'">Return to Application</button>
+  </div>
+
+  <script>
+    // This is a completely standalone script with no dependencies
+    document.addEventListener('DOMContentLoaded', function() {
+      // Get elements
+      const statusIcon = document.getElementById('status-icon');
+      const statusTitle = document.getElementById('status-title');
+      const statusMessage = document.getElementById('status-message');
+      
+      // Get token from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      
+      // Log request attempt
+      console.log('Attempting to confirm email');
+      
+      // If no token, show error
+      if (!token) {
+        showError('No confirmation token provided. Please check your email link.');
+        return;
+      }
+      
+      // Make a single request to confirm email
+      fetch(`/api/auth/confirm-email?token=${encodeURIComponent(token)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      })
+      .then(response => {
+        console.log('Response status:', response.status);
+        return response.json().then(data => ({ data, status: response.status }));
+      })
+      .then(({ data, status }) => {
+        console.log('Response data:', data);
+        
+        if (status === 200) {
+          showSuccess();
+        } else if (status === 400) {
+          if (data.error && data.error.includes('already confirmed')) {
+            showSuccess();
+          } else {
+            showError(data.error || 'Invalid confirmation token');
+          }
+        } else {
+          showError(data.error || 'Failed to confirm email');
+        }
+      })
+      .catch(err => {
+        console.error('Confirmation error:', err);
+        showError('Network error. Please try again later.');
+      });
+      
+      function showSuccess() {
+        statusIcon.classList.remove('loading');
+        statusIcon.classList.add('success');
+        statusIcon.innerHTML = '✓';
+        statusTitle.textContent = 'Email Confirmed Successfully';
+        statusMessage.textContent = 'Thank you for confirming your email. You can now return to the application and sign in.';
+      }
+      
+      function showError(message) {
+        statusIcon.classList.remove('loading');
+        statusIcon.classList.add('error');
+        statusIcon.innerHTML = '!';
+        statusTitle.textContent = 'Confirmation Failed';
+        statusMessage.textContent = message;
+      }
+    });
+  </script>
+</body>
+</html>

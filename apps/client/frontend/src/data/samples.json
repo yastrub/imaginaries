@@ -1,0 +1,10 @@
+{
+  "samples": [
+    {
+      "id": "1",
+      "prompt": "Pendant inspired by the Matrix movie",
+      "imageUrl": "/images/samples/01.png",
+      "createdAt": "2024-02-15T10:00:00.000Z"
+    }
+  ]
+}

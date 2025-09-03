@@ -1,0 +1,70 @@
+import type { BaseRecord, CrudFilters, CrudSorting, HttpError, Pagination, DataProvider } from "@refinedev/core";
+
+function buildQuery(params: { filters?: CrudFilters; pagination?: Pagination; sorters?: CrudSorting }) {
+  const search = new URLSearchParams();
+  const { pagination, filters, sorters } = params;
+  if (pagination) {
+    search.set("page", String(pagination.current || 1));
+    search.set("limit", String(pagination.pageSize || 20));
+  }
+  if (filters) {
+    const q = filters.find((f: any) => f.field === "q" || f.field === "email");
+    const v = (q?.value as string) || "";
+    if (v) search.set("q", v);
+  }
+  if (sorters && sorters.length) {
+    const s = sorters[0];
+    search.set("sort", `${s.field}:${s.order}`);
+  }
+  return search.toString();
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+
+export const dataProvider: DataProvider = {
+  getList: async <TData extends BaseRecord>({ resource, pagination, filters, sorters }: any) => {
+    const qs = buildQuery({ pagination, filters, sorters });
+    const res = await fetch(`${API_BASE}/api/admin/${resource}?${qs}`, { credentials: "include" });
+    if (!res.ok) throw (await res.json()) as HttpError;
+    const json = await res.json();
+    return { data: json.data as TData[], total: json.total };
+  },
+  getOne: async <TData extends BaseRecord>({ resource, id }: any) => {
+    const res = await fetch(`${API_BASE}/api/admin/${resource}/${id}`, { credentials: "include" });
+    if (!res.ok) throw (await res.json()) as HttpError;
+    const json = await res.json();
+    return { data: json as TData };
+  },
+  update: async <TData extends BaseRecord>({ resource, id, variables, values }: any) => {
+    const res = await fetch(`${API_BASE}/api/admin/${resource}/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(variables ?? values),
+    });
+    if (!res.ok) throw (await res.json()) as HttpError;
+    const json = await res.json();
+    return { data: json as TData };
+  },
+  create: async <TData extends BaseRecord>({ resource, variables, values }: any) => {
+    const res = await fetch(`${API_BASE}/api/admin/${resource}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(variables ?? values),
+    });
+    if (!res.ok) throw (await res.json()) as HttpError;
+    const json = await res.json();
+    return { data: json as TData };
+  },
+  deleteOne: async <TData extends BaseRecord>({ resource, id }: any) => {
+    const res = await fetch(`${API_BASE}/api/admin/${resource}/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) throw (await res.json()) as HttpError;
+    const json = await res.json();
+    return { data: json as TData };
+  },
+  getApiUrl: () => API_BASE || "",
+};

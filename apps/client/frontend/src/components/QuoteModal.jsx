@@ -1,0 +1,339 @@
+import React, { useState, useEffect } from 'react';
+import { X, Loader2, DollarSign } from 'lucide-react';
+import { Button } from './ui/button';
+import { useReduxAuth } from '../hooks/useReduxAuth';
+import { useToast } from './ui/use-toast';
+import { triggerConfetti, CONFETTI_EVENTS } from './GlobalConfetti';
+
+export function QuoteModal({ image, onClose, fromSharePage = false }) {
+  const { user } = useReduxAuth();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [step, setStep] = useState(1); // Step 1: Estimation, Step 2: Form
+  const [isEstimating, setIsEstimating] = useState(false);
+  const [estimatedCost, setEstimatedCost] = useState(null);
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    email: user?.email || '',
+    message: '',
+    estimatedCost: '',
+  });
+
+  // Fetch price estimation when the modal opens
+  useEffect(() => {
+    if (step === 1) {
+      fetchEstimation();
+    }
+  }, []);
+
+  const fetchEstimation = async () => {
+    setIsEstimating(true);
+    setError(null);
+
+    try {
+      console.log('QuoteModal: Fetching estimation for image:', image);
+      
+      // Only use cached estimatedCost if explicitly instructed
+      // For shared images, we always want to make a fresh API call
+      const useCache = image.useCache === true;
+      if (useCache && image.estimatedCost) {
+        console.log('QuoteModal: Using cached estimation:', image.estimatedCost);
+        setEstimatedCost(image.estimatedCost);
+        setFormData(prev => ({ ...prev, estimatedCost: image.estimatedCost }));
+        setIsEstimating(false);
+        return;
+      }
+
+      // Request estimation from the server
+      console.log('QuoteModal: Making API call to get estimation for image ID:', image.id);
+      const response = await fetch(`/api/generate/estimate/${image.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ imageId: image.id }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to get price estimation');
+      }
+
+      const data = await response.json();
+      console.log('QuoteModal: Received estimation data:', data);
+      
+      // Handle the case where the server returns a formatted price string or a number
+      const estimatedCost = data.estimatedCost || data.estimated_cost || 'N/A';
+      setEstimatedCost(estimatedCost);
+      setFormData(prev => ({ ...prev, estimatedCost: estimatedCost }));
+      
+      // Trigger global confetti effect when we get the price
+      triggerConfetti(CONFETTI_EVENTS.PRICE_ESTIMATION);
+    } catch (error) {
+      setError(error.message);
+      toast({
+        title: "Failed to get price estimation",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsEstimating(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      // CRITICAL FIX: Ensure all required fields are included for the email template
+      const response = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+          image: {
+            id: image.id,
+            prompt: image.prompt,
+            url: image.image_url || image.watermarked_url || image.url, // Ensure imageUrl is provided
+            createdAt: image.created_at || new Date().toISOString(),
+            metadata: image.metadata || {},
+            estimatedCost: formData.estimatedCost || estimatedCost || 'Not available'
+          }
+        }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to send quote request');
+      }
+
+      toast({
+        title: "Quote request sent",
+        description: "We'll get back to you soon!",
+      });
+
+      onClose();
+    } catch (error) {
+      setError(error.message);
+      toast({
+        title: "Failed to send quote request",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const handleProceedToForm = () => {
+    setStep(2);
+  };
+  
+  // Handle backdrop click to close modal
+  const handleBackdropClick = (e) => {
+    // Only close if clicking directly on the backdrop
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-[100] p-4">
+      {/* Semi-transparent backdrop */}
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose}></div>
+      
+      {/* Modal content */}
+      <div className="bg-zinc-900 rounded-xl w-full max-w-lg overflow-hidden shadow-xl relative z-[101]">
+        <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-white">
+            {step === 1 ? "Jewelry Price Estimation" : "Request a Quote (Order)"}
+          </h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="text-zinc-400 hover:text-white"
+          >
+            <X className="w-6 h-6" />
+          </Button>
+        </div>
+        
+        <div className="p-6">
+          <div className="flex gap-4 mb-6">
+            <div className="w-1/3">
+              <img
+                src={image.image_url || image.url}
+                alt={image.prompt}
+                className="w-full aspect-square object-cover rounded-lg"
+              />
+            </div>
+            <div className="w-2/3 flex flex-col">
+              {!fromSharePage && image.prompt && (
+                <div className="max-h-[120px] overflow-y-auto pr-2 mb-2 scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent scrollbar-track-rounded-md scrollbar-thumb-rounded-md">
+                  <p className="text-zinc-300 text-sm">{image.prompt}</p>
+                </div>
+              )}
+              {/* Only show date if it exists and is a valid date */}
+              {!fromSharePage && (() => {
+                // Get the date value, if any
+                const dateValue = image.created_at || image.createdAt;
+                
+                // Check if it exists and is a valid date
+                if (dateValue && !isNaN(new Date(dateValue).getTime())) {
+                  return (
+                    <p className="text-zinc-500 text-xs mt-auto">
+                      Created on {new Date(dateValue).toLocaleDateString()}
+                    </p>
+                  );
+                }
+                
+                // Return null if no valid date
+                return null;
+              })()}
+            </div>
+          </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">
+              {error}
+            </div>
+          )}
+
+          {step === 1 ? (
+            <div className="space-y-6">
+              {isEstimating ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+                  <p className="text-zinc-300 text-center">Estimating your jewelry price...</p>
+                  <p className="text-zinc-500 text-sm text-center mt-2">This may take a moment</p>
+                </div>
+              ) : estimatedCost ? (
+                <div className="space-y-6">
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-6 relative overflow-hidden">
+                    <div className="flex items-center justify-center mb-3">
+                      <DollarSign className="w-8 h-8 text-amber-400" />
+                    </div>
+                    <h3 className="text-center text-lg font-medium text-amber-400 mb-2">Price Estimation</h3>
+                    <div className="relative">
+                      <p className="text-center text-2xl font-bold text-amber-300 mb-4">{estimatedCost} USD</p>
+                      {/* Removed inline confetti - now using global container */}
+                    </div>
+                    <p className="text-justify text-zinc-300 text-xs">
+                      Based on your design, materials, and stone types (lab grown or natural), we've estimated the price range for your jewelry. Final price may be adjusted based on the actual materials used. <br /> <br /> This product will be manufactured at <strong>OCTADIAM</strong> Factory, Dubai, UAE.
+                    </p>
+                  </div>
+                  
+                  <div className="flex justify-center">
+                    <Button 
+                      onClick={handleProceedToForm}
+                      className="w-full max-w-xs"
+                    >
+                      Make an Order
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <p className="text-zinc-300 text-center">Unable to estimate price</p>
+                  <Button 
+                    onClick={handleProceedToForm}
+                    className="mt-4"
+                  >
+                    Continue to Quote Request
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {estimatedCost && (
+                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                  <p className="text-amber-400 text-sm font-medium">Estimated Price Range:</p>
+                  <p className="text-amber-300 text-lg font-bold">{estimatedCost} USD</p>
+                </div>
+              )}
+              
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-zinc-400 mb-1">
+                  Your Name
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white"
+                  required
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-zinc-400 mb-1">
+                  Your Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  value={user?.email || ''}
+                  readOnly
+                  className="w-full px-4 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-zinc-400 cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="message" className="block text-sm font-medium text-zinc-400 mb-1">
+                  Message
+                </label>
+                <textarea
+                  id="message"
+                  value={formData.message}
+                  onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
+                  rows={4}
+                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white resize-none"
+                  required
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setStep(1)}
+                  disabled={isSubmitting}
+                >
+                  Back
+                </Button>
+                <Button 
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    'Send a Request'
+                  )}
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

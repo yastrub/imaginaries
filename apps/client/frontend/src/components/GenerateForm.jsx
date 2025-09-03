@@ -1,0 +1,217 @@
+import React, { useState, useEffect } from 'react';
+import { Sparkles, Settings2, Pencil, Eye, EyeOff } from 'lucide-react';
+import { AutoResizeTextarea } from './AutoResizeTextarea';
+import { DrawingBoard } from './DrawingBoard';
+// Import the openAuthModal function
+import { openAuthModal } from './CompletelyIsolatedAuth';
+import { usePromptContext } from '../contexts/PromptContext';
+import { useSelector } from 'react-redux';
+import { allowPrivateImages } from '../config/plans';
+
+export const GenerateForm = React.memo(function GenerateForm({ 
+  onSubmit, 
+  isLoading, 
+  promptInputRef,
+  isAuthenticated
+}) {
+  const { prompt, setPrompt, selectedPresets, openPresetsModal } = usePromptContext();
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [drawingThumbnail, setDrawingThumbnail] = useState(null);
+  const [drawingSvgData, setDrawingSvgData] = useState(null);
+  const [drawingState, setDrawingState] = useState(null);
+  // Always initialize as false (public/eye ON)
+  const [isPrivate, setIsPrivate] = useState(false);
+  
+  // Get user subscription plan from Redux store
+  const user = useSelector(state => state.auth.user);
+  const canUsePrivateImages = user?.subscription_plan ? allowPrivateImages(user.subscription_plan) : false;
+  
+  // Ensure privacy is always set to public (eye ON) initially and after any auth changes
+  useEffect(() => {
+    // Force to public (isPrivate = false) in all cases
+    setIsPrivate(false);
+    
+    // Add a small delay to ensure this happens after any state initialization
+    const timer = setTimeout(() => {
+      setIsPrivate(false);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, user?.id]);
+  
+  // EMERGENCY FIX: Listen for the prompt-reused event
+  useEffect(() => {
+    // Function to handle the prompt-reused event
+    const handlePromptReused = (event) => {
+      console.log('GenerateForm: Received prompt-reused event:', event.detail.prompt);
+      setPrompt(event.detail.prompt);
+    };
+    
+    // Function to check for the global prompt variable
+    const checkGlobalPrompt = () => {
+      if (window.__lastReusedPrompt) {
+        console.log('GenerateForm: Found global prompt variable:', window.__lastReusedPrompt);
+        setPrompt(window.__lastReusedPrompt);
+        // Clear it to prevent it from being used again
+        window.__lastReusedPrompt = null;
+      }
+    };
+    
+    // Add event listener for our custom event
+    window.addEventListener('prompt-reused', handlePromptReused);
+    
+    // Check for the global prompt variable immediately
+    checkGlobalPrompt();
+    
+    // Also check again after a short delay to ensure it's set
+    const timeoutId = setTimeout(checkGlobalPrompt, 300);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('prompt-reused', handlePromptReused);
+      clearTimeout(timeoutId);
+    };
+  }, [setPrompt]);
+
+  const handleDrawingComplete = (dataUrl, svgData) => {
+    setDrawingThumbnail(dataUrl);
+    setDrawingSvgData(svgData);
+    setIsDrawing(false);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    if (!prompt?.trim()) {
+      promptInputRef?.current?.focus();
+      return;
+    }
+
+    // Pass drawing data (both PNG and SVG) to the submit handler
+    onSubmit(e, {
+      drawingPng: drawingThumbnail,
+      drawingSvg: drawingSvgData,
+      isPrivate: isPrivate
+    });
+  };
+
+  const handleDrawingClick = () => {
+    if (!isAuthenticated) {
+      // Open the auth modal if user is not authenticated
+      openAuthModal();
+      return;
+    }
+    setIsDrawing(true);
+  };
+
+  return (
+    <div className="w-full">
+      {/* Using app-level auth modal instead */}
+
+      {isDrawing ? (
+        <DrawingBoard
+          onGenerate={handleDrawingComplete}
+          onCancel={() => setIsDrawing(false)}
+          isLoading={isLoading}
+          initialDrawing={drawingThumbnail}
+          onDrawingStateChange={setDrawingState}
+          savedDrawingState={drawingState}
+        />
+      ) : (
+        <form onSubmit={handleSubmit} className="w-full">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="input-wrapper flex">
+              {drawingThumbnail && (
+                <div className="relative flex-shrink-0 w-[4rem] h-[4rem] bg-zinc-800 border-r border-zinc-700">
+                  <button
+                    type="button"
+                    onClick={handleDrawingClick}
+                    className="w-full h-full"
+                  >
+                    <img 
+                      src={drawingThumbnail} 
+                      alt="Drawing" 
+                      className="h-full w-full object-contain"
+                    />
+                  </button>
+                  {/* X button to remove drawing */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDrawingThumbnail(null);
+                      setDrawingSvgData(null);
+                      setDrawingState(null);
+                    }}
+                    className="absolute top-0 right-0 w-5 h-5 flex items-center justify-center bg-zinc-900/80 hover:bg-red-600 rounded-bl text-zinc-400 hover:text-white transition-colors"
+                    title="Remove drawing"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 6 6 18" />
+                      <path d="m6 6 12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+              <div className="flex-grow relative">
+                <AutoResizeTextarea
+                  ref={promptInputRef}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Describe your jewelry here..."
+                  required
+                />
+                <div className="absolute right-4 top-0 h-[4rem] flex items-center">
+                  <div className="flex items-center gap-1 bg-zinc-800/50 p-1 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={handleDrawingClick}
+                      className="p-2 text-zinc-400 hover:text-white transition-colors"
+                    >
+                      <Pencil className="w-5 h-5" />
+                    </button>
+                    {isAuthenticated && canUsePrivateImages && (
+                      <button
+                        type="button"
+                        onClick={() => setIsPrivate(!isPrivate)}
+                        className={`p-2 transition-colors ${isPrivate ? 'text-primary' : 'text-zinc-400 hover:text-white'}`}
+                        title={isPrivate ? 'Private image (only visible to you)' : 'Public image (visible to everyone)'}
+                        data-privacy-state={isPrivate ? 'private' : 'public'}
+                      >
+                        {isPrivate ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={openPresetsModal}
+                      className={`p-2 transition-colors ${selectedPresets.length > 0 ? 'text-primary' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      <Settings2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full sm:w-auto primary-button"
+              id="generateBtn"
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <span>Generating...</span>
+                </div>
+              ) : (
+                <span className="button-content">
+                  <Sparkles className="w-6 h-6" />
+                  <span>Imagine...</span>
+                </span>
+              )}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+});

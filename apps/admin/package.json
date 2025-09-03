@@ -1,0 +1,46 @@
+{
+  "name": "imaginaries-admin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/run-migrations.js && next dev",
+    "build": "next build",
+    "start": "node scripts/run-migrations.js && next start -p 3001",
+    "lint": "next lint",
+    "postinstall": "node scripts/fix-refine-tsconfig.js",
+    "migrate": "node scripts/run-migrations.js"
+  },
+  "dependencies": {
+    "@ant-design/plots": "^2.2.0",
+    "@ant-design/nextjs-registry": "^1.1.0",
+    "@refinedev/antd": "^5.46.3",
+    "@refinedev/core": "^4.57.11",
+    "@refinedev/nextjs-router": "^6.2.3",
+    "@tanstack/react-query": "^4.36.1",
+    "antd": "^5.19.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "next": "^14.2.5",
+    "pg": "^8.11.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "lucide-react": "^0.294.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "24.3.0",
+    "@types/pg": "^8.15.5",
+    "@types/react": "^18.3.24",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "typescript": "^5.4.5"
+  },
+  "overrides": {
+    "@types/react": "^18.3.24",
+    "@types/react-dom": "^18.3.0"
+  }
+}

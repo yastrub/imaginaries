@@ -1,0 +1,75 @@
+html, body, #__next { height: 100%; }
+body { margin: 0; }
+
+/* Stronger overlay for Ant Design Image preview modal */
+.ant-image-preview-root .ant-image-preview-mask {
+  background-color: rgba(0, 0, 0, 0.92) !important;
+  backdrop-filter: blur(2px);
+}
+
+/* Admin menu title: smooth collapse of text on sider collapse */
+.admin-menu-title .title-text {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 180px; /* Enough for "Control Panel" */
+  opacity: 1;
+  margin-left: 8px; /* Matches inline style in layout */
+  transition: max-width 200ms ease, opacity 150ms ease, margin-left 200ms ease, transform 200ms ease;
+  will-change: max-width, opacity, margin-left, transform;
+}
+.ant-layout-sider-collapsed .admin-menu-title .title-text {
+  max-width: 0;
+  opacity: 0;
+  margin-left: 0;
+  transform: translateX(-4px);
+}
+.ant-layout-sider-collapsed .admin-menu-title {
+  justify-content: center; /* center icon when collapsed */
+}
+
+/* Brand color variable */
+:root { --brand-purple: #722ED1; }
+
+/* Login overlay loader */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(2px);
+}
+
+.loader-ring {
+  --size: 64px;
+  width: var(--size);
+  height: var(--size);
+  position: relative;
+}
+
+.loader-ring::before,
+.loader-ring::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 4px solid transparent;
+  border-top-color: var(--brand-purple);
+  animation: spin 0.9s linear infinite;
+}
+
+.loader-ring::after {
+  inset: 8px;
+  border-top-color: white;
+  opacity: 0.9;
+  animation-duration: 1.2s;
+  animation-direction: reverse;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+

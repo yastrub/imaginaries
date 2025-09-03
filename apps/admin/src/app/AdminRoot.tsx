@@ -1,0 +1,126 @@
+"use client";
+import "antd/dist/reset.css";
+import { Refine, Authenticated } from "@refinedev/core";
+import { notificationProvider, ThemedLayoutV2, ThemedSiderV2 } from "@refinedev/antd";
+import routerProvider from "@refinedev/nextjs-router";
+import { dataProvider } from "../providers/dataProvider";
+import { authProvider } from "../providers/authProvider";
+import { App as AntApp, ConfigProvider, theme, Menu } from "antd";
+import { DashboardOutlined, PictureOutlined, AppstoreOutlined, TagsOutlined, GiftOutlined, CreditCardOutlined, FileTextOutlined, LogoutOutlined, UsergroupAddOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import React from "react";
+import { BrandTitle } from "../components/BrandTitle";
+import { ThemeSwitch } from "../components/ThemeSwitch";
+import { UserMenu } from "../components/UserMenu";
+import { usePathname, useRouter } from "next/navigation";
+
+const FallbackRedirect: React.FC = () => {
+  const router = useRouter();
+  React.useEffect(() => {
+    router.replace('/login');
+  }, [router]);
+  return (
+    <div style={{padding:24}}>
+      Please sign in to access admin. You can sign in on the main app, then refresh, or <a href="/login">click here</a> now to sign in.
+    </div>
+  );
+};
+
+const AdminMenuTitle: React.FC = () => {
+  const { token } = theme.useToken();
+  return (
+    <div className="admin-menu-title" style={{ display: 'flex', alignItems: 'center', fontWeight: 600 }}>
+      <AppstoreOutlined style={{ color: token.colorPrimary, fontSize: 18 }} />
+      <span className="title-text" style={{ marginLeft: 8 }}>Control Panel</span>
+    </div>
+  );
+};
+
+const CustomSider: React.FC<any> = (props) => {
+  const { modal, message } = AntApp.useApp();
+  const onSignOut = () => {
+    modal.confirm({
+      title: 'Sign Out?',
+      content: 'You will be returned to the admin login screen.',
+      okText: 'Sign Out',
+      cancelText: 'Cancel',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await fetch(`/api/auth/signout`, { method: 'POST', credentials: 'include' });
+          try { localStorage.removeItem('adminTheme'); } catch {}
+          message.success('Signed out');
+        } catch {}
+        window.location.replace(`/login?ts=${Date.now()}`);
+      }
+    });
+  };
+  return (
+    <ThemedSiderV2
+      {...props}
+      render={({ items /*, logout*/ }) => [
+        ...items,
+        <Menu.Item key="__signout" icon={<LogoutOutlined />} onClick={onSignOut}>Sign Out</Menu.Item>,
+      ]}
+    />
+  );
+};
+
+export default function AdminRoot({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isPublicLogin = pathname === "/login";
+  const [dark, setDark] = React.useState(true);
+  React.useEffect(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('adminTheme') : null;
+      if (saved === 'light') setDark(false);
+      else if (saved === 'dark') setDark(true);
+    } catch { /* noop */ }
+  }, []);
+  const onThemeChange = (v: boolean) => {
+    setDark(v);
+    try { localStorage.setItem('adminTheme', v ? 'dark' : 'light'); } catch { /* noop */ }
+  };
+
+  return (
+    <ConfigProvider theme={{ algorithm: isPublicLogin ? theme.darkAlgorithm : (dark ? theme.darkAlgorithm : theme.defaultAlgorithm), token: { borderRadius: 8, colorPrimary: "#7c3aed" } }}>
+      <AntApp>
+        <Refine
+          dataProvider={dataProvider}
+          authProvider={authProvider}
+          notificationProvider={notificationProvider}
+          routerProvider={routerProvider}
+          resources={[
+            { name: "dashboard", list: "/", meta: { label: "Dashboard", icon: <DashboardOutlined /> } },
+            { name: "images", list: "/images", meta: { label: "Images", icon: <PictureOutlined /> } },
+            { name: "plans", list: "/plans", meta: { label: "Plans", icon: <TagsOutlined /> } },
+            { name: "promo_codes", list: "/promo-codes", meta: { label: "Promo Codes", icon: <GiftOutlined /> } },
+            { name: "subscriptions", list: "/subscriptions", meta: { label: "Subscriptions", icon: <CreditCardOutlined /> } },
+            { name: "invoices", list: "/invoices", meta: { label: "Invoices", icon: <FileTextOutlined /> } },
+            { name: "users", list: "/users", meta: { label: "Users", icon: <UsergroupAddOutlined /> } },
+            { name: "roles", list: "/roles", meta: { label: "Roles", icon: <SafetyCertificateOutlined /> } },
+          ]}
+        >
+          {isPublicLogin ? (
+            <>{children}</>
+          ) : (
+            <React.Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
+              <Authenticated key="auth-guard" redirectOnFail="/login" fallback={<FallbackRedirect />}>
+                <ThemedLayoutV2 Title={AdminMenuTitle} Sider={CustomSider} Header={() => (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: 64 }}>
+                    <BrandTitle />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <ThemeSwitch checked={dark} onChange={onThemeChange} />
+                      <UserMenu />
+                    </div>
+                  </div>
+                )}>
+                  {children}
+                </ThemedLayoutV2>
+              </Authenticated>
+            </React.Suspense>
+          )}
+        </Refine>
+      </AntApp>
+    </ConfigProvider>
+  );
+}

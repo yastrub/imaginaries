@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/server/auth';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; // optional
+
 export async function GET(req: NextRequest) {
   try {
     const user = await getUserFromRequest(req);

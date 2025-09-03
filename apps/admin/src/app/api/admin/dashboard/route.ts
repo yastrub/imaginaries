@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/server/db";
 import { requireAdmin } from "@/server/auth";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; // optional
+
 export async function GET(req: NextRequest) {
   try {
     const auth = await requireAdmin(req);

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 # Configuration
 APP_NAME=imaginaries-admin
 EXPOSE_PORT=7770
 GIT_REPO="git@github.com:yastrub/imaginaries.git"
-ENV_FILENAME="${ENV_FILENAME}"
+ENV_FILENAME=".env.admin"
 
 # Get the script directory (where deploy.sh is located)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -183,105 +183,157 @@ deploy() {
     fi
 
     # Start a temporary container on a secondary port for health-check (near-zero downtime)
-    local TEMP_NAME="${APP_NAME}"
-    local TEMP_PORT=$((EXPOSE_PORT+1))
+    local app="${APP_NAME:?APP_NAME must be set}"
+    local primary_port="${EXPOSE_PORT:?EXPOSE_PORT must be set}"
+    local temp_name="${app}-new"
+    local temp_port=$((primary_port+1))
 
-    # Ensure no stale temp container exists
+     # small helper to curl with timeouts and never hard-fail under set -e
+    _http_code() {
+        local url="$1"
+        curl -sS -o /dev/null -w '%{http_code}' -L \
+            --connect-timeout 2 --max-time 3 \
+            "$url" || echo 000
+    }
+
+    # --------- ensure no stale temp container ---------
     local temp_ids
-    temp_ids=$(docker ps -aq -f name="^${TEMP_NAME}$")
-    if [ -n "$temp_ids" ]; then
-        print_action "Removing stale temp container ${TEMP_NAME}..."
-        docker rm -f $temp_ids >/dev/null 2>&1 || true
+    temp_ids="$(docker ps -aq --filter "name=^${temp_name}$" || true)"
+    if [[ -n "${temp_ids}" ]]; then
+        print_action "Removing stale temp container ${temp_name}..."
+        docker rm -f ${temp_ids} >/dev/null 2>&1 || true
     fi
 
-    print_action "Starting temporary container ${TEMP_NAME} on port ${TEMP_PORT} for health-check..."
-    if ! docker run -d \
-        --name ${TEMP_NAME} \
-        -p ${TEMP_PORT}:3000 \
-        --restart unless-stopped \
-        -e NEXT_TELEMETRY_DISABLED=1 \
-        $env_file_arg \
-        ${APP_NAME}:prod; then
-        print_error "Failed to start temporary container ${TEMP_NAME}"
+    # --------- start temp container on secondary port ---------
+    print_action "Starting temporary container ${temp_name} on port ${temp_port} for health-check..."
+
+    # build docker args safely (handles optional env file)
+    local -a run_args=(
+        -d
+        --name "${temp_name}"
+        -p "${temp_port}:3000"
+        --restart unless-stopped
+        -e NEXT_TELEMETRY_DISABLED=1
+    )
+    if [[ -n "${env_file_arg:-}" ]]; then
+        # if env_file_arg already includes '--env-file', keep it verbatim; else add flag
+        if [[ "${env_file_arg}" == --env-file* ]]; then
+        # shellcheck disable=SC2206
+        run_args+=( ${env_file_arg} )
+        else
+        run_args+=( --env-file "${env_file_arg}" )
+        fi
+    fi
+    run_args+=( "${app}:prod" )
+
+    if ! docker run "${run_args[@]}"; then
+        print_error "Failed to start temporary container ${temp_name}"
         return 1
     fi
 
-    # Strong health-check loop for the temp container
-    print_action "Health-checking ${TEMP_NAME} on http://localhost:${TEMP_PORT} ..."
+    # --------- health-check temp ---------
+    print_action "Health-checking ${temp_name} at http://127.0.0.1:${temp_port} ..."
     local ok=""
-    for i in {1..30}; do
-        local http_code
-        http_code=$(curl -s -o /dev/null -w "%{http_code}" -L "http://localhost:${TEMP_PORT}")
-        if [[ "$http_code" =~ ^(200|30[12478])$ ]]; then
-            print_success "${TEMP_NAME} is healthy (HTTP $http_code)"
-            ok=1
-            break
+    local http_code="000"
+    for _ in $(seq 1 30); do
+        http_code="$(_http_code "http://127.0.0.1:${temp_port}")"
+        if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
+        print_success "${temp_name} is healthy (HTTP ${http_code})"
+        ok=1
+        break
         fi
         sleep 2
     done
-    if [ -z "$ok" ]; then
+
+    if [[ -z "${ok}" ]]; then
         print_error "Temporary container failed health-check; keeping existing deployment running"
-        print_action "Recent logs from ${TEMP_NAME}:"
-        docker logs --tail=100 ${TEMP_NAME} 2>&1 | highlight_npm
-        docker rm -f ${TEMP_NAME} >/dev/null 2>&1 || true
+        print_action "Recent logs from ${temp_name}:"
+        docker logs --tail=100 "${temp_name}" 2>&1 | highlight_npm || true
+        docker rm -f "${temp_name}" >/dev/null 2>&1 || true
         return 1
     fi
 
-    # Swap: remove old exact-name container and start new one on the primary port
-    print_action "Swapping traffic to new version on port ${EXPOSE_PORT}..."
+    # --------- swap traffic to primary port ---------
+    print_action "Swapping traffic to new version on port ${primary_port}..."
+
     local old_ids
-    old_ids=$(docker ps -aq -f name="^${APP_NAME}$")
-    if [ -n "$old_ids" ]; then
-        print_action "Stopping/removing existing container ${APP_NAME}..."
-        docker rm -f $old_ids >/dev/null 2>&1 || true
+    old_ids="$(docker ps -aq --filter "name=^${app}$" || true)"
+    if [[ -n "${old_ids}" ]]; then
+        print_action "Stopping/removing existing container ${app}..."
+        docker rm -f ${old_ids} >/dev/null 2>&1 || true
     fi
 
-    if ! docker run -d \
-        --name ${APP_NAME} \
-        -p ${EXPOSE_PORT}:3000 \
-        --restart unless-stopped \
-        -e NEXT_TELEMETRY_DISABLED=1 \
-        $env_file_arg \
-        ${APP_NAME}:prod; then
-        print_error "Failed to start Next.js App container on port ${EXPOSE_PORT}. Temp ${TEMP_NAME} still running on ${TEMP_PORT} for manual fallback."
+    # start new primary
+    local -a run_args_primary=(
+        -d
+        --name "${app}"
+        -p "${primary_port}:3000"
+        --restart unless-stopped
+        -e NEXT_TELEMETRY_DISABLED=1
+    )
+    if [[ -n "${env_file_arg:-}" ]]; then
+        if [[ "${env_file_arg}" == --env-file* ]]; then
+        # shellcheck disable=SC2206
+        run_args_primary+=( ${env_file_arg} )
+        else
+        run_args_primary+=( --env-file "${env_file_arg}" )
+        fi
+    fi
+    run_args_primary+=( "${app}:prod" )
+
+    if ! docker run "${run_args_primary[@]}"; then
+        print_error "Failed to start Next.js App container on port ${primary_port}. Temp ${temp_name} still running on ${temp_port} for manual fallback."
         return 1
     fi
 
-    # Optional quick health check on the primary port
-    print_action "Verifying new primary container on http://localhost:${EXPOSE_PORT} ..."
-    local http_code
-    for i in {1..10}; do
-        http_code=$(curl -s -o /dev/null -w "%{http_code}" -L "http://localhost:${EXPOSE_PORT}")
-        if [[ "$http_code" =~ ^(200|30[12478])$ ]]; then
-            print_success "Primary container is healthy (HTTP $http_code)"
-            break
+    # --------- quick primary health-check ---------
+    print_action "Verifying new primary container at http://127.0.0.1:${primary_port} ..."
+    for _ in $(seq 1 10); do
+        http_code="$(_http_code "http://127.0.0.1:${primary_port}")"
+        if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
+        print_success "Primary container is healthy (HTTP ${http_code})"
+        break
         fi
         sleep 1
     done
 
     # Clean up the temporary container
     print_action "Cleaning up temporary container ${TEMP_NAME}..."
-    docker rm -f ${TEMP_NAME} >/dev/null 2>&1 || true
+    
+    # optional: remove temp after successful swap
+    docker rm -f "${temp_name}" >/dev/null 2>&1 || true
     
     print_success "Next.js App deployed successfully"
 }
 
 # Verify service is running (next only)
 verify_deployment() {
-    print_header "Verifying Deployment"
-    
-    # Wait for service to start
-    print_action "Waiting for service to start..."
-    sleep 5
+  print_header "Verifying Deployment"
 
-    # Check Next.js App only
-    local http_code
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" -L "http://localhost:${EXPOSE_PORT}")
-    if [[ "$http_code" =~ ^(200|30[12478])$ ]]; then
-        print_success "Next.js App app is accessible (HTTP $http_code)"
-    else
-        print_error "Next.js App check failed (HTTP $http_code)"
-    fi
+  # sanity: make sure EXPOSE_PORT is set
+  : "${EXPOSE_PORT:?EXPOSE_PORT must be set}"
+
+  # small helper to get HTTP code safely
+  _http_code() {
+    local url="$1"
+    curl -sS -o /dev/null -w '%{http_code}' -L \
+         --connect-timeout 2 --max-time 3 \
+         "$url" || echo 000
+  }
+
+  print_action "Waiting for service on port ${EXPOSE_PORT}..."
+  sleep 5
+
+  local http_code
+  http_code="$(_http_code "http://127.0.0.1:${EXPOSE_PORT}")"
+
+  if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
+    print_success "Next.js App is accessible (HTTP ${http_code})"
+    return 0
+  else
+    print_error "Next.js App check failed (HTTP ${http_code})"
+    return 1
+  fi
 }
 
 # Create deployment backup

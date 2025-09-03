@@ -239,22 +239,16 @@ deploy() {
         print_action "Health-checking ${temp_name} at http://127.0.0.1:${temp_port} ..."
         local url="http://127.0.0.1:${temp_port}"
         local http_code="000"
-        local ok_streak=0
 
         sleep 5
         http_code="$(_http_code "${url}")"
         if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
-            ((ok_streak++))
-            if (( ok_streak >= 2 )); then
-                print_success "${temp_name} is healthy (HTTP ${http_code})"
-                return 0
-            fi
-        else
-            ok_streak=0
+            print_success "${temp_name} is healthy (HTTP ${http_code})"
+            return 0
         fi
         sleep 1
         
-        # failed
+        # failed health check
         print_error "Temporary container failed health-check; keeping existing deployment running"
         print_action "Recent logs from ${temp_name}:"
         docker logs --tail=100 "${temp_name}" 2>&1 | highlight_npm || true

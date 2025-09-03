@@ -1,6 +1,5 @@
 // Run SQL migrations from ./migrations on Admin start
 // Usage: node scripts/run-migrations.js
-// Respects ADMIN_RUN_MIGRATIONS=false to skip
 
 import { readdir, readFile, mkdir } from 'fs/promises';
 import path from 'path';
@@ -99,12 +98,6 @@ async function ensureMigrationsRegistry(client) {
 }
 
 async function run() {
-  // Ensure Admin .env files are loaded before reading process.env
-  await loadEnvFiles();
-  if (process.env.ADMIN_RUN_MIGRATIONS === 'false') {
-    console.log('[migrations] Skipped (ADMIN_RUN_MIGRATIONS=false)');
-    return;
-  }
 
   const connectionString = process.env.ADMIN_DATABASE_URL || process.env.DATABASE_URL;
   if (!connectionString) {

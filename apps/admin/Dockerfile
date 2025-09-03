@@ -44,5 +44,5 @@ COPY --from=build /app/public ./public
 COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/migrations ./migrations
 
-# Start Next.js server
-CMD ["npm", "start"]
+# Run migrations, then start the standalone server
+CMD ["sh","-lc","node ./scripts/run-migrations.js && exec node ./server.js"]

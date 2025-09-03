@@ -8,6 +8,7 @@
     "predev": "node scripts/run-migrations.js",
     "build": "next build",
     "start": "next start -p 3001",
+    "prestart": "node scripts/run-migrations.js",
     "lint": "next lint",
     "postinstall": "node scripts/fix-refine-tsconfig.js",
     "migrate": "node scripts/run-migrations.js"

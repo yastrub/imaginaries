@@ -15,14 +15,11 @@ import { usePathname, useRouter } from "next/navigation";
 
 const FallbackRedirect: React.FC = () => {
   const router = useRouter();
+  const { token } = theme.useToken();
   React.useEffect(() => {
     router.replace('/login');
   }, [router]);
-  return (
-    <div style={{padding:24}}>
-      Please sign in to access admin. You can sign in on the main app, then refresh, or <a href="/login">click here</a> now to sign in.
-    </div>
-  );
+  return <div style={{ minHeight: '100dvh', background: token.colorBgBase }} />;
 };
 
 const AdminMenuTitle: React.FC = () => {
@@ -65,6 +62,12 @@ const CustomSider: React.FC<any> = (props) => {
   );
 };
 
+// Blank dark-themed screen to avoid flashing content while auth is loading
+const BlankScreen: React.FC = () => {
+  const { token } = theme.useToken();
+  return <div style={{ minHeight: '100dvh', background: token.colorBgBase }} />;
+};
+
 export default function AdminRoot({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isPublicLogin = pathname === "/login";
@@ -103,7 +106,7 @@ export default function AdminRoot({ children }: { children: React.ReactNode }) {
           {isPublicLogin ? (
             <>{children}</>
           ) : (
-            <React.Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
+            <React.Suspense fallback={<BlankScreen />}>
               <Authenticated key="auth-guard" redirectOnFail="/login" fallback={<FallbackRedirect />}>
                 <ThemedLayoutV2 Title={AdminMenuTitle} Sider={CustomSider} Header={() => (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: 64 }}>

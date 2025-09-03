@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <AntdRegistry>
-          <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
+          <Suspense fallback={<div style={{ minHeight: '100dvh', background: '#0f0f10' }} />}>
             <AdminRoot>{children}</AdminRoot>
           </Suspense>
         </AntdRegistry>

@@ -39,6 +39,6 @@ EXPOSE 3000
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
-
+COPY --from=build /app/scripts ./scripts
 # Start the standalone server (standalone copies server.js to the root of the target directory)
-CMD ["node","server.js"]
+CMD ["node","./scripts/run-migrations.js","&&","node","server.js"]

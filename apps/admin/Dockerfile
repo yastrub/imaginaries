@@ -16,7 +16,7 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --prefer-offline --no-audit --fund=false
 # Copy application source and build
-COPY ./ ./
+COPY . .
 # Persist Next.js incremental cache across builds for faster compiles
 RUN --mount=type=cache,target=/app/.next/cache \
     --mount=type=secret,id=appenv,target=/tmp/app.env \

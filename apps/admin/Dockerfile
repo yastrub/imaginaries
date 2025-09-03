@@ -43,5 +43,6 @@ COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
 COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/migrations ./migrations
-# Start the standalone server (standalone copies server.js to the root of the target directory)
-CMD ["node","./scripts/run-migrations.js","&&","node","./server.js"]
+
+# Start Next.js server
+CMD ["npm", "start"]

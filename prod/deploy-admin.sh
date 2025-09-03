@@ -252,7 +252,7 @@ deploy() {
         print_error "Temporary container failed health-check; keeping existing deployment running"
         print_action "Recent logs from ${temp_name}:"
         docker logs --tail=100 "${temp_name}" 2>&1 | highlight_npm || true
-        docker rm -f "${temp_name}" >/dev/null 2>&1 || true
+        # docker rm -f "${temp_name}" >/dev/null 2>&1 || true
         return 1
     }
 

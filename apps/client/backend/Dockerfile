@@ -3,7 +3,7 @@ FROM node:18-alpine AS build
 LABEL name="imaginaries-backend"
 LABEL version="1.0"
 
-WORKDIR /app
+WORKDIR /
 
 # Copy package files first
 COPY package.prod.json ./package.json

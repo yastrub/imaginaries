@@ -12,8 +12,8 @@
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
     # Use absolute paths for directories
-    APP_DIR="$SCRIPT_DIR/apps/admin"
-    GIT_DIR="$SCRIPT_DIR/apps"
+    GIT_DIR="$SCRIPT_DIR/git"
+    APP_DIR="$GIT_DIR/apps/admin"
     BACKUP_DIR="$SCRIPT_DIR/backups/admin"
     MAX_BACKUPS=3  # Maximum number of backups to keep
     DEBUG=false  # Enable debug output

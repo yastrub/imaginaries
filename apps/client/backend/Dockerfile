@@ -1,5 +1,5 @@
 # Backend Production
-FROM node:18-alpine
+FROM node:18-alpine AS build
 LABEL name="imaginaries-backend"
 LABEL version="1.0"
 

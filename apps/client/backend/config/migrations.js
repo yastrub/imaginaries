@@ -89,11 +89,6 @@ export async function runMigrations() {
     console.log('Skipping backend migrations (Admin app is the source of truth). Set BACKEND_RUN_MIGRATIONS=true to override.');
     return;
   }
-  const forceInDev = ['true','1','yes','on'].includes(String(process.env.FORCE_MIGRATIONS || '').toLowerCase());
-  if (process.env.NODE_ENV === 'development' && !forceInDev) {
-    console.log('Skipping migrations in development mode');
-    return;
-  }
 
   try {
     // Ensure migrations table exists

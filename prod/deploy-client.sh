@@ -9,8 +9,8 @@ GIT_REPO="git@github.com:yastrub/imaginaries.git"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Use absolute paths for directories
-APP_DIR="$SCRIPT_DIR/apps/client"
-GIT_DIR="$SCRIPT_DIR/apps"
+GIT_DIR="$SCRIPT_DIR/git"
+APP_DIR="$GIT_DIR/apps/client"
 BACKUP_DIR="$SCRIPT_DIR/backups"
 MAX_BACKUPS=3  # Maximum number of backups to keep
 DEBUG=false  # Enable debug output
@@ -135,6 +135,7 @@ deploy_backend() {
     print_header "Deploying Backend"
     
     cd ${APP_DIR}/backend || print_error "Backend directory not found"
+    print_debug "Current directory: $(pwd)"
     
     print_action "Building backend production image..."
     if ! docker build -t imaginaries-backend:prod .; then
@@ -160,6 +161,7 @@ deploy_frontend() {
     print_header "Deploying Frontend"
 
     cd ${APP_DIR}/frontend || print_error "Frontend directory not found"
+    print_debug "Current directory: $(pwd)"
     
     print_action "Building frontend production image..."
     if ! docker build -t imaginaries-frontend:prod .; then

@@ -1,6 +1,8 @@
 html, body, #__next { height: 100%; }
 body { margin: 0; }
 
+html, body { background: #0f0f10; color-scheme: dark; }
+
 /* Stronger overlay for Ant Design Image preview modal */
 .ant-image-preview-root .ant-image-preview-mask {
   background-color: rgba(0, 0, 0, 0.92) !important;

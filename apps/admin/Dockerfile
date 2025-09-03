@@ -12,7 +12,7 @@ RUN npm i -g npm@11.5.2
 WORKDIR /app
 # Install dependencies once
 COPY package.json package-lock.json ./
-# Copy postinstall scripts
+# Copy postinstall scripts (required by package.json's postinstall)
 COPY scripts/ ./scripts/
 # Use BuildKit cache for npm cache to speed up repeated installs
 RUN --mount=type=cache,target=/root/.npm \

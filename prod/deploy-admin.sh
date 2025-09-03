@@ -185,7 +185,7 @@ deploy() {
     fi
 
     # Start a temporary container on a secondary port for health-check (near-zero downtime)
-    local TEMP_NAME="${APP_NAME}-new"
+    local TEMP_NAME="${APP_NAME}"
     local TEMP_PORT=$((EXPOSE_PORT+1))
 
     # Ensure no stale temp container exists

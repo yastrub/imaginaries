@@ -44,7 +44,6 @@ export const UserMenu: React.FC = () => {
     <Dropdown menu={{ items }} placement="bottomRight" trigger={["click"]}>
       <Space style={{ cursor: 'pointer' }}>
         <Avatar size={28} icon={<UserOutlined />} />
-        <Typography.Text>{user?.email || '—'}</Typography.Text>
       </Space>
     </Dropdown>
   );

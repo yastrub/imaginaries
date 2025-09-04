@@ -3,6 +3,10 @@ import { query } from "@/server/db";
 import { requireAdmin } from "@/server/auth";
 import { ALL_PERMISSION_KEYS } from "@/config/permissions";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 function validatePermissions(perms: any): string[] | null {
   if (!perms) return [];
   if (!Array.isArray(perms)) return null;

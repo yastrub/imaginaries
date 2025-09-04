@@ -3,7 +3,7 @@ import { query } from "@/server/db";
 import { requireAdmin } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = false;
 export const fetchCache = 'force-no-store';
 
 export async function GET(req: NextRequest) {

@@ -6,7 +6,7 @@ import { useCreate, useUpdate } from "@refinedev/core";
 import { PlusOutlined, EditOutlined, SearchOutlined } from "@ant-design/icons";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = false;
 export const fetchCache = 'force-no-store';
 
 const { Text } = Typography;

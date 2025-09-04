@@ -6,7 +6,7 @@ import { SearchOutlined } from "@ant-design/icons";
 import AdminDate from "../../components/AdminDate";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = false;
 export const fetchCache = 'force-no-store';
 
 type Subscription = {

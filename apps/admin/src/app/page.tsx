@@ -253,12 +253,12 @@ export default function Dashboard() {
         title={viewRecord ? `Image: ${viewRecord.id}` : "Image"}
         open={viewOpen}
         onClose={() => setViewOpen(false)}
-        width={720}
+        width={510}
         destroyOnClose
         zIndex={token.zIndexPopupBase + 1000}
       >
         {detailsLoading || !viewRecord ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: "100%" }}>
             <Spin />
           </div>
         ) : (

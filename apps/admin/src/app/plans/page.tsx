@@ -5,6 +5,10 @@ import { Table, Space, Input, Button, Drawer, Form, InputNumber, Switch, Tag, Ty
 import { useCreate, useUpdate } from "@refinedev/core";
 import { PlusOutlined, EditOutlined, SearchOutlined } from "@ant-design/icons";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 const { Text } = Typography;
 
 export type Plan = {

@@ -6,6 +6,10 @@ import { useCreate, useUpdate, useList } from "@refinedev/core";
 import { PlusOutlined, EditOutlined, SearchOutlined } from "@ant-design/icons";
 import AdminDate from "../../components/AdminDate";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 export type PromoCode = {
   id: string; // the code itself
   plan: string;

@@ -6,6 +6,10 @@ import { SearchOutlined, EyeOutlined, InfoCircleOutlined } from "@ant-design/ico
 import ImageDetailsCard, { AdminImage } from "../../components/ImageDetailsCard";
 import AdminDate from "../../components/AdminDate";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 type ImageRow = {
   id: string;
   user_id: string;

@@ -5,6 +5,10 @@ import { InfoCircleOutlined } from "@ant-design/icons";
 import ImageDetailsCard, { AdminImage } from "../components/ImageDetailsCard";
 import React from "react";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 type TopLikedImage = {
   id: string;
   prompt: string | null;

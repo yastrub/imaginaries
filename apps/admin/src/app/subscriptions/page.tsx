@@ -5,6 +5,10 @@ import { Table, Space, Input, Button, Tag } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import AdminDate from "../../components/AdminDate";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 type Subscription = {
   id: string;
   user_id: string;

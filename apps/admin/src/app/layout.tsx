@@ -10,10 +10,10 @@ export const revalidate = 0;
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <meta name="theme-color" content="#0f0f10" />
+      <meta name="theme-color" content="#0f0f10" media="(prefers-color-scheme: dark)" />
       <body>
         <AntdRegistry>
-          <Suspense fallback={<div style={{ minHeight: '100dvh', background: '#0f0f10' }} />}>
+          <Suspense>
             <AdminRoot>{children}</AdminRoot>
           </Suspense>
         </AntdRegistry>

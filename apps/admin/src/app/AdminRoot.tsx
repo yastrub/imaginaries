@@ -20,7 +20,7 @@ const FallbackRedirect: React.FC = () => {
   React.useEffect(() => {
     router.replace('/login');
   }, [router]);
-  return <div style={{ minHeight: '100dvh', background: '#0f0f10' }} />;
+  return <div>Redirecting...</div>;
 };
 
 const AdminMenuTitle: React.FC = () => {

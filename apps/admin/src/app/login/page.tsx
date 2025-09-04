@@ -68,14 +68,14 @@ export default function LoginPage() {
         loop
         playsInline
         preload="auto"
-        style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', objectFit: 'cover', zIndex: -2 }}
+        style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', objectFit: 'cover', zIndex: 0 }}
       >
-        <source src="/imaginaries-intro.webm" type="video/webm" />
+        <source src="/video/imaginaries-intro.webm" type="video/webm" />
         {/* Optional MP4 fallback if provided later */}
-        <source src="/imaginaries-intro.mp4" type="video/mp4" />
+        <source src="/video/imaginaries-intro.mp4" type="video/mp4" />
       </video>
       {/* Dark overlay for readability */}
-      <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55))', zIndex: -1 }} />
+      <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.55))', zIndex: 0 }} />
 
       {!overlay && !loading && (
         <Card title="Sign In" style={{ width: 360, background: 'rgba(0,0,0,0.45)', borderColor: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(4px)' }}>

@@ -6,8 +6,8 @@ set -euo pipefail
 #   ./dev.sh            # interactive menu
 #   ./dev.sh admin      # Admin (Next.js), pre-kill admin port (3002)
 #   ./dev.sh client     # Client (Express + Vite)
-#   ./dev.sh back       # Client Backend (Express)
-#   ./dev.sh front      # Client Frontend (Vite)
+#   ./dev.sh backend    # Client Backend (Express)
+#   ./dev.sh frontend   # Client Frontend (Vite)
 #   ./dev.sh full       # All (Client Frontend + Client Backend + Admin)
 
 usage() {
@@ -15,11 +15,11 @@ usage() {
 Usage: ./dev.sh [mode]
 
 Modes:
-  admin   Start Admin (Next) only; pre-kill admin port (3002)
-  client  Start Client (Express + Vite)
-  back    Start Client Backend (Express) only
-  front   Start Client Frontend (Vite) only
-  full    Start Client Frontend (Vite), Client Backend (Express), and Admin (Next)
+  admin     Start Admin (Next) only; pre-kill admin port (3002)
+  client    Start Client (Express + Vite)
+  backend   Start Client Backend (Express) only
+  frontend  Start Client Frontend (Vite) only
+  full      Start Client Frontend (Vite), Client Backend (Express), and Admin (Next)
 
 No mode provided -> an interactive menu will be shown.
 USAGE
@@ -61,7 +61,7 @@ run_full() {
   admin_port=$(pick_admin_port)
   echo "Using admin port: $admin_port"
   npx -y concurrently -k -n "frontend,backend,admin" -c "green,blue,magenta" \
-    "bash -lc 'cd apps/client/frontend && npm run dev:frontend'" \
+    "bash -lc 'cd apps/client/frontend && npm run dev'" \
     "bash -lc 'cd apps/client/backend && npm run dev'" \
     "bash -lc 'cd apps/admin && PORT=$admin_port npm run dev'"
 }
@@ -84,14 +84,14 @@ run_client() {
   ensure_deps_frontend
   ensure_deps_backend
   npx -y concurrently -k -n "frontend,backend" -c "green,blue" \
-    "bash -lc 'cd apps/client/frontend && npm run dev:frontend'" \
+    "bash -lc 'cd apps/client/frontend && npm run dev'" \
     "bash -lc 'cd apps/client/backend && npm run dev'"
 }
 
 run_frontend() {
   echo "Starting client-frontend (Vite) only..."
   ensure_deps_frontend
-  (cd apps/client/frontend && npm run dev:frontend)
+  (cd apps/client/frontend && npm run dev)
 }
 
 run_backend() {
@@ -149,9 +149,9 @@ case "$MODE" in
     run_admin ;;
   client)
     run_client ;;
-  front)
+  frontend)
     run_frontend ;;
-  back)
+  backend)
     run_backend ;;
   full)
     run_full ;;

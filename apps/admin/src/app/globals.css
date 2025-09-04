@@ -71,6 +71,14 @@ html, body { background: #0f0f10; color-scheme: dark; }
   animation-direction: reverse;
 }
 
+.ant-avatar {
+  transition: all 0.2s ease-in-out;
+}
+.ant-avatar:hover {
+  border: 2px solid var(--brand-purple);
+  cursor: pointer;
+}  
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

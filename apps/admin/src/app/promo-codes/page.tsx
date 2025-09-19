@@ -23,7 +23,7 @@ export default function PromoCodesPage() {
   const [record, setRecord] = React.useState<PromoCode | null>(null);
   const [form] = Form.useForm();
 
-  const { tableProps, setFilters, tableQueryResult } = useTable<PromoCode>({
+  const { tableProps, setFilters } = useTable<PromoCode>({
     resource: "promo_codes",
     pagination: { pageSize: 20 },
     syncWithLocation: true,
@@ -32,8 +32,9 @@ export default function PromoCodesPage() {
   const { mutateAsync: create } = useCreate();
   const { mutateAsync: update } = useUpdate();
 
-  const { data: plansList, isLoading: plansLoading } = useList<Plan>({ resource: "plans", pagination: { pageSize: 100, current: 1 } });
-  const planOptions = React.useMemo(() => (plansList?.data || []).map(p => ({ value: p.key, label: p.name })), [plansList]);
+  const { result: plansResult, query: plansQuery } = useList<Plan>({ resource: "plans", pagination: { pageSize: 100 } });
+  const plansLoading = plansQuery.isLoading;
+  const planOptions = React.useMemo(() => (plansResult?.data || []).map((p: Plan) => ({ value: p.key, label: p.name })), [plansResult]);
 
   const onSearch = () => setFilters([{ field: "q", operator: "contains", value: search }], "replace");
 
@@ -70,7 +71,7 @@ export default function PromoCodesPage() {
         message.success("Promo code created");
       }
       setOpen(false); setRecord(null); form.resetFields();
-      await tableQueryResult.refetch();
+      // Refine v6: mutations invalidate the list query automatically.
     } catch (e: any) {
       message.error(e?.message || "Save failed");
     }

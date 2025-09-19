@@ -40,7 +40,7 @@ export default function PlansPage() {
   const [record, setRecord] = React.useState<Plan | null>(null);
   const [form] = Form.useForm();
 
-  const { tableProps, setFilters, tableQueryResult } = useTable<Plan>({
+  const { tableProps, setFilters } = useTable<Plan>({
     resource: "plans",
     pagination: { pageSize: 20 },
     syncWithLocation: true,
@@ -113,7 +113,7 @@ export default function PlansPage() {
     setOpen(false);
     setRecord(null);
     form.resetFields();
-    await tableQueryResult.refetch();
+    // Refine v6: mutations invalidate the list query automatically.
   };
 
   return (

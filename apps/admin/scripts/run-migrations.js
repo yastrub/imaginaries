@@ -98,6 +98,10 @@ async function ensureMigrationsRegistry(client) {
 }
 
 async function run() {
+  // Load environment variables from .env files before reading them
+  try {
+    await loadEnvFiles();
+  } catch {}
 
   const connectionString = process.env.ADMIN_DATABASE_URL || process.env.DATABASE_URL;
   if (!connectionString) {

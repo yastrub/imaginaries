@@ -24,7 +24,7 @@ export default function RolesPage() {
   const [viewRecord, setViewRecord] = React.useState<Role | null>(null);
   const [createOpen, setCreateOpen] = React.useState(false);
 
-  const { tableProps, setFilters, tableQueryResult } = useTable<Role>({
+  const { tableProps, setFilters } = useTable<Role>({
     resource: "roles",
     pagination: { pageSize: 20 },
     syncWithLocation: true,
@@ -57,7 +57,7 @@ export default function RolesPage() {
       await update({ resource: "roles", id: editRecord.id, values });
       message.success("Role updated");
       setEditOpen(false); setEditRecord(null);
-      await tableQueryResult.refetch();
+      // Refine v6: mutations invalidate the list query automatically.
     } catch (e: any) {
       message.error(e?.message || "Update failed");
     }
@@ -68,7 +68,7 @@ export default function RolesPage() {
       await create({ resource: "roles", values });
       message.success("Role created");
       setCreateOpen(false);
-      await tableQueryResult.refetch();
+      // Refine v6: mutations invalidate the list query automatically.
     } catch (e: any) {
       message.error(e?.message || "Create failed");
     }
@@ -78,7 +78,7 @@ export default function RolesPage() {
     try {
       await deleteOne({ resource: "roles", id: row.id });
       message.success("Role deleted");
-      await tableQueryResult.refetch();
+      // Refine v6: mutations invalidate the list query automatically.
     } catch (e: any) {
       message.error(e?.message || "Delete failed");
     }

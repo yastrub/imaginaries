@@ -1,12 +1,12 @@
 "use client";
 import "antd/dist/reset.css";
 import { Refine, Authenticated } from "@refinedev/core";
-import { notificationProvider, ThemedLayoutV2, ThemedSiderV2 } from "@refinedev/antd";
+import { useNotificationProvider, ThemedLayout, ThemedSider } from "@refinedev/antd";
 import routerProvider from "@refinedev/nextjs-router";
 import { dataProvider } from "../providers/dataProvider";
 import { authProvider } from "../providers/authProvider";
-import { App as AntApp, ConfigProvider, theme, Menu } from "antd";
-import { DashboardOutlined, PictureOutlined, AppstoreOutlined, TagsOutlined, GiftOutlined, CreditCardOutlined, FileTextOutlined, LogoutOutlined, UsergroupAddOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import { App as AntApp, ConfigProvider, theme } from "antd";
+import { DashboardOutlined, PictureOutlined, AppstoreOutlined, TagsOutlined, GiftOutlined, CreditCardOutlined, FileTextOutlined, UsergroupAddOutlined, SafetyCertificateOutlined, TeamOutlined, DesktopOutlined, DollarOutlined } from "@ant-design/icons";
 import React from "react";
 import { BrandTitle } from "../components/BrandTitle";
 import { ThemeSwitch } from "../components/ThemeSwitch";
@@ -34,33 +34,7 @@ const AdminMenuTitle: React.FC = () => {
 };
 
 const CustomSider: React.FC<any> = (props) => {
-  const { modal, message } = AntApp.useApp();
-  const onSignOut = () => {
-    modal.confirm({
-      title: 'Sign Out?',
-      content: 'You will be returned to the admin login screen.',
-      okText: 'Sign Out',
-      cancelText: 'Cancel',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        try {
-          await fetch(`/api/auth/signout`, { method: 'POST', credentials: 'include' });
-          try { localStorage.removeItem('adminTheme'); } catch {}
-          message.success('Signed out');
-        } catch {}
-        window.location.replace(`/login?ts=${Date.now()}`);
-      }
-    });
-  };
-  return (
-    <ThemedSiderV2
-      {...props}
-      render={({ items /*, logout*/ }) => [
-        ...items,
-        <Menu.Item key="__signout" icon={<LogoutOutlined />} onClick={onSignOut}>Sign Out</Menu.Item>,
-      ]}
-    />
-  );
+  return <ThemedSider {...props} />;
 };
 
 // Blank dark-themed screen to avoid flashing content while auth is loading
@@ -73,6 +47,7 @@ export default function AdminRoot({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isPublicLogin = pathname === "/login";
   const [dark, setDark] = React.useState(true);
+  const notificationProvider = useNotificationProvider();
   React.useEffect(() => {
     try {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('adminTheme') : null;
@@ -102,6 +77,8 @@ export default function AdminRoot({ children }: { children: React.ReactNode }) {
             { name: "invoices", list: "/invoices", meta: { label: "Invoices", icon: <FileTextOutlined /> } },
             { name: "users", list: "/users", meta: { label: "Users", icon: <UsergroupAddOutlined /> } },
             { name: "roles", list: "/roles", meta: { label: "Roles", icon: <SafetyCertificateOutlined /> } },
+            { name: "partners", list: "/partners", meta: { label: "Partners", icon: <DollarOutlined /> } },
+            { name: "terminals", list: "/terminals", meta: { label: "Terminals", icon: <DesktopOutlined /> } },
           ]}
         >
           {isPublicLogin ? (
@@ -109,7 +86,7 @@ export default function AdminRoot({ children }: { children: React.ReactNode }) {
           ) : (
             <React.Suspense fallback={<BlankScreen />}>
               <Authenticated key="auth-guard" redirectOnFail="/login" fallback={<FallbackRedirect />}>
-                <ThemedLayoutV2 Title={AdminMenuTitle} Sider={CustomSider} Header={() => (
+                <ThemedLayout Title={AdminMenuTitle} Sider={CustomSider} Header={() => (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: 64 }}>
                     <BrandTitle />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -119,7 +96,7 @@ export default function AdminRoot({ children }: { children: React.ReactNode }) {
                   </div>
                 )}>
                   {children}
-                </ThemedLayoutV2>
+                </ThemedLayout>
               </Authenticated>
             </React.Suspense>
           )}

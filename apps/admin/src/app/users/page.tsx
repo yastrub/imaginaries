@@ -39,7 +39,7 @@ export default function UsersList() {
   const [lastCountryCode, setLastCountryCode] = React.useState<string>("");
   const [uaInfo, setUaInfo] = React.useState<{ os: string; browser: string }>({ os: "", browser: "" });
 
-  const { tableProps, setFilters, tableQueryResult } = useTable<User>({
+  const { tableProps, setFilters } = useTable<User>({
     resource: "users",
     pagination: { pageSize: 20 },
     syncWithLocation: true,
@@ -49,13 +49,14 @@ export default function UsersList() {
   const { mutateAsync: create } = useCreate();
 
   // Load plans for manual assignment selector
-  const { data: plansList, isLoading: plansLoading } = useList<Plan>({
+  const { result: plansResult, query: plansQuery } = useList<Plan>({
     resource: "plans",
-    pagination: { pageSize: 100, current: 1 },
+    pagination: { pageSize: 100 },
   });
+  const plansLoading = plansQuery.isLoading;
   const planOptions = React.useMemo(() => {
-    return (plansList?.data || []).map((p) => ({ value: p.key, label: p.name }));
-  }, [plansList]);
+    return (plansResult?.data || []).map((p) => ({ value: p.key, label: p.name }));
+  }, [plansResult]);
 
   const onSearch = () => {
     setFilters([{ field: "q", operator: "contains", value: search }], "replace");
@@ -124,8 +125,7 @@ export default function UsersList() {
       await update({ resource: "users", id: record.id, values });
       message.success("User updated");
       setOpen(false); setRecord(null);
-      // refresh table
-      await tableQueryResult.refetch();
+      // Refine v6: mutations invalidate the list query automatically.
     } catch (e:any) {
       message.error(e.message || 'Update failed');
     }
@@ -204,7 +204,7 @@ export default function UsersList() {
             await create({ resource: "users", values });
             message.success("User created");
             setCreateOpen(false);
-            await tableQueryResult.refetch();
+            // Refine v6: mutations invalidate the list query automatically.
           } catch (e:any) {
             message.error(e?.message || 'Create failed');
           }

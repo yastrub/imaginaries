@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { List, useTable } from "@refinedev/antd";
-import { Table, Space, Input, Button, Drawer, Form, InputNumber, Tag, Image as AntImage, Spin, theme } from "antd";
+import { Table, Space, Input, Button, Drawer, Form, InputNumber, Tag, Image as AntImage, Spin, theme, Select } from "antd";
 import { useUpdate } from "@refinedev/core";
 import { EditOutlined, SearchOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import AdminDate from "../../components/AdminDate";
@@ -21,7 +21,31 @@ type Order = {
   image_url?: string | null;
   watermarked_url?: string | null;
   prompt?: string | null;
+  status?: OrderStatus;
 };
+
+type OrderStatus =
+  | 'New'
+  | 'Processing'
+  | 'Design'
+  | 'Production'
+  | 'Canceled'
+  | 'Completed'
+  | 'Paused'
+  | 'Invoice'
+  | 'Negotiation';
+
+const ORDER_STATUS_OPTIONS: OrderStatus[] = [
+  'New',
+  'Processing',
+  'Design',
+  'Production',
+  'Canceled',
+  'Completed',
+  'Paused',
+  'Invoice',
+  'Negotiation',
+];
 
 function formatPriceCents(cents?: number | null) {
   if (cents == null) return "—";
@@ -65,9 +89,19 @@ export default function OrdersPage() {
   });
 
   const { mutateAsync: update } = useUpdate();
+  const [statusLoadingId, setStatusLoadingId] = React.useState<string | null>(null);
 
   const onSearch = () => {
     setFilters([{ field: "q", operator: "contains", value: search }], "replace");
+  };
+
+  const onChangeStatus = async (row: Order, value: OrderStatus) => {
+    try {
+      setStatusLoadingId(row.id);
+      await update({ resource: 'orders', id: row.id, values: { status: value } });
+    } finally {
+      setStatusLoadingId(null);
+    }
   };
 
   const onEdit = (row: Order) => {
@@ -204,6 +238,21 @@ export default function OrdersPage() {
           dataIndex="actual_price_cents"
           title="Actual"
           render={(v?: number)=> formatPriceCents(v)}
+        />
+        <Table.Column<Order>
+          dataIndex="status"
+          title="Status"
+          width={200}
+          render={(v: OrderStatus | undefined, row: Order) => (
+            <Select
+              size="small"
+              style={{ width: '100%' }}
+              value={v || 'New'}
+              onChange={(val) => onChangeStatus(row, val as OrderStatus)}
+              loading={statusLoadingId === row.id}
+              options={ORDER_STATUS_OPTIONS.map(s => ({ label: s, value: s }))}
+            />
+          )}
         />
         <Table.Column<Order>
           dataIndex="created_at"

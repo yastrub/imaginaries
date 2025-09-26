@@ -40,16 +40,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!id || typeof id !== 'string') return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
 
     const body = await req.json();
-    const { notes = null, actual_price_cents = null } = body || {};
+    const { notes = null, actual_price_cents = null, status = null } = body || {};
 
     const res = await query(
       `UPDATE orders SET 
          notes = COALESCE($2, notes),
          actual_price_cents = COALESCE($3, actual_price_cents),
+         status = COALESCE(CASE WHEN $4::text IS NULL OR $4 = '' THEN NULL ELSE $4::order_status END, status),
          updated_at = now()
        WHERE id = $1::uuid
        RETURNING *`,
-      [id, notes, actual_price_cents]
+      [id, notes, actual_price_cents, status]
     );
 
     if (!res.rows.length) return NextResponse.json({ error: 'Not found' }, { status: 404 });

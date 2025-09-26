@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
         o.actual_price_cents,
         o.created_at,
         o.updated_at,
+        o.status,
         u.email AS user_email,
         i.image_url,
         i.watermarked_url,
@@ -65,17 +66,25 @@ export async function POST(req: NextRequest) {
     if (!auth.authorized) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const body = await req.json();
-    const { user_id, image_id, notes = null, estimated_price_text = null, actual_price_cents = null } = body || {};
+    const { user_id, image_id, notes = null, estimated_price_text = null, actual_price_cents = null, status = undefined } = body || {};
     if (!user_id || !image_id) {
       return NextResponse.json({ error: 'user_id and image_id are required' }, { status: 400 });
     }
 
-    const ins = await query(
-      `INSERT INTO orders (user_id, image_id, notes, estimated_price_text, actual_price_cents)
-       VALUES ($1,$2,$3,$4,$5)
-       RETURNING *`,
-      [user_id, image_id, notes, estimated_price_text, actual_price_cents]
-    );
+    const hasStatus = typeof status === 'string' && status.length > 0;
+    const sql = hasStatus
+      ? `INSERT INTO orders (user_id, image_id, notes, estimated_price_text, actual_price_cents, status)
+         VALUES ($1,$2,$3,$4,$5,$6)
+         RETURNING *`
+      : `INSERT INTO orders (user_id, image_id, notes, estimated_price_text, actual_price_cents)
+         VALUES ($1,$2,$3,$4,$5)
+         RETURNING *`;
+
+    const values = hasStatus
+      ? [user_id, image_id, notes, estimated_price_text, actual_price_cents, status]
+      : [user_id, image_id, notes, estimated_price_text, actual_price_cents];
+
+    const ins = await query(sql, values);
 
     return NextResponse.json(ins.rows[0]);
   } catch (e:any) {

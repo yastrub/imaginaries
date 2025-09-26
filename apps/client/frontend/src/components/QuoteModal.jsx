@@ -4,13 +4,14 @@ import { Button } from './ui/button';
 import { useReduxAuth } from '../hooks/useReduxAuth';
 import { useToast } from './ui/use-toast';
 import { triggerConfetti, CONFETTI_EVENTS } from './GlobalConfetti';
+import { openAuthModal } from './CompletelyIsolatedAuth';
 
 export function QuoteModal({ image, onClose, fromSharePage = false }) {
-  const { user } = useReduxAuth();
+  const { user, isAuthenticated, isEmailConfirmed } = useReduxAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [step, setStep] = useState(1); // Step 1: Estimation, Step 2: Form
+  const [step, setStep] = useState(1); // 1: Estimation, 2: Form (non-authed), 3: Success
   const [isEstimating, setIsEstimating] = useState(false);
   const [estimatedCost, setEstimatedCost] = useState(null);
   
@@ -23,6 +24,12 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
 
   // Fetch price estimation when the modal opens
   useEffect(() => {
+    // Gate by auth: if not authenticated or not confirmed, open auth and close modal
+    if (!isAuthenticated || !isEmailConfirmed) {
+      openAuthModal();
+      onClose();
+      return;
+    }
     if (step === 1) {
       fetchEstimation();
     }
@@ -135,8 +142,38 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
     }
   };
   
-  const handleProceedToForm = () => {
-    setStep(2);
+  const handleProceedToForm = async () => {
+    // If user is authenticated, skip the details form and place order immediately
+    if (isAuthenticated) {
+      try {
+        setIsSubmitting(true);
+        setError(null);
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            imageId: image.id,
+            notes: '',
+            // Pass estimated cost text so backend can persist if image doesn't store it
+            estimatedPriceText: estimatedCost || formData.estimatedCost || null
+          })
+        });
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to place order');
+        }
+        triggerConfetti(CONFETTI_EVENTS.PRICE_ESTIMATION);
+        setStep(3); // Success
+      } catch (e) {
+        setError(e.message);
+        toast({ title: 'Order failed', description: e.message, variant: 'destructive' });
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      setStep(2);
+    }
   };
   
   // Handle backdrop click to close modal
@@ -156,7 +193,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
       <div className="bg-zinc-900 rounded-xl w-full max-w-lg overflow-hidden shadow-xl relative z-[101]">
         <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-white">
-            {step === 1 ? "Jewelry Price Estimation" : "Request a Quote (Order)"}
+            {step === 1 ? "Jewelry Price Estimation" : step === 2 ? "Request a Quote (Order)" : "Order Placed"}
           </h2>
           <Button
             variant="ghost"
@@ -232,29 +269,30 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                       Based on your design, materials, and stone types (lab grown or natural), we've estimated the price range for your jewelry. Final price may be adjusted based on the actual materials used. <br /> <br /> This product will be manufactured at <strong>OCTADIAM</strong> Factory, Dubai, UAE.
                     </p>
                   </div>
-                  
                   <div className="flex justify-center">
                     <Button 
                       onClick={handleProceedToForm}
                       className="w-full max-w-xs"
+                      disabled={isSubmitting}
                     >
-                      Make an Order
+                      Order Now
                     </Button>
                   </div>
-                </div>
-              ) : (
+              </div>
+            ) : (
                 <div className="flex flex-col items-center justify-center py-8">
                   <p className="text-zinc-300 text-center">Unable to estimate price</p>
                   <Button 
                     onClick={handleProceedToForm}
                     className="mt-4"
+                    disabled={isSubmitting}
                   >
-                    Continue to Quote Request
+                    Order Now
                   </Button>
                 </div>
               )}
             </div>
-          ) : (
+          ) : step === 2 ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               {estimatedCost && (
                 <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
@@ -331,6 +369,15 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                 </Button>
               </div>
             </form>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400">
+                Your order has been received! Our team will contact you at <span className="font-medium">{user?.email}</span> shortly.
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={onClose}>Close</Button>
+              </div>
+            </div>
           )}
         </div>
       </div>

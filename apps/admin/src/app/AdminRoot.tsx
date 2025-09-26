@@ -72,6 +72,7 @@ export default function AdminRoot({ children }: { children: React.ReactNode }) {
             { name: "dashboard", list: "/", meta: { label: "Dashboard", icon: <DashboardOutlined /> } },
             { name: "images", list: "/images", meta: { label: "Images", icon: <PictureOutlined /> } },
             { name: "plans", list: "/plans", meta: { label: "Plans", icon: <TagsOutlined /> } },
+            { name: "orders", list: "/orders", meta: { label: "Orders", icon: <DollarOutlined /> } },
             { name: "promo_codes", list: "/promo-codes", meta: { label: "Promo Codes", icon: <GiftOutlined /> } },
             { name: "subscriptions", list: "/subscriptions", meta: { label: "Subscriptions", icon: <CreditCardOutlined /> } },
             { name: "invoices", list: "/invoices", meta: { label: "Invoices", icon: <FileTextOutlined /> } },

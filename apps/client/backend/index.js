@@ -10,6 +10,7 @@ import { quotesRouter } from './routes/quotes.js';
 import { likesRouter } from './routes/likes.js';
 import { usersRouter } from './routes/users.js';
 import { feedbackRouter } from './routes/feedback.js';
+import { ordersRouter } from './routes/orders.js';
 import { imagesRouter } from './routes/images.js';
 import { plansRouter } from './routes/plans.js';
 import { profileRouter } from './routes/profile.js';
@@ -98,6 +99,7 @@ async function startServer() {
     app.use('/api/images', imagesRouter);
     app.use('/api/plans', plansRouter);
     app.use('/api/profile', profileRouter);
+    app.use('/api/orders', ordersRouter);
 
     // Health check endpoint with detailed status
     app.get('/api/health', async (req, res) => {

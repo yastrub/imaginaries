@@ -588,9 +588,9 @@ export async function sendEmail(template, data) {
   const fromEmail = `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM}>`; // Always use app's email
 
   // Conditional logic for different email types
-  if (template === 'quoteRequest' || template === 'feedback') {
+  if (template === 'quoteRequest' || template === 'orderCreated' || template === 'feedback') {
     // For admin-targeted emails
-    if (template === 'quoteRequest') {
+    if (template === 'quoteRequest' || template === 'orderCreated') {
       const quoteRequestEmail = process.env.QUOTE_REQUEST_EMAIL;
       if (!quoteRequestEmail) {
         throw new Error('QUOTE_REQUEST_EMAIL environment variable is not set');
@@ -615,7 +615,7 @@ export async function sendEmail(template, data) {
     const mailOptions = {
       from: fromEmail, // Fixed app email (e.g., noreply@imaginaries.app)
       to: toEmail,
-      ...(template === 'quoteRequest' ? { 
+      ...(template === 'quoteRequest' || template === 'orderCreated' ? { 
         replyTo: data.email,
         // Add CC and BCC for quote requests if they exist in environment variables
         ...(process.env.QUOTE_REQUEST_CC ? { cc: process.env.QUOTE_REQUEST_CC } : {}),

@@ -20,6 +20,7 @@ import { EmailConfirmationPage } from './components/EmailConfirmationPage';
 import { Header } from './components/Header';
 import { Gallery } from './components/Gallery';
 import { Modal } from './components/Modal';
+import { QuoteModal } from './components/QuoteModal';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { useReduxAuth } from './hooks/useReduxAuth';
 import { useImageDownload } from './hooks/useImageDownload';
@@ -682,66 +683,9 @@ function AppContent() {
         />
       )}
       
-      {/* Quote Request Modal */}
+      {/* Quote/Order Modal */}
       {showQuoteModal && selectedImage && (
-        <Modal
-          title="Request Quote"
-          onClose={() => setShowQuoteModal(false)}
-          className="max-w-2xl"
-        >
-          <div className="p-4">
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="w-full md:w-1/3">
-                <div className="aspect-square bg-zinc-800 rounded-lg overflow-hidden">
-                  <img
-                    src={selectedImage.image_url || selectedImage.url}
-                    alt={selectedImage.prompt || 'Selected jewelry'}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-              <div className="w-full md:w-2/3">
-                <form className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-1">
-                      Your Name
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white"
-                      placeholder="Enter your name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-1">
-                      Message
-                    </label>
-                    <textarea
-                      rows={4}
-                      className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white resize-none"
-                      placeholder="Describe any specific requirements or questions..."
-                    />
-                  </div>
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg"
-                      onClick={() => {
-                        toast({
-                          title: 'Quote Requested',
-                          description: 'Your quote request has been sent. We will contact you soon.',
-                        });
-                        setShowQuoteModal(false);
-                      }}
-                    >
-                      Submit Request
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        </Modal>
+        <QuoteModal image={selectedImage} onClose={() => setShowQuoteModal(false)} />
       )}
       
       <div className="flex-grow">

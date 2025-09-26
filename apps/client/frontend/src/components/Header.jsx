@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { History, LogIn, LogOut, Grid, Sparkles, Crown, User, Settings } from 'lucide-react';
+import { History, LogIn, LogOut, Grid, Sparkles, Crown, User, Settings, Bug } from 'lucide-react';
 import { Button } from './ui/button';
 import { getVersionString } from '../config/app';
 import { useToast } from './ui/use-toast';
@@ -8,6 +8,7 @@ import { useSubscription } from '../hooks/useSubscription';
 import { openAuthModal } from './CompletelyIsolatedAuth';
 import { useNavigate } from 'react-router-dom';
 import AccountSettingsModal from './AccountSettingsModal';
+import { BugReportModal } from './BugReportModal';
 
 export const Header = React.memo(function Header({
   onOpenHistory,
@@ -26,6 +27,7 @@ export const Header = React.memo(function Header({
   const avatarBtnRef = useRef(null);
   const dropdownRef = useRef(null);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [isBugModalOpen, setIsBugModalOpen] = useState(false);
   
   // Determine if we're on a gallery page based on the current path
   const isGalleryPage = window.location.pathname.startsWith('/gallery');
@@ -35,6 +37,16 @@ export const Header = React.memo(function Header({
     
     const currentPath = window.location.pathname;
     
+    // Special-case: On upgrade page, default action should be to go to Imagine
+    if (currentPath === '/upgrade') {
+      if (isAuthenticated) {
+        navigate('/imagine');
+      } else {
+        navigate('/');
+      }
+      return;
+    }
+
     // Main route (/) behavior depends on authentication and showGallery state
     if (currentPath === '/' || currentPath === '') {
       // If user is not authenticated, toggle gallery view on main screen
@@ -151,6 +163,11 @@ export const Header = React.memo(function Header({
                   <Grid className="w-4 h-4" />
                   Gallery
                 </>
+              ) : window.location.pathname === '/upgrade' ? (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Imagine
+                </>
               ) : showGallery ? (
                 <>
                   <Sparkles className="w-4 h-4" />
@@ -198,6 +215,14 @@ export const Header = React.memo(function Header({
                   </button>
                   <button
                     role="menuitem"
+                    onClick={() => { setIsDropdownOpen(false); setIsBugModalOpen(true); }}
+                    className="w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
+                  >
+                    <Bug className="w-4 h-4" />
+                    Report a Bug
+                  </button>
+                  <button
+                    role="menuitem"
                     onClick={handleSignOutClick}
                     className="w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
                   >
@@ -221,6 +246,9 @@ export const Header = React.memo(function Header({
         )}
       </nav>
       <AccountSettingsModal open={isAccountModalOpen} onClose={() => setIsAccountModalOpen(false)} />
+      {isBugModalOpen && (
+        <BugReportModal isOpen={isBugModalOpen} onClose={() => setIsBugModalOpen(false)} />
+      )}
     </header>
   );
 });

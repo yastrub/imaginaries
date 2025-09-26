@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
         o.updated_at,
         u.email AS user_email,
         i.image_url,
+        i.watermarked_url,
         i.prompt
       FROM orders o
       LEFT JOIN users u ON u.id::text = o.user_id

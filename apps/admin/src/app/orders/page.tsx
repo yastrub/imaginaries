@@ -89,20 +89,12 @@ export default function OrdersPage() {
   });
 
   const { mutateAsync: update } = useUpdate();
-  const [statusLoadingId, setStatusLoadingId] = React.useState<string | null>(null);
 
   const onSearch = () => {
     setFilters([{ field: "q", operator: "contains", value: search }], "replace");
   };
 
-  const onChangeStatus = async (row: Order, value: OrderStatus) => {
-    try {
-      setStatusLoadingId(row.id);
-      await update({ resource: 'orders', id: row.id, values: { status: value } });
-    } finally {
-      setStatusLoadingId(null);
-    }
-  };
+  // Status is edited via the drawer form, not inline in the table
 
   const onEdit = (row: Order) => {
     setRecord(row);
@@ -111,6 +103,7 @@ export default function OrdersPage() {
       form.setFieldsValue({
         notes: row.notes || "",
         actual_price_dollars: row.actual_price_cents ? (row.actual_price_cents / 100) : undefined,
+        status: row.status || 'New',
       });
     }, 0);
   };
@@ -120,6 +113,7 @@ export default function OrdersPage() {
     const payload: any = {
       notes: values.notes || null,
       actual_price_cents: values.actual_price_dollars != null ? Math.round(Number(values.actual_price_dollars) * 100) : null,
+      status: values.status || undefined,
     };
     await update({ resource: 'orders', id: record.id, values: payload });
     setOpen(false);
@@ -242,17 +236,22 @@ export default function OrdersPage() {
         <Table.Column<Order>
           dataIndex="status"
           title="Status"
-          width={200}
-          render={(v: OrderStatus | undefined, row: Order) => (
-            <Select
-              size="small"
-              style={{ width: '100%' }}
-              value={v || 'New'}
-              onChange={(val) => onChangeStatus(row, val as OrderStatus)}
-              loading={statusLoadingId === row.id}
-              options={ORDER_STATUS_OPTIONS.map(s => ({ label: s, value: s }))}
-            />
-          )}
+          width={180}
+          render={(v: OrderStatus | undefined) => {
+            const colorMap: Record<OrderStatus, string> = {
+              New: 'blue',
+              Processing: 'gold',
+              Design: 'purple',
+              Production: 'geekblue',
+              Canceled: 'red',
+              Completed: 'green',
+              Paused: 'orange',
+              Invoice: 'cyan',
+              Negotiation: 'magenta',
+            } as const;
+            const val = (v || 'New') as OrderStatus;
+            return <Tag color={colorMap[val]}>{val}</Tag>;
+          }}
         />
         <Table.Column<Order>
           dataIndex="created_at"
@@ -279,6 +278,9 @@ export default function OrdersPage() {
           </Form.Item>
           <Form.Item label="Actual Price (USD)" name="actual_price_dollars">
             <InputNumber min={0} step={0.01} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="Status" name="status" initialValue={'New'}>
+            <Select options={ORDER_STATUS_OPTIONS.map(s => ({ label: s, value: s }))} />
           </Form.Item>
           <Space>
             <Button onClick={()=>setOpen(false)}>Cancel</Button>

@@ -116,7 +116,7 @@ function BugReportModalComponent({ isOpen, onClose }) {
       // Close modal when clicking on backdrop
       if (e.target === e.currentTarget) onClose();
     }}>
-      <div className="bg-zinc-900 rounded-xl w-full max-w-md relative overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-zinc-900 rounded-xl w-full max-w-md relative shadow-xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         {/* Close button */}
         <button
           onClick={onClose}

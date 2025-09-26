@@ -20,7 +20,6 @@ import { EmailConfirmationPage } from './components/EmailConfirmationPage';
 import { Header } from './components/Header';
 import { Gallery } from './components/Gallery';
 import { Modal } from './components/Modal';
-import { QuoteModal } from './components/QuoteModal';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { useReduxAuth } from './hooks/useReduxAuth';
 import { useImageDownload } from './hooks/useImageDownload';

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, memo } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
@@ -111,12 +112,17 @@ function BugReportModalComponent({ isOpen, onClose }) {
     }
   }, [reportType, description, file, toast, onClose]);
 
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={(e) => {
+  return createPortal(
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1000] p-4" onClick={(e) => {
       // Close modal when clicking on backdrop
       if (e.target === e.currentTarget) onClose();
     }}>
-      <div className="bg-zinc-900 rounded-xl w-full max-w-md relative shadow-xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1001] bg-zinc-900 rounded-xl w-full max-w-md shadow-xl max-h-[calc(100dvh-2rem)] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
         {/* Close button */}
         <button
           onClick={onClose}
@@ -238,7 +244,8 @@ function BugReportModalComponent({ isOpen, onClose }) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

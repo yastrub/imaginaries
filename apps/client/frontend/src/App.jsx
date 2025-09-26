@@ -130,6 +130,48 @@ function AppContent() {
     // Clean up interval on unmount
     return () => clearInterval(intervalId);
   }, [isAuthenticated, isEmailConfirmed, user, location.pathname]);
+
+  // Inject ElevenLabs Convai widget for business-tier users only
+  useEffect(() => {
+    const enabled = import.meta.env.VITE_ELEVENLABS_CONVAI_ENABLED === 'true';
+    const agentId = import.meta.env.VITE_ELEVENLABS_CONVAI_AGENT_ID;
+    const isBusiness = isAuthenticated && (user?.subscription_plan === 'business');
+
+    // If disabled or misconfigured, ensure widget is removed
+    if (!enabled || !agentId) {
+      const existing = document.querySelector('elevenlabs-convai');
+      if (existing) existing.remove();
+      return;
+    }
+
+    if (isBusiness) {
+      // Load widget script once
+      if (!document.querySelector('script[data-elevenlabs-convai]')) {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/@elevenlabs/convai-widget-embed';
+        s.async = true;
+        s.type = 'text/javascript';
+        s.setAttribute('data-elevenlabs-convai', '1');
+        document.head.appendChild(s);
+      }
+      // Mount widget if not present
+      if (!document.querySelector('elevenlabs-convai')) {
+        const w = document.createElement('elevenlabs-convai');
+        w.setAttribute('agent-id', agentId);
+        document.body.appendChild(w);
+      }
+    } else {
+      // Remove widget for non-business or logged-out users
+      const existing = document.querySelector('elevenlabs-convai');
+      if (existing) existing.remove();
+    }
+
+    // Cleanup: remove widget node (keep script to avoid flicker on re-mount)
+    return () => {
+      const existing = document.querySelector('elevenlabs-convai');
+      if (existing) existing.remove();
+    };
+  }, [isAuthenticated, user?.subscription_plan]);
   
   // Get data from the consolidated hook
   const {

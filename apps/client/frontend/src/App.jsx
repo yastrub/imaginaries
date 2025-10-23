@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation, Routes, Route, BrowserRouter, Navigate, useSearchParams } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useToast } from './components/ui/use-toast';
 import { Toaster } from './components/ui/Toaster';
 // Auth hook is already imported as useReduxAuth below
@@ -29,6 +29,7 @@ import { ImageHistory } from './components/ImageHistory';
 import { SharePage } from './components/SharePage';
 import HistoryModal from './components/HistoryModal';
 import { UpgradePage } from './components/UpgradePage';
+import { decrement, fetchQuota, reset as resetQuota } from './store/quotaSlice';
 
 /**
  * Main App component
@@ -49,6 +50,7 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const dispatch = useDispatch();
   
   // Check for promo code in URL and store in localStorage
   useEffect(() => {
@@ -247,6 +249,17 @@ function AppContent() {
       }, 100);
     }
   }, [isAuthenticated, navigate]);
+
+  // NASA-grade quota sync: fetch on auth, reset on logout
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchQuota());
+    } else {
+      dispatch(resetQuota());
+    }
+  }, [isAuthenticated, dispatch]);
+
+  // Removed quota-refresh event listener to prevent duplicate fetches.
   
   // Image download functionality
   const { handleDownload, downloadingImageId } = useImageDownload();
@@ -446,6 +459,10 @@ function AppContent() {
           if (window.showConfetti) {
             window.showConfetti();
           }
+
+          // Update quota immediately and reconcile with server in background
+          try { dispatch(decrement(1)); } catch {}
+          try { setTimeout(() => { dispatch(fetchQuota()); }, 800); } catch {}
           
           return Promise.resolve(imageObject);
         }

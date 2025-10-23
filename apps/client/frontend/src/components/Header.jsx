@@ -23,7 +23,7 @@ export const Header = React.memo(function Header({
   // Use the isAuthenticated prop passed from parent instead of direct useAuth
   // This ensures consistency with the rest of the app
   const { plan } = useSubscription();
-  const [canUpgrade, setCanUpgrade] = useState(true);
+  const [canUpgrade, setCanUpgrade] = useState(false);
   const [plansList, setPlansList] = useState([]);
   const [currentPlanKey, setCurrentPlanKey] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -172,13 +172,15 @@ export const Header = React.memo(function Header({
             const atTop = !!userPlan && (userPlan.sortOrder ?? 0) >= maxSort;
             setCanUpgrade(!atTop);
           } else {
-            setCanUpgrade(true);
+            // Unknown plan list -> don't show Upgrade by default
+            setCanUpgrade(false);
           }
         } else {
-          setCanUpgrade(true);
+          // Unknown eligibility -> hide
+          setCanUpgrade(false);
         }
       } catch {
-        if (mounted) setCanUpgrade(true);
+        if (mounted) setCanUpgrade(false);
       }
     }
     loadPlansAndCompute();

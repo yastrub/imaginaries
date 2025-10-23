@@ -116,14 +116,16 @@ const WelcomeMessageComponent = () => {
       <style>{styleContent}</style>
 
       {quota && (
-        <div
-          className={`mx-auto mb-4 inline-flex items-center gap-2 px-3 py-1 rounded-md border text-xs ${quota.limit === null ? 'border-purple-600 text-zinc-300' : ((quota.remaining ?? 0) === 0 ? 'border-red-600 text-red-400' : 'border-purple-600 text-zinc-300')}`}
-          title="Monthly image quota"
-        >
-          <span>Images left:</span>
-          <span>
-            {loading ? '…' : (quota.limit === null ? '∞' : Math.max(0, quota.remaining ?? 0))}
-          </span>
+        <div className="mb-4 flex justify-center">
+          <div
+            className={`inline-flex items-center gap-2 px-3 py-1 rounded-md border text-xs ${quota.limit === null ? 'border-zinc-700 text-zinc-300' : ((quota.remaining ?? 0) === 0 ? 'border-red-600 text-red-400' : 'border-zinc-700 text-zinc-300')}`}
+            title="Monthly image quota"
+          >
+            <span>Images left:</span>
+            <span>
+              {loading ? '…' : (quota.limit === null ? '∞' : Math.max(0, quota.remaining ?? 0))}
+            </span>
+          </div>
         </div>
       )}
 

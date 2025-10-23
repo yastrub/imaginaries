@@ -90,7 +90,7 @@ export const MainContent = React.memo(function MainContent({
       <main className="container mx-auto px-4 pt-40 pb-16 sm:pt-32 sm:pb-16">
         {/* Debug indicators removed */}
         <div className="max-w-3xl mx-auto relative">
-          <QuotaBadge />
+          <QuotaBadge isAuthenticated={isAuthenticated} />
           <WelcomeMessage />
 
           <JewelryTypeBadges />

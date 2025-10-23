@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Sparkles } from 'lucide-react';
 
 // Create a stable random number generator with a fixed seed
 function seededRandom(seed) {
@@ -115,8 +116,8 @@ const WelcomeMessageComponent = () => {
     <>
       <style>{styleContent}</style>
 
-      {quota && (
-        <div className="mb-4 flex justify-center">
+      <div className="mb-4 flex justify-center min-h-[28px]">
+        {quota ? (
           <div
             className={`inline-flex items-center gap-2 px-3 py-1 rounded-md border text-xs ${quota.limit === null ? 'border-zinc-700 text-zinc-300' : ((quota.remaining ?? 0) === 0 ? 'border-red-600 text-red-400' : 'border-zinc-700 text-zinc-300')}`}
             title="Monthly image quota"
@@ -126,8 +127,12 @@ const WelcomeMessageComponent = () => {
               {loading ? '…' : (quota.limit === null ? '∞' : Math.max(0, quota.remaining ?? 0))}
             </span>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="inline-flex items-center justify-center h-[28px] text-zinc-400">
+            <Sparkles className="w-4 h-4" />
+          </div>
+        )}
+      </div>
 
       <h1 className="text-[4.0rem] leading-[1] font-extralight text-center mb-6 tracking-normal">
         <span className="anim-text-flow">

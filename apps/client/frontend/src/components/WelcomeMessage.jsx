@@ -129,7 +129,7 @@ const WelcomeMessageComponent = () => {
           </div>
         ) : (
           <div className="inline-flex items-center justify-center h-[28px] text-zinc-400">
-            <Sparkles className="w-4 h-4" />
+            <Sparkles className="w-5 h-5" />
           </div>
         )}
       </div>

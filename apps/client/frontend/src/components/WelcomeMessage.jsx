@@ -15,10 +15,9 @@ const WelcomeMessageComponent = () => {
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    const fetchQuota = async () => {
       try {
         setLoading(true);
-        // Check auth state first to avoid unnecessary quota call
         const me = await fetch('/api/auth/me', { credentials: 'include' });
         if (!mounted) return;
         if (!me.ok) { setQuota(null); return; }
@@ -35,8 +34,26 @@ const WelcomeMessageComponent = () => {
       } finally {
         if (mounted) setLoading(false);
       }
-    })();
-    return () => { mounted = false; };
+    };
+
+    // initial fetch
+    fetchQuota();
+
+    // listen for auth changes (setUser/logout dispatches this event)
+    const onAuthChanged = (e) => {
+      const authed = !!(e && e.detail && e.detail.isAuthenticated);
+      if (authed) {
+        fetchQuota();
+      } else {
+        setQuota(null);
+      }
+    };
+    window.addEventListener('auth-state-changed', onAuthChanged);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('auth-state-changed', onAuthChanged);
+    };
   }, []);
   // The text to animate
   const text = "What would you like to imagine?";

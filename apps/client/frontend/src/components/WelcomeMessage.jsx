@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 // Create a stable random number generator with a fixed seed
 function seededRandom(seed) {
@@ -10,6 +10,33 @@ function seededRandom(seed) {
 
 // Create a memoized version of the component to prevent re-renders
 const WelcomeMessageComponent = () => {
+  const [quota, setQuota] = useState(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        // Check auth state first to avoid unnecessary quota call
+        const me = await fetch('/api/auth/me', { credentials: 'include' });
+        if (!mounted) return;
+        if (!me.ok) { setQuota(null); return; }
+        const qr = await fetch('/api/generate/quota', { credentials: 'include' });
+        if (!mounted) return;
+        if (qr.ok) {
+          const data = await qr.json();
+          setQuota(data);
+        } else {
+          setQuota(null);
+        }
+      } catch {
+        if (mounted) setQuota(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
   // The text to animate
   const text = "What would you like to imagine?";
 
@@ -87,6 +114,18 @@ const WelcomeMessageComponent = () => {
   return (
     <>
       <style>{styleContent}</style>
+
+      {quota && (
+        <div
+          className={`mx-auto mb-4 inline-flex items-center gap-2 px-3 py-1 rounded-md border text-xs ${quota.limit === null ? 'border-purple-600 text-zinc-300' : ((quota.remaining ?? 0) === 0 ? 'border-red-600 text-red-400' : 'border-purple-600 text-zinc-300')}`}
+          title="Monthly image quota"
+        >
+          <span>Images left:</span>
+          <span>
+            {loading ? '…' : (quota.limit === null ? '∞' : Math.max(0, quota.remaining ?? 0))}
+          </span>
+        </div>
+      )}
 
       <h1 className="text-[4.0rem] leading-[1] font-extralight text-center mb-6 tracking-normal">
         <span className="anim-text-flow">

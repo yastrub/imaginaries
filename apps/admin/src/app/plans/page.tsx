@@ -148,8 +148,6 @@ export default function PlansPage() {
         />
         <Table.Column<Plan> dataIndex="max_generations_per_month" title="Max/Month" width={120} sorter />
         <Table.Column<Plan> dataIndex="max_free_generations" title="Free/Month" width={120} sorter />
-        <Table.Column<Plan> dataIndex="stripe_price_monthly_id" title="Stripe Price (Monthly)" width={240} />
-        <Table.Column<Plan> dataIndex="stripe_price_annual_id" title="Stripe Price (Annual)" width={240} />
         <Table.Column<Plan>
           dataIndex="show_watermark"
           title="Watermark"

@@ -78,6 +78,15 @@ export default function AccountSettingsModal({ open, onClose }) {
     return sub?.subscription_plan || me?.user?.subscription_plan || 'free';
   }, [sub, me]);
 
+  const usage = useMemo(() => {
+    const limit = sub?.effective_limit ?? 0;
+    const count = sub?.monthly_generation_count ?? 0;
+    const left = Math.max(0, (limit || 0) - (count || 0));
+    const pct = limit > 0 ? Math.min(100, Math.round((count / limit) * 100)) : 0;
+    const resetAt = sub?.next_reset_at ? new Date(sub.next_reset_at) : null;
+    return { limit, count, left, pct, resetAt };
+  }, [sub]);
+
   if (!open) return null;
 
   const close = () => {
@@ -278,6 +287,35 @@ export default function AccountSettingsModal({ open, onClose }) {
               {/* Billing */}
               <TabsContent value="billing">
                 <div className="space-y-4">
+                  <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-900/40 p-5">
+                    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                      <div>
+                        <div className="text-sm text-zinc-400">Images left</div>
+                        <div className="mt-1 text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-purple-400 via-fuchsia-400 to-purple-300 bg-clip-text text-transparent">
+                          {usage.left}
+                        </div>
+                        <div className="mt-1 text-xs text-zinc-400">
+                          {usage.count} used · {usage.limit} total
+                          {usage.resetAt ? (
+                            <span className="ml-2 text-zinc-500">· resets {usage.resetAt.toLocaleDateString()}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="w-full md:w-1/2">
+                        <div className="h-3 w-full rounded-full bg-zinc-800 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-purple-500 via-fuchsia-500 to-purple-400"
+                            style={{ width: `${usage.pct}%` }}
+                          />
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-xs text-zinc-400">
+                          <span>{usage.pct}% used</span>
+                          <span>{Math.max(0, usage.limit - usage.count)} left</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-sm text-zinc-400">Current plan</div>

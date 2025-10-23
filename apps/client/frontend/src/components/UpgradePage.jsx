@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Crown, Check, ArrowRight, BadgePercent } from 'lucide-react';
+import { Crown, Check, ArrowRight, BadgePercent, Loader2 } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { Button } from './ui/button';
 import { useReduxAuth } from '@/hooks/useReduxAuth';
@@ -26,6 +26,8 @@ export function UpgradePage() {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [checkingOutPlan, setCheckingOutPlan] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -67,34 +69,35 @@ export function UpgradePage() {
     });
   }, [plans]);
 
-  const onSubscribe = async () => {
-    if (selectedPlan === 'free') return;
-
-    // Attempt a checkout call if backend exists; otherwise show a friendly prompt
+  const onSubscribe = async (planKey) => {
+    const planToUse = planKey || selectedPlan;
+    if (planToUse === 'free') return;
     try {
+      setIsCheckingOut(true);
+      setCheckingOutPlan(planToUse);
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ plan: selectedPlan, cycle: billingCycle })
+        body: JSON.stringify({ plan: planToUse, cycle: billingCycle })
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.url) {
-          window.location.href = data.url;
-          return;
-        }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.url) {
+        window.location.href = data.url;
+        return;
       }
-      // Fallback CTA
       toast({
         title: 'Almost there',
-        description: 'We could not open checkout automatically. Our team will get you upgraded shortly.',
+        description: data?.error || 'We could not open checkout automatically. Our team will get you upgraded shortly.',
       });
     } catch (e) {
       toast({
         title: 'Upgrade',
         description: isAuthenticated ? 'Redirecting you to a secure checkout soon.' : 'Please sign in to continue to checkout.',
       });
+    } finally {
+      setIsCheckingOut(false);
+      setCheckingOutPlan(null);
     }
   };
 
@@ -199,11 +202,21 @@ export function UpgradePage() {
                 <div className="mt-auto pt-2">
                   <Button
                     className={`w-full gap-2 ${isFree ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white'}`}
-                    disabled={isFree}
-                    onClick={(e) => { e.stopPropagation(); setSelectedPlan(p.key); if (!isFree) onSubscribe(); }}
+                    disabled={isFree || isCheckingOut}
+                    onClick={(e) => { e.stopPropagation(); setSelectedPlan(p.key); if (!isFree) onSubscribe(p.key); }}
                   >
-                    {isFree ? 'Current Plan' : 'Upgrade now'}
-                    {!isFree && <ArrowRight className="w-4 h-4" />}
+                    {isFree ? (
+                      'Current Plan'
+                    ) : (
+                      <>
+                        {isCheckingOut && checkingOutPlan === p.key ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <ArrowRight className="w-4 h-4" />
+                        )}
+                        {isCheckingOut && checkingOutPlan === p.key ? 'Redirecting…' : 'Upgrade now'}
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
@@ -218,11 +231,15 @@ export function UpgradePage() {
             <p className="text-zinc-300 mb-4">Join thousands of creators generating professional-grade visuals with Imaginaries.</p>
             <Button
               className="bg-purple-600 hover:bg-purple-500 text-white gap-2"
-              disabled={selectedPlan === 'free'}
-              onClick={onSubscribe}
+              disabled={selectedPlan === 'free' || isCheckingOut}
+              onClick={() => onSubscribe()}
             >
-              <Crown className="w-4 h-4" />
-              Continue to checkout
+              {isCheckingOut ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Crown className="w-4 h-4" />
+              )}
+              {isCheckingOut ? 'Redirecting…' : 'Continue to checkout'}
             </Button>
             {selectedPlan === 'free' && (
               <p className="text-xs text-zinc-500 mt-2">Select Pro or Business to continue</p>

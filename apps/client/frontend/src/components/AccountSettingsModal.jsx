@@ -315,7 +315,7 @@ export default function AccountSettingsModal({ open, onClose }) {
               {/* Subscription */}
               <TabsContent value="subscription">
                 <div className="space-y-4">
-                  <div className="relative overflow-hidden rounded-xl border border-purple-600/20 bg-gradient-to-br from-zinc-900 to-zinc-900/40 p-5">
+                  <div className="relative overflow-hidden rounded-xl border border-purple-600 bg-gradient-to-br from-zinc-900 to-zinc-900/40 p-5">
                     <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                       <div>
                         <div className="text-sm text-zinc-400">Images left</div>

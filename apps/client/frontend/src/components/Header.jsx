@@ -163,7 +163,7 @@ export const Header = React.memo(function Header({
       <nav className="flex items-center gap-4">
         {isAuthenticated && (
           <div
-            className={`px-2 py-1 rounded-md border text-xs ${quota && quota.limit === null ? 'border-zinc-700 text-zinc-300' : (quota && (quota.remaining ?? 0) === 0 ? 'border-red-600 text-red-400' : 'border-zinc-700 text-zinc-300')} hidden sm:inline-flex items-center gap-2`}
+            className={`px-2 py-1 rounded-md border text-xs ${quota && quota.limit === null ? 'border-purple-600 text-zinc-300' : (quota && (quota.remaining ?? 0) === 0 ? 'border-red-600 text-red-400' : 'border-purple-600 text-zinc-300')} hidden sm:inline-flex items-center gap-2`}
             title="Monthly image quota"
           >
             <span>Left:</span>

@@ -15,6 +15,7 @@ const WelcomeMessageComponent = () => {
   const [quota, setQuota] = useState(null);
   const [loading, setLoading] = useState(true);
   const isAuthenticated = useSelector((state) => !!state?.auth?.isAuthenticated);
+  const [authedHint, setAuthedHint] = useState(false);
   useEffect(() => {
     let mounted = true;
     const fetchQuotaOnce = async () => {
@@ -57,11 +58,13 @@ const WelcomeMessageComponent = () => {
       const d = (e && e.detail) || {};
       const authed = !!(d.isAuthenticated ?? d.authenticated ?? d.user);
       if (authed) {
+        setAuthedHint(true);
         // Retry a few times to allow auth cookie to propagate
         fetchQuotaWithRetry(3, 400);
         // Schedule a follow-up fetch in case of slow cookie propagation
         setTimeout(() => { if (mounted) fetchQuotaWithRetry(1, 0); }, 1500);
       } else {
+        setAuthedHint(false);
         setQuota(null);
       }
     };
@@ -75,10 +78,16 @@ const WelcomeMessageComponent = () => {
     };
     window.addEventListener('focus', onFocus);
 
+    const onQuotaRefresh = () => {
+      fetchQuotaWithRetry(3, 300);
+    };
+    window.addEventListener('quota-refresh', onQuotaRefresh);
+
     return () => {
       mounted = false;
       window.removeEventListener('auth-state-changed', onAuthChanged);
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('quota-refresh', onQuotaRefresh);
     };
   }, []);
 
@@ -104,6 +113,52 @@ const WelcomeMessageComponent = () => {
     fetchAfterAuth();
     return () => { mounted = false; };
   }, [isAuthenticated]);
+
+  // Short-lived polling after auth to avoid manual reloads
+  useEffect(() => {
+    if (!isAuthenticated || quota) return;
+    let mounted = true;
+    let attempts = 0;
+    const timer = setInterval(async () => {
+      attempts++;
+      try {
+        const resp = await fetch('/api/generate/quota', { credentials: 'include', cache: 'no-store' });
+        if (!mounted) return;
+        if (resp.ok) {
+          const data = await resp.json();
+          setQuota(data);
+          clearInterval(timer);
+        }
+      } catch {}
+      if (attempts >= 10) {
+        clearInterval(timer);
+      }
+    }, 600);
+    return () => { mounted = false; clearInterval(timer); };
+  }, [isAuthenticated, quota]);
+
+  // Fallback polling regardless of auth state to catch modal login without store updates
+  useEffect(() => {
+    if (quota) return;
+    let mounted = true;
+    let attempts = 0;
+    const timer = setInterval(async () => {
+      attempts++;
+      try {
+        const resp = await fetch('/api/generate/quota', { credentials: 'include', cache: 'no-store' });
+        if (!mounted) return;
+        if (resp.ok) {
+          const data = await resp.json();
+          setQuota(data);
+          clearInterval(timer);
+        }
+      } catch {}
+      if (attempts >= 20) {
+        clearInterval(timer);
+      }
+    }, 1500);
+    return () => { mounted = false; clearInterval(timer); };
+  }, [quota]);
   // The text to animate
   const text = "What would you like to imagine?";
 
@@ -183,14 +238,18 @@ const WelcomeMessageComponent = () => {
       <style>{styleContent}</style>
 
       <div className="mb-4 flex justify-center min-h-[28px]">
-        {quota ? (
+        {(quota || isAuthenticated || authedHint) ? (
           <div
-            className={`inline-flex items-center gap-2 px-3 py-1 rounded-md border text-xs ${quota.limit === null ? 'border-zinc-700 text-zinc-300' : ((quota.remaining ?? 0) === 0 ? 'border-red-600 text-red-400' : 'border-zinc-700 text-zinc-300')}`}
+            className={`inline-flex items-center gap-2 px-3 py-1 rounded-md border text-xs ${quota
+              ? (quota.limit === null
+                  ? 'border-zinc-700 text-zinc-300'
+                  : ((quota.remaining ?? 0) === 0 ? 'border-red-600 text-red-400' : 'border-zinc-700 text-zinc-300'))
+              : 'border-zinc-700 text-zinc-300'}`}
             title="Monthly image quota"
           >
             <span>Images left:</span>
             <span>
-              {loading ? '…' : (quota.limit === null ? '∞' : Math.max(0, quota.remaining ?? 0))}
+              {quota ? (quota.limit === null ? '∞' : Math.max(0, quota.remaining ?? 0)) : '…'}
             </span>
           </div>
         ) : (

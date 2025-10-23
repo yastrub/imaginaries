@@ -114,6 +114,8 @@ const authSlice = createSlice({
       window.dispatchEvent(new CustomEvent('auth-state-changed', {
         detail: { isAuthenticated: true, user: action.payload }
       }));
+      // Prompt listeners to refresh quota/limits immediately
+      try { window.dispatchEvent(new CustomEvent('quota-refresh')); } catch {}
     },
     updateAuthFromResponse: (state, action) => {
       const { isAuthenticated, user } = action.payload;
@@ -124,6 +126,8 @@ const authSlice = createSlice({
         state.isAppUnlocked = true;
         // Notify listeners about auth state change
         try { window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { isAuthenticated: true, user } })); } catch {}
+        // Prompt listeners to refresh quota/limits immediately
+        try { window.dispatchEvent(new CustomEvent('quota-refresh')); } catch {}
       } else if (isAuthenticated === false) {
         // Notify listeners about logout/unauthenticated state
         try { window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { isAuthenticated: false } })); } catch {}
@@ -153,6 +157,8 @@ const authSlice = createSlice({
           state.isEmailConfirmed = action.payload.user.email_confirmed || false;
           // Notify listeners about login/authenticated state
           try { window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { isAuthenticated: true, user: action.payload.user } })); } catch {}
+          // Prompt listeners to refresh quota/limits immediately
+          try { window.dispatchEvent(new CustomEvent('quota-refresh')); } catch {}
         } else {
           state.user = null;
           state.isAuthenticated = false;

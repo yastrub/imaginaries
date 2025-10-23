@@ -160,7 +160,8 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
       const eventId = Date.now();
       const authChangeEvent = new CustomEvent('auth-state-changed', { 
         detail: { 
-          authenticated: true, 
+          authenticated: true,
+          isAuthenticated: true,
           user: result.user || 'unknown',
           eventId: eventId
         }
@@ -169,6 +170,8 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
       // Only dispatch the event once
       console.log(`Dispatching auth change event with ID: ${eventId}`);
       window.dispatchEvent(authChangeEvent);
+      // Prompt any quota UI to refresh immediately
+      try { window.dispatchEvent(new CustomEvent('quota-refresh')); } catch {}
       
       // Log the current auth state to help with debugging
       console.log('Current auth state after sign in:', { user, isEmailConfirmed });

@@ -23,6 +23,9 @@ export const Header = React.memo(function Header({
   // Use the isAuthenticated prop passed from parent instead of direct useAuth
   // This ensures consistency with the rest of the app
   const { plan } = useSubscription();
+  const [canUpgrade, setCanUpgrade] = useState(true);
+  const [plansList, setPlansList] = useState([]);
+  const [currentPlanKey, setCurrentPlanKey] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const avatarBtnRef = useRef(null);
   const dropdownRef = useRef(null);
@@ -155,6 +158,57 @@ export const Header = React.memo(function Header({
     return () => { active = false; };
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    let mounted = true;
+    async function loadUserPlan() {
+      try {
+        if (!isAuthenticated) { setCurrentPlanKey(null); return; }
+        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        if (!mounted) return;
+        if (res.ok) {
+          const data = await res.json();
+          setCurrentPlanKey(data?.user?.subscription_plan || null);
+        } else {
+          setCurrentPlanKey(null);
+        }
+      } catch {
+        if (mounted) setCurrentPlanKey(null);
+      }
+    }
+    loadUserPlan();
+    return () => { mounted = false; };
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadPlansAndCompute() {
+      try {
+        const res = await fetch('/api/plans', { credentials: 'include' });
+        if (!mounted) return;
+        if (res.ok) {
+          const json = await res.json();
+          const data = Array.isArray(json?.data) ? json.data : [];
+          setPlansList(data);
+          if (data.length) {
+            const maxSort = Math.max(...data.map(p => p.sortOrder ?? 0));
+            const userPlanKey = currentPlanKey || null;
+            const userPlan = userPlanKey ? data.find(p => p.key === userPlanKey) : null;
+            const atTop = !!userPlan && (userPlan.sortOrder ?? 0) >= maxSort;
+            setCanUpgrade(!atTop);
+          } else {
+            setCanUpgrade(true);
+          }
+        } else {
+          setCanUpgrade(true);
+        }
+      } catch {
+        if (mounted) setCanUpgrade(true);
+      }
+    }
+    loadPlansAndCompute();
+    return () => { mounted = false; };
+  }, [currentPlanKey, isAuthenticated]);
+
   return (
     <header className="fixed top-0 left-0 right-0 p-4 flex flex-col sm:flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm z-50 gap-4 sm:gap-0">
       <div className="font-mono text-zinc-600 text-sm text-center sm:text-left">
@@ -172,7 +226,7 @@ export const Header = React.memo(function Header({
             </span>
           </div>
         )}
-        {isAuthenticated && (
+        {isAuthenticated && canUpgrade && (
           <Button
             size="sm"
             onClick={() => navigate('/upgrade')}

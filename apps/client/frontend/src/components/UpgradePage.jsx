@@ -28,6 +28,7 @@ export function UpgradePage() {
   const [error, setError] = useState(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkingOutPlan, setCheckingOutPlan] = useState(null);
+  const [currentPlanKey, setCurrentPlanKey] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -40,8 +41,16 @@ export function UpgradePage() {
         // Ensure sorted by sortOrder then id on the client as well
         list.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
         if (mounted) setPlans(list);
-        // Auto-select free if exists
-        if (mounted && list.some(p => p.key === 'free')) setSelectedPlan('free');
+        // Determine user's current plan
+        const userKey = user?.subscription_plan || null;
+        if (mounted) setCurrentPlanKey(userKey);
+        // Auto-select the first higher-tier public plan if available; otherwise keep 'free'
+        if (mounted) {
+          const currentSort = userKey ? (list.find(p => p.key === userKey)?.sortOrder ?? -Infinity) : -Infinity;
+          const firstHigher = list.find(p => (p.sortOrder ?? 0) > currentSort);
+          if (firstHigher) setSelectedPlan(firstHigher.key);
+          else if (list.some(p => p.key === 'free')) setSelectedPlan('free');
+        }
       } catch (e) {
         console.error(e);
         if (mounted) setError(e?.message || 'Failed to load plans');
@@ -50,7 +59,7 @@ export function UpgradePage() {
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [user]);
 
   const computedPlans = useMemo(() => {
     return plans.map((p) => {
@@ -69,9 +78,17 @@ export function UpgradePage() {
     });
   }, [plans]);
 
+  const currentSortOrder = useMemo(() => {
+    if (!currentPlanKey) return null;
+    const match = plans.find(p => p.key === currentPlanKey);
+    return match ? (match.sortOrder ?? 0) : null;
+  }, [plans, currentPlanKey]);
+
   const onSubscribe = async (planKey) => {
     const planToUse = planKey || selectedPlan;
     if (planToUse === 'free') return;
+    const chosen = plans.find(p => p.key === planToUse);
+    if (chosen && currentSortOrder != null && (chosen.sortOrder ?? 0) <= currentSortOrder) return;
     try {
       setIsCheckingOut(true);
       setCheckingOutPlan(planToUse);
@@ -158,12 +175,14 @@ export function UpgradePage() {
             const price = billingCycle === 'monthly' ? p.monthly : p.annual;
             const suffix = billingCycle === 'monthly' ? '/mo' : '/yr';
             const isFree = p.key === 'free';
+            const isDowngradeOrSame = currentSortOrder != null && (p.sortOrder ?? 0) <= currentSortOrder;
+            const isDisabled = isFree || isDowngradeOrSame;
 
             return (
               <div
                 key={p.key}
                 className={`relative rounded-2xl border ${isSelected ? 'border-purple-500 ring-2 ring-purple-500/40' : 'border-zinc-700'} bg-zinc-900/60 backdrop-blur p-6 flex flex-col gap-4`}
-                onClick={() => setSelectedPlan(p.key)}
+                onClick={() => { if (!isDisabled) setSelectedPlan(p.key); }}
                 role="button"
               >
                 {/* Badge */}
@@ -201,13 +220,11 @@ export function UpgradePage() {
 
                 <div className="mt-auto pt-2">
                   <Button
-                    className={`w-full gap-2 ${isFree ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white'}`}
-                    disabled={isFree || isCheckingOut}
-                    onClick={(e) => { e.stopPropagation(); setSelectedPlan(p.key); if (!isFree) onSubscribe(p.key); }}
+                    className={`w-full gap-2 ${isDisabled ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white'}`}
+                    disabled={isDisabled || isCheckingOut}
+                    onClick={(e) => { e.stopPropagation(); if (!isDisabled) { setSelectedPlan(p.key); onSubscribe(p.key); } }}
                   >
-                    {isFree ? (
-                      'Current Plan'
-                    ) : (
+                    {isDisabled ? (p.key === currentPlanKey ? 'Current Plan' : 'Not available') : (
                       <>
                         {isCheckingOut && checkingOutPlan === p.key ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -231,7 +248,12 @@ export function UpgradePage() {
             <p className="text-zinc-300 mb-4">Join thousands of creators generating professional-grade visuals with Imaginaries.</p>
             <Button
               className="bg-purple-600 hover:bg-purple-500 text-white gap-2"
-              disabled={selectedPlan === 'free' || isCheckingOut}
+              disabled={(() => {
+                const chosen = plans.find(p => p.key === selectedPlan);
+                if (!chosen) return true;
+                if (currentSortOrder != null && (chosen.sortOrder ?? 0) <= currentSortOrder) return true;
+                return isCheckingOut;
+              })()}
               onClick={() => onSubscribe()}
             >
               {isCheckingOut ? (

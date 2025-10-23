@@ -78,6 +78,34 @@ export default function AccountSettingsModal({ open, onClose }) {
     return sub?.subscription_plan || me?.user?.subscription_plan || 'free';
   }, [sub, me]);
 
+  const [canUpgrade, setCanUpgrade] = useState(true);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/plans', { credentials: 'include' });
+        if (!mounted) return;
+        if (res.ok) {
+          const json = await res.json();
+          const data = Array.isArray(json?.data) ? json.data : [];
+          if (data.length) {
+            const maxSort = Math.max(...data.map(p => p.sortOrder ?? 0));
+            const userPlan = data.find(p => p.key === planName);
+            const atTop = !!userPlan && (userPlan.sortOrder ?? 0) >= maxSort;
+            setCanUpgrade(!atTop);
+          } else {
+            setCanUpgrade(true);
+          }
+        } else {
+          setCanUpgrade(true);
+        }
+      } catch {
+        if (mounted) setCanUpgrade(true);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [planName]);
+
   const usage = useMemo(() => {
     const limit = sub?.effective_limit ?? 0;
     const count = sub?.monthly_generation_count ?? 0;
@@ -322,9 +350,34 @@ export default function AccountSettingsModal({ open, onClose }) {
                       <div className="text-white capitalize font-medium">{planName}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button onClick={() => { window.location.href = '/upgrade'; }} className="bg-purple-600 hover:bg-purple-500 text-white gap-2">
-                        Upgrade
-                        <CircleFadingArrowUp className="w-4 h-4" />
+                      {canUpgrade && (
+                        <Button onClick={() => { window.location.href = '/upgrade'; }} className="bg-purple-600 hover:bg-purple-500 text-white gap-2">
+                          Upgrade
+                          <CircleFadingArrowUp className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Button
+                        disabled={openingPortal}
+                        onClick={async () => {
+                          try {
+                            setOpeningPortal(true);
+                            const res = await fetch('/api/billing/portal', { method: 'POST', credentials: 'include' });
+                            const data = await res.json().catch(() => ({}));
+                            if (res.ok && data?.url) {
+                              window.open(data.url, '_blank', 'noopener,noreferrer');
+                            } else {
+                              throw new Error(data?.error || 'Failed to open billing portal');
+                            }
+                          } catch (e) {
+                            toast({ title: 'Billing', description: e.message || 'Could not open billing portal', variant: 'destructive' });
+                          } finally {
+                            setOpeningPortal(false);
+                          }
+                        }}
+                        className="bg-purple-600 hover:bg-purple-500 text-white gap-2"
+                      >
+                        Manage
+                        <ExternalLink className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
@@ -357,7 +410,7 @@ export default function AccountSettingsModal({ open, onClose }) {
                         }}
                         className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 gap-2"
                       >
-                        Manage
+                        Billing Settings
                         <ExternalLink className="w-4 h-4" />
                       </Button>
                     </div>

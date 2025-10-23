@@ -26,6 +26,7 @@ export default function AccountSettingsModal({ open, onClose }) {
   const [savingProfile, setSavingProfile] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [openingPortal, setOpeningPortal] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -282,10 +283,34 @@ export default function AccountSettingsModal({ open, onClose }) {
                       <div className="text-sm text-zinc-400">Current plan</div>
                       <div className="text-white capitalize font-medium">{planName}</div>
                     </div>
-                    <Button onClick={() => { window.location.href = '/upgrade'; }} className="bg-purple-600 hover:bg-purple-500 text-white gap-2">
-                      Upgrade
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button onClick={() => { window.location.href = '/upgrade'; }} className="bg-purple-600 hover:bg-purple-500 text-white gap-2">
+                        Upgrade
+                        <ArrowRight className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        disabled={openingPortal}
+                        onClick={async () => {
+                          try {
+                            setOpeningPortal(true);
+                            const res = await fetch('/api/billing/portal', { method: 'POST', credentials: 'include' });
+                            const data = await res.json().catch(() => ({}));
+                            if (res.ok && data?.url) {
+                              window.location.href = data.url;
+                            } else {
+                              throw new Error(data?.error || 'Failed to open billing portal');
+                            }
+                          } catch (e) {
+                            toast({ title: 'Billing', description: e.message || 'Could not open billing portal', variant: 'destructive' });
+                          } finally {
+                            setOpeningPortal(false);
+                          }
+                        }}
+                        className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                      >
+                        Manage billing
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="h-px bg-zinc-800" />

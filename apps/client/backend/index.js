@@ -13,6 +13,7 @@ import { feedbackRouter } from './routes/feedback.js';
 import { ordersRouter } from './routes/orders.js';
 import { imagesRouter } from './routes/images.js';
 import { plansRouter } from './routes/plans.js';
+import { billingRouter, registerStripeWebhook } from './routes/billing.js';
 import { profileRouter } from './routes/profile.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { limiter } from './middleware/rateLimiter.js';
@@ -73,6 +74,9 @@ async function startServer() {
       allowedHeaders: ['Content-Type', 'Authorization']
     }));
 
+    // Register Stripe webhook BEFORE JSON parser to preserve raw body for signature verification
+    registerStripeWebhook(app);
+
     // Middleware
     // Increase JSON body limit to handle base64 images (50MB)
     app.use(express.json({ limit: '50mb' }));
@@ -99,6 +103,7 @@ async function startServer() {
     app.use('/api/images', imagesRouter);
     app.use('/api/plans', plansRouter);
     app.use('/api/profile', profileRouter);
+    app.use('/api/billing', billingRouter);
     app.use('/api/orders', ordersRouter);
 
     // Health check endpoint with detailed status

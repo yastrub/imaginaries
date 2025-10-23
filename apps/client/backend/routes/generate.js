@@ -182,6 +182,52 @@ if (isDevelopment) {
   router.use('/uploads', express.static(UPLOADS_DIR));
 }
 
+// Quota endpoint: monthly image generation quota and usage
+router.get('/quota', auth, async (req, res) => {
+  try {
+    if (!req.user?.id) return res.status(401).json({ error: 'Authentication required' });
+
+    const userId = req.user.id;
+    // Determine user's plan
+    const planResult = await query('SELECT subscription_plan FROM users WHERE id = $1', [userId]);
+    const planKey = planResult.rows?.[0]?.subscription_plan || 'free';
+
+    // Monthly paid + free limits from plans table (fallback free=3 if both zero)
+    let limitPaid = 0;
+    let limitFree = 0;
+    try {
+      const limitRes = await query('SELECT max_generations_per_month, max_free_generations FROM plans WHERE key = $1', [planKey]);
+      limitPaid = parseInt(limitRes.rows?.[0]?.max_generations_per_month ?? 0, 10) || 0;
+      limitFree = parseInt(limitRes.rows?.[0]?.max_free_generations ?? 0, 10) || 0;
+    } catch {}
+    if ((limitPaid + limitFree) <= 0 && planKey === 'free') limitFree = 3;
+    const effectiveLimit = Math.max(0, limitPaid + limitFree);
+
+    const startOfMonth = new Date();
+    startOfMonth.setUTCDate(1);
+    startOfMonth.setUTCHours(0, 0, 0, 0);
+
+    const countRes = await query('SELECT COUNT(*) FROM images WHERE user_id = $1 AND created_at >= $2', [userId, startOfMonth.toISOString()]);
+    const used = parseInt(countRes.rows?.[0]?.count ?? 0, 10) || 0;
+
+    const unlimited = effectiveLimit <= 0 ? false : false; // explicit limits only; treat 0 as hard 0
+    const remaining = Math.max(0, effectiveLimit - used);
+
+    return res.json({
+      plan: planKey,
+      limit: effectiveLimit,
+      limitPaid,
+      limitFree,
+      used,
+      remaining,
+      periodStart: startOfMonth.toISOString(),
+    });
+  } catch (err) {
+    console.error('[Server] Quota endpoint error:', err);
+    return res.status(500).json({ error: 'Failed to load quota' });
+  }
+});
+
 // Public gallery route - no auth required but we'll check for auth token if present
 router.get('/public', async (req, res) => {
   try {

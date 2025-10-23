@@ -13,6 +13,10 @@ export type Plan = {
   name: string;
   description?: string | null;
   max_generations_per_day: number;
+  max_generations_per_month?: number;
+  max_free_generations?: number;
+  stripe_price_monthly_id?: string | null;
+  stripe_price_annual_id?: string | null;
   show_watermark: boolean;
   allow_private_images: boolean;
   price_cents: number;
@@ -59,7 +63,10 @@ export default function PlansPage() {
     // defaults
     form.setFieldsValue({
       currency: 'USD',
-      max_generations_per_day: 0,
+      max_generations_per_month: 0,
+      max_free_generations: 0,
+      stripe_price_monthly_id: '',
+      stripe_price_annual_id: '',
       show_watermark: true,
       allow_private_images: false,
       price_dollars: 0,
@@ -77,7 +84,10 @@ export default function PlansPage() {
       key: row.key,
       name: row.name,
       description: row.description || '',
-      max_generations_per_day: row.max_generations_per_day,
+      max_generations_per_month: (row as any).max_generations_per_month ?? 0,
+      max_free_generations: (row as any).max_free_generations ?? 0,
+      stripe_price_monthly_id: (row as any).stripe_price_monthly_id || '',
+      stripe_price_annual_id: (row as any).stripe_price_annual_id || '',
       show_watermark: row.show_watermark,
       allow_private_images: row.allow_private_images,
       price_dollars: (row.price_cents || 0) / 100,
@@ -95,7 +105,10 @@ export default function PlansPage() {
       key: values.key,
       name: values.name,
       description: values.description || null,
-      max_generations_per_day: Number(values.max_generations_per_day) || 0,
+      max_generations_per_month: Number(values.max_generations_per_month) || 0,
+      max_free_generations: Number(values.max_free_generations) || 0,
+      stripe_price_monthly_id: (values.stripe_price_monthly_id || null) || null,
+      stripe_price_annual_id: (values.stripe_price_annual_id || null) || null,
       show_watermark: !!values.show_watermark,
       allow_private_images: !!values.allow_private_images,
       price_cents: Math.round((Number(values.price_dollars) || 0) * 100),
@@ -133,7 +146,10 @@ export default function PlansPage() {
           sorter
           render={(cents: number, row: Plan) => <Text>{formatPrice(cents, row.currency)}</Text>}
         />
-        <Table.Column<Plan> dataIndex="max_generations_per_day" title="Max/Day" width={110} sorter />
+        <Table.Column<Plan> dataIndex="max_generations_per_month" title="Max/Month" width={120} sorter />
+        <Table.Column<Plan> dataIndex="max_free_generations" title="Free/Month" width={120} sorter />
+        <Table.Column<Plan> dataIndex="stripe_price_monthly_id" title="Stripe Price (Monthly)" width={240} />
+        <Table.Column<Plan> dataIndex="stripe_price_annual_id" title="Stripe Price (Annual)" width={240} />
         <Table.Column<Plan>
           dataIndex="show_watermark"
           title="Watermark"
@@ -194,8 +210,17 @@ export default function PlansPage() {
           <Form.Item name="annual_price_dollars" label="Annual Price (USD)">
             <InputNumber min={0} step={0.01} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="max_generations_per_day" label="Max Generations / Day">
+          <Form.Item name="max_generations_per_month" label="Max Generations / Month">
             <InputNumber min={0} step={1} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="max_free_generations" label="Free Generations / Month">
+            <InputNumber min={0} step={1} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="stripe_price_monthly_id" label="Stripe Price ID (Monthly)">
+            <Input placeholder="price_..." />
+          </Form.Item>
+          <Form.Item name="stripe_price_annual_id" label="Stripe Price ID (Annual)">
+            <Input placeholder="price_..." />
           </Form.Item>
           <Form.Item name="show_watermark" label="Show Watermark" valuePropName="checked">
             <Switch />

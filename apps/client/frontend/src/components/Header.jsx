@@ -28,6 +28,8 @@ export const Header = React.memo(function Header({
   const dropdownRef = useRef(null);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isBugModalOpen, setIsBugModalOpen] = useState(false);
+  const [quota, setQuota] = useState(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
   
   // Determine if we're on a gallery page based on the current path
   const isGalleryPage = window.location.pathname.startsWith('/gallery');
@@ -129,12 +131,47 @@ export const Header = React.memo(function Header({
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [isDropdownOpen]);
 
+  useEffect(() => {
+    let active = true;
+    async function loadQuota() {
+      if (!isAuthenticated) { setQuota(null); return; }
+      try {
+        setQuotaLoading(true);
+        const res = await fetch('/api/generate/quota', { credentials: 'include' });
+        if (!active) return;
+        if (res.ok) {
+          const data = await res.json();
+          setQuota(data);
+        } else {
+          setQuota(null);
+        }
+      } catch {
+        if (active) setQuota(null);
+      } finally {
+        if (active) setQuotaLoading(false);
+      }
+    }
+    loadQuota();
+    return () => { active = false; };
+  }, [isAuthenticated]);
+
   return (
     <header className="fixed top-0 left-0 right-0 p-4 flex flex-col sm:flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm z-50 gap-4 sm:gap-0">
       <div className="font-mono text-zinc-600 text-sm text-center sm:text-left">
         IMAGINARIES (by OctaDiam)
       </div>
       <nav className="flex items-center gap-4">
+        {isAuthenticated && (
+          <div
+            className={`px-2 py-1 rounded-md border text-xs ${quota && quota.limit === null ? 'border-zinc-700 text-zinc-300' : (quota && (quota.remaining ?? 0) === 0 ? 'border-red-600 text-red-400' : 'border-zinc-700 text-zinc-300')} hidden sm:inline-flex items-center gap-2`}
+            title="Monthly image quota"
+          >
+            <span>Left:</span>
+            <span>
+              {quotaLoading ? '…' : (quota ? (quota.limit === null ? '∞' : Math.max(0, quota.remaining ?? 0)) : '—')}
+            </span>
+          </div>
+        )}
         {isAuthenticated && (
           <Button
             size="sm"

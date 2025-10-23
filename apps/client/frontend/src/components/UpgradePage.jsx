@@ -190,7 +190,7 @@ export function UpgradePage() {
                 )}
 
                 <ul className="text-sm text-zinc-300 space-y-2 mt-2">
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-400" /> {p.maxGenerationsPerDay} generations per day</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-400" /> {p.maxGenerationsPerMonthEffective && p.maxGenerationsPerMonthEffective > 0 ? `${p.maxGenerationsPerMonthEffective} generations per month` : 'Unlimited generations'}</li>
                   <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-400" /> High-res generations</li>
                   <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-400" /> {p.allowPrivateImages ? 'Private galleries' : 'Public gallery only'}</li>
                   <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-400" /> {p.requiresWatermark ? 'Watermark enabled' : 'No watermark'}</li>

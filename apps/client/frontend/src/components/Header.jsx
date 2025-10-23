@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { History, LogIn, LogOut, Grid, Sparkles, Crown, User, Settings, Bug } from 'lucide-react';
 import { Button } from './ui/button';
 import { getVersionString } from '../config/app';
@@ -185,10 +185,18 @@ export const Header = React.memo(function Header({
     return () => { mounted = false; };
   }, [currentPlanKey, isAuthenticated]);
 
+  const planSuffix = useMemo(() => {
+    if (isAuthenticated) {
+      const match = plansList.find(p => p.key === currentPlanKey);
+      if (match?.name) return match.name;
+    }
+    return 'OctaDiam';
+  }, [isAuthenticated, plansList, currentPlanKey]);
+
   return (
     <header className="fixed top-0 left-0 right-0 p-4 flex flex-col sm:flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm z-50 gap-4 sm:gap-0">
       <div className="font-mono text-zinc-600 text-sm text-center sm:text-left">
-        IMAGINARIES (OctaDiam)
+        IMAGINARIES ({planSuffix})
       </div>
       <nav className="flex items-center gap-4">
         

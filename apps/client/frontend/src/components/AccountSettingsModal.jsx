@@ -355,7 +355,7 @@ export default function AccountSettingsModal({ open, onClose }) {
                             setOpeningPortal(false);
                           }
                         }}
-                        className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                        className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 gap-2"
                       >
                         Manage
                         <ExternalLink className="w-4 h-4" />

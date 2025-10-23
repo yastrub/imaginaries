@@ -334,7 +334,7 @@ export default function AccountSettingsModal({ open, onClose }) {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-sm text-zinc-400">Billing</div>
-                      <div className="text-white font-medium">Payments &apm; Invoices</div>
+                      <div className="text-white font-medium">Payments &amp; Invoices</div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button

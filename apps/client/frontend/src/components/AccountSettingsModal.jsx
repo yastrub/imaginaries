@@ -326,38 +326,35 @@ export default function AccountSettingsModal({ open, onClose }) {
                         Upgrade
                         <ArrowRight className="w-4 h-4" />
                       </Button>
-                      <Button
-                        disabled={openingPortal}
-                        onClick={async () => {
-                          try {
-                            setOpeningPortal(true);
-                            const res = await fetch('/api/billing/portal', { method: 'POST', credentials: 'include' });
-                            const data = await res.json().catch(() => ({}));
-                            if (res.ok && data?.url) {
-                              window.location.href = data.url;
-                            } else {
-                              throw new Error(data?.error || 'Failed to open billing portal');
-                            }
-                          } catch (e) {
-                            toast({ title: 'Billing', description: e.message || 'Could not open billing portal', variant: 'destructive' });
-                          } finally {
-                            setOpeningPortal(false);
-                          }
-                        }}
-                        className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
-                      >
-                        Manage billing
-                      </Button>
                     </div>
                   </div>
 
                   <div className="h-px bg-zinc-800" />
 
                   <div>
-                    <div className="text-sm text-zinc-400 mb-2">Invoices</div>
-                    <div className="rounded-md border border-zinc-800">
-                      <div className="p-4 text-sm text-zinc-400">No invoices yet.</div>
-                    </div>
+                    <div className="text-sm text-zinc-400 mb-2">Billing</div>
+                    <Button
+                      disabled={openingPortal}
+                      onClick={async () => {
+                        try {
+                          setOpeningPortal(true);
+                          const res = await fetch('/api/billing/portal', { method: 'POST', credentials: 'include' });
+                          const data = await res.json().catch(() => ({}));
+                          if (res.ok && data?.url) {
+                            window.location.href = data.url;
+                          } else {
+                            throw new Error(data?.error || 'Failed to open billing portal');
+                          }
+                        } catch (e) {
+                          toast({ title: 'Billing', description: e.message || 'Could not open billing portal', variant: 'destructive' });
+                        } finally {
+                          setOpeningPortal(false);
+                        }
+                      }}
+                      className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                    >
+                      Manage billing
+                    </Button>
                   </div>
                 </div>
               </TabsContent>

@@ -357,8 +357,8 @@ export default function AccountSettingsModal({ open, onClose }) {
                         }}
                         className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
                       >
-                        Manage billing
-                        <ExternalLink className="w-4 h-4 ml-1" />
+                        Manage
+                        <ExternalLink className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>

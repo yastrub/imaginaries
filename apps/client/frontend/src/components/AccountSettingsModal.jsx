@@ -195,7 +195,7 @@ export default function AccountSettingsModal({ open, onClose }) {
               <TabsTrigger value="profile" className="text-xs px-2 py-1 text-zinc-300 data-[state=active]:bg-purple-600/20 data-[state=active]:text-white">Name</TabsTrigger>
               <TabsTrigger value="email" className="text-xs px-2 py-1 text-zinc-300 data-[state=active]:bg-purple-600/20 data-[state=active]:text-white">Email</TabsTrigger>
               <TabsTrigger value="security" className="text-xs px-2 py-1 text-zinc-300 data-[state=active]:bg-purple-600/20 data-[state=active]:text-white">Security</TabsTrigger>
-              <TabsTrigger value="billing" className="text-xs px-2 py-1 text-zinc-300 data-[state=active]:bg-purple-600/20 data-[state=active]:text-white">Billing</TabsTrigger>
+              <TabsTrigger value="subscription" className="text-xs px-2 py-1 text-zinc-300 data-[state=active]:bg-purple-600/20 data-[state=active]:text-white">Subscription</TabsTrigger>
             </TabsList>
           </div>
           <div className="flex-1 flex h-full items-stretch min-h-0">
@@ -212,8 +212,8 @@ export default function AccountSettingsModal({ open, onClose }) {
                 <TabsTrigger value="security" className="justify-start w-full text-zinc-300 data-[state=active]:bg-purple-600/20 data-[state=active]:text-white">
                   <Lock className="w-4 h-4 mr-2" /> Security
                 </TabsTrigger>
-                <TabsTrigger value="billing" className="justify-start w-full text-zinc-300 data-[state=active]:bg-purple-600/20 data-[state=active]:text-white">
-                  <Receipt className="w-4 h-4 mr-2" /> Billing
+                <TabsTrigger value="subscription" className="justify-start w-full text-zinc-300 data-[state=active]:bg-purple-600/20 data-[state=active]:text-white">
+                  <Receipt className="w-4 h-4 mr-2" /> Subscription
                 </TabsTrigger>
               </TabsList>
               </div>
@@ -284,8 +284,8 @@ export default function AccountSettingsModal({ open, onClose }) {
                 </div>
               </TabsContent>
 
-              {/* Billing */}
-              <TabsContent value="billing">
+              {/* Subscription */}
+              <TabsContent value="subscription">
                 <div className="space-y-4">
                   <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-900/40 p-5">
                     <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
@@ -331,30 +331,35 @@ export default function AccountSettingsModal({ open, onClose }) {
 
                   <div className="h-px bg-zinc-800" />
 
-                  <div>
-                    <div className="text-sm text-zinc-400 mb-2">Billing</div>
-                    <Button
-                      disabled={openingPortal}
-                      onClick={async () => {
-                        try {
-                          setOpeningPortal(true);
-                          const res = await fetch('/api/billing/portal', { method: 'POST', credentials: 'include' });
-                          const data = await res.json().catch(() => ({}));
-                          if (res.ok && data?.url) {
-                            window.location.href = data.url;
-                          } else {
-                            throw new Error(data?.error || 'Failed to open billing portal');
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm text-zinc-400">Billing</div>
+                      <div className="text-white font-medium">Manage billing</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        disabled={openingPortal}
+                        onClick={async () => {
+                          try {
+                            setOpeningPortal(true);
+                            const res = await fetch('/api/billing/portal', { method: 'POST', credentials: 'include' });
+                            const data = await res.json().catch(() => ({}));
+                            if (res.ok && data?.url) {
+                              window.location.href = data.url;
+                            } else {
+                              throw new Error(data?.error || 'Failed to open billing portal');
+                            }
+                          } catch (e) {
+                            toast({ title: 'Billing', description: e.message || 'Could not open billing portal', variant: 'destructive' });
+                          } finally {
+                            setOpeningPortal(false);
                           }
-                        } catch (e) {
-                          toast({ title: 'Billing', description: e.message || 'Could not open billing portal', variant: 'destructive' });
-                        } finally {
-                          setOpeningPortal(false);
-                        }
-                      }}
-                      className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
-                    >
-                      Manage billing
-                    </Button>
+                        }}
+                        className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                      >
+                        Manage billing
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </TabsContent>

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Sparkles } from 'lucide-react';
+import { useSelector } from 'react-redux';
 
 // Create a stable random number generator with a fixed seed
 function seededRandom(seed) {
@@ -13,48 +14,96 @@ function seededRandom(seed) {
 const WelcomeMessageComponent = () => {
   const [quota, setQuota] = useState(null);
   const [loading, setLoading] = useState(true);
+  const isAuthenticated = useSelector((state) => !!state?.auth?.isAuthenticated);
   useEffect(() => {
     let mounted = true;
-    const fetchQuota = async () => {
+    const fetchQuotaOnce = async () => {
       try {
         setLoading(true);
-        const me = await fetch('/api/auth/me', { credentials: 'include' });
-        if (!mounted) return;
-        if (!me.ok) { setQuota(null); return; }
-        const qr = await fetch('/api/generate/quota', { credentials: 'include' });
-        if (!mounted) return;
+        const qr = await fetch('/api/generate/quota', { credentials: 'include', cache: 'no-store' });
+        if (!mounted) return false;
         if (qr.ok) {
           const data = await qr.json();
           setQuota(data);
+          return true;
         } else {
           setQuota(null);
+          return false;
         }
       } catch {
         if (mounted) setQuota(null);
+        return false;
       } finally {
         if (mounted) setLoading(false);
       }
     };
 
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const fetchQuotaWithRetry = async (retries = 3, waitMs = 400) => {
+      for (let i = 0; i < retries; i++) {
+        const ok = await fetchQuotaOnce();
+        if (!mounted) return;
+        if (ok) return;
+        await delay(waitMs);
+      }
+    };
+
     // initial fetch
-    fetchQuota();
+    fetchQuotaWithRetry(2, 300);
 
     // listen for auth changes (setUser/logout dispatches this event)
     const onAuthChanged = (e) => {
-      const authed = !!(e && e.detail && e.detail.isAuthenticated);
+      const d = (e && e.detail) || {};
+      const authed = !!(d.isAuthenticated ?? d.authenticated ?? d.user);
       if (authed) {
-        fetchQuota();
+        // Retry a few times to allow auth cookie to propagate
+        fetchQuotaWithRetry(3, 400);
+        // Schedule a follow-up fetch in case of slow cookie propagation
+        setTimeout(() => { if (mounted) fetchQuotaWithRetry(1, 0); }, 1500);
       } else {
         setQuota(null);
       }
     };
     window.addEventListener('auth-state-changed', onAuthChanged);
 
+    // Refresh when window gains focus (after auth flows)
+    const onFocus = () => {
+      if (document.visibilityState === 'visible') {
+        fetchQuotaWithRetry(2, 300);
+      }
+    };
+    window.addEventListener('focus', onFocus);
+
     return () => {
       mounted = false;
       window.removeEventListener('auth-state-changed', onAuthChanged);
+      window.removeEventListener('focus', onFocus);
     };
   }, []);
+
+  // Also react to Redux auth state changes directly
+  useEffect(() => {
+    let mounted = true;
+    const fetchAfterAuth = async () => {
+      if (!isAuthenticated) { setQuota(null); return; }
+      // quick retry loop
+      for (let i = 0; i < 3; i++) {
+        try {
+          const qr = await fetch('/api/generate/quota', { credentials: 'include' });
+          if (!mounted) return;
+          if (qr.ok) {
+            const data = await qr.json();
+            setQuota(data);
+            return;
+          }
+        } catch {}
+        await new Promise(r => setTimeout(r, 300));
+      }
+    };
+    fetchAfterAuth();
+    return () => { mounted = false; };
+  }, [isAuthenticated]);
   // The text to animate
   const text = "What would you like to imagine?";
 

@@ -122,6 +122,11 @@ const authSlice = createSlice({
         state.user = user;
         // When we get user data, unlock the app
         state.isAppUnlocked = true;
+        // Notify listeners about auth state change
+        try { window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { isAuthenticated: true, user } })); } catch {}
+      } else if (isAuthenticated === false) {
+        // Notify listeners about logout/unauthenticated state
+        try { window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { isAuthenticated: false } })); } catch {}
       }
     },
     
@@ -146,10 +151,14 @@ const authSlice = createSlice({
           state.isAuthenticated = true;
           state.isAppUnlocked = true;
           state.isEmailConfirmed = action.payload.user.email_confirmed || false;
+          // Notify listeners about login/authenticated state
+          try { window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { isAuthenticated: true, user: action.payload.user } })); } catch {}
         } else {
           state.user = null;
           state.isAuthenticated = false;
           state.isAppUnlocked = true; // Unlock app even if not authenticated
+          // Notify listeners about unauthenticated state
+          try { window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { isAuthenticated: false } })); } catch {}
         }
       })
       .addCase(checkAuthStatus.rejected, (state, action) => {
@@ -158,6 +167,8 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.user = null; // Ensure user is cleared on rejection
         state.isAppUnlocked = true; // Unlock app even if there's an error
+        // Notify listeners about unauthenticated/error state
+        try { window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { isAuthenticated: false } })); } catch {}
       })
       
       // Handle email confirmation check

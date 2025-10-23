@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Settings, Mail, Lock, Receipt, User as UserIcon, ExternalLink, Loader2 } from 'lucide-react';
+import { X, Settings, Mail, Lock, Receipt, User as UserIcon, ExternalLink, Loader2, CircleFadingArrowUp } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { useToast } from './ui/use-toast';
 import { Button } from './ui/button';
@@ -322,9 +322,9 @@ export default function AccountSettingsModal({ open, onClose }) {
                       <div className="text-white capitalize font-medium">{planName}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button onClick={() => { window.open('/upgrade', '_blank', 'noopener,noreferrer'); }} className="bg-purple-600 hover:bg-purple-500 text-white gap-2">
+                      <Button onClick={() => { window.location.href = '/upgrade'; }} className="bg-purple-600 hover:bg-purple-500 text-white gap-2">
                         Upgrade
-                        <ExternalLink className="w-4 h-4" />
+                        <CircleFadingArrowUp className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>

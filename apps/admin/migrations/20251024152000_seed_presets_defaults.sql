@@ -100,7 +100,7 @@ SELECT s.id, 'many-stones', 'Many Stones', '{"section":"Stones","group":"Stone C
 ON CONFLICT DO NOTHING;
 
 -- ai_defaults (provider/model per purpose)
-INSERT INTO ai_defaults (purpose, provider_key, model_key, updated_at)
+INSERT INTO ai_defaults (purpose, provider_key, model_key)
 VALUES
   ('image', 'openai', NULL),
   ('sketch', 'openai', NULL),

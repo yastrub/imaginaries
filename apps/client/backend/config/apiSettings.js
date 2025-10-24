@@ -68,8 +68,7 @@ export const settings = {
                 }
               ]
             }
-          ],
-          "max_tokens": 300
+          ]
         }
       },
       openai_estimate: {
@@ -97,7 +96,6 @@ export const settings = {
               ]
             }
           ],
-          "max_tokens": 300
         }
       },
       replicate: {

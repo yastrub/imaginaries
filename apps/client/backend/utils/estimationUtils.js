@@ -5,7 +5,7 @@ import { settings } from '../config/apiSettings.js';
  * Process an image with OpenAI to estimate jewelry price
  * @param {string} imageUrl - URL of the image to process
  * @param {string} prompt - The prompt used to generate the image
- * @returns {Promise<string>} - Estimated price range
+ * @returns {Promise<string>} - Comma-separated four prices "a,b,c,d" (USD, integers)
  */
 export async function processImageEstimation(imageUrl, prompt = '') {
   try {
@@ -46,60 +46,49 @@ export async function processImageEstimation(imageUrl, prompt = '') {
     }
     
     const data = await response.json();
-    
-    // Extract the price estimation from the response
-    let estimatedCost = data.choices[0].message.content.trim();
-    console.log('[Server] Raw estimated cost from OpenAI:', estimatedCost);
-    
-    // Use regex to extract price range in format $X,XXX - $Y,YYY
-    const priceRangeRegex = /\$([0-9,]+)\s*-\s*\$([0-9,]+)/;
-    const match = estimatedCost.match(priceRangeRegex);
-    
-    if (match) {
-      // We found a price range, extract the numbers and format consistently
-      const lowerPrice = match[1].replace(/,/g, '');
-      const upperPrice = match[2].replace(/,/g, '');
-      
-      // Format with commas for thousands
-      const formattedLower = Number(lowerPrice).toLocaleString('en-US');
-      const formattedUpper = Number(upperPrice).toLocaleString('en-US');
-      
-      // Create a clean, consistent format
-      estimatedCost = `$${formattedLower} - $${formattedUpper}`;
-    } else {
-      // Try to find any dollar amounts if the range format wasn't found
-      const dollarAmountRegex = /\$([0-9,]+)/g;
-      const amounts = [];
-      let dollarMatch;
-      
-      while ((dollarMatch = dollarAmountRegex.exec(estimatedCost)) !== null) {
-        amounts.push(dollarMatch[1].replace(/,/g, ''));
-      }
-      
-      if (amounts.length >= 2) {
-        // If we found at least two dollar amounts, use the first and last
-        const formattedLower = Number(amounts[0]).toLocaleString('en-US');
-        const formattedUpper = Number(amounts[amounts.length - 1]).toLocaleString('en-US');
-        estimatedCost = `$${formattedLower} - $${formattedUpper}`;
-      } else if (amounts.length === 1) {
-        // If we only found one amount, create a range around it (±20%)
-        const amount = Number(amounts[0]);
-        const lowerBound = Math.floor(amount * 0.8);
-        const upperBound = Math.ceil(amount * 1.2);
-        
-        const formattedLower = lowerBound.toLocaleString('en-US');
-        const formattedUpper = upperBound.toLocaleString('en-US');
-        estimatedCost = `$${formattedLower} - $${formattedUpper}`;
-      } else {
-        // No dollar amounts found
-        console.log('[Server] Invalid price format, no dollar amounts found:', estimatedCost);
-        estimatedCost = 'N/A';
-      }
+
+    // Expect four comma-separated numbers, e.g. "120,180,950,2400"
+    const raw = String(data?.choices?.[0]?.message?.content || '').trim();
+    console.log('[Server] Raw estimated prices from OpenAI:', raw);
+
+    // Sanitize and parse numbers
+    const cleaned = raw
+      .replace(/\$|USD|usd|\s/g, '')
+      .replace(/,+/g, ',')
+      .replace(/;+/g, ',')
+      .replace(/\|/g, ',');
+
+    const parts = cleaned.split(',').map(s => s.trim()).filter(Boolean);
+    const nums = parts.map(p => {
+      const n = Number(p.replace(/[^0-9.]/g, ''));
+      return Number.isFinite(n) ? Math.round(n) : NaN;
+    }).filter(n => Number.isFinite(n));
+
+    if (nums.length >= 4) {
+      const prices = nums.slice(0, 4);
+      const text = prices.join(',');
+      console.log('[Server] Parsed estimated prices:', text);
+      return text;
     }
-    
-    console.log('[Server] Estimated cost (formatted):', estimatedCost);
-    
-    return estimatedCost;
+
+    // Backward compatibility fallback: derive a single price and expand to four heuristically
+    const fallbackRegex = /\$?([0-9][0-9,\.]+)/g;
+    const found = [];
+    let m;
+    while ((m = fallbackRegex.exec(raw)) && found.length < 1) {
+      const n = Number(String(m[1]).replace(/,/g, ''));
+      if (Number.isFinite(n)) found.push(Math.round(n));
+    }
+    if (found.length) {
+      const base = found[0];
+      const prices = [Math.round(base * 0.5), Math.round(base * 0.7), Math.round(base), Math.round(base * 1.6)];
+      const text = prices.join(',');
+      console.log('[Server] Fallback estimated prices:', text);
+      return text;
+    }
+
+    // No parse possible
+    throw new Error('Failed to parse price estimation response');
   } catch (error) {
     console.error('[Server] Error processing image for estimation:', error);
     throw error;

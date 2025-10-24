@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
         o.image_id,
         o.notes,
         o.estimated_price_text,
+        o.selected_option,
+        o.selected_price_cents,
         o.actual_price_cents,
         o.created_at,
         o.updated_at,
@@ -66,23 +68,23 @@ export async function POST(req: NextRequest) {
     if (!auth.authorized) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const body = await req.json();
-    const { user_id, image_id, notes = null, estimated_price_text = null, actual_price_cents = null, status = undefined } = body || {};
+    const { user_id, image_id, notes = null, estimated_price_text = null, selected_option = null, selected_price_cents = null, actual_price_cents = null, status = undefined } = body || {};
     if (!user_id || !image_id) {
       return NextResponse.json({ error: 'user_id and image_id are required' }, { status: 400 });
     }
 
     const hasStatus = typeof status === 'string' && status.length > 0;
     const sql = hasStatus
-      ? `INSERT INTO orders (user_id, image_id, notes, estimated_price_text, actual_price_cents, status)
-         VALUES ($1,$2,$3,$4,$5,$6)
+      ? `INSERT INTO orders (user_id, image_id, notes, estimated_price_text, selected_option, selected_price_cents, actual_price_cents, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
          RETURNING *`
-      : `INSERT INTO orders (user_id, image_id, notes, estimated_price_text, actual_price_cents)
-         VALUES ($1,$2,$3,$4,$5)
+      : `INSERT INTO orders (user_id, image_id, notes, estimated_price_text, selected_option, selected_price_cents, actual_price_cents)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
          RETURNING *`;
 
     const values = hasStatus
-      ? [user_id, image_id, notes, estimated_price_text, actual_price_cents, status]
-      : [user_id, image_id, notes, estimated_price_text, actual_price_cents];
+      ? [user_id, image_id, notes, estimated_price_text, selected_option, selected_price_cents, actual_price_cents, status]
+      : [user_id, image_id, notes, estimated_price_text, selected_option, selected_price_cents, actual_price_cents];
 
     const ins = await query(sql, values);
 

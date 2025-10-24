@@ -17,7 +17,7 @@ export const settings = {
     
     // Provider-specific settings
     providers: {
-      openai: {
+      openai_dalle: {
         api_url: 'https://api.openai.com/v1/images/generations',
         params: {
           model: 'dall-e-3', // dall-e-3, gpt-4o, gpt-image-1
@@ -26,7 +26,7 @@ export const settings = {
           style: 'natural'
         }
       },
-      openai_image: {
+      openai: {
         api_url: 'https://api.openai.com/v1/images/generations',
         params: {
           model: 'gpt-image-1', // dall-e-3, gpt-image-1
@@ -47,7 +47,7 @@ export const settings = {
       openai_sketch: {
         api_url: 'https://api.openai.com/v1/chat/completions',
         params: {
-          model: 'gpt-4o-mini',
+          model: 'gpt-5',
           "messages": [
             {
               "role": "developer",
@@ -75,11 +75,11 @@ export const settings = {
       openai_estimate: {
         api_url: 'https://api.openai.com/v1/chat/completions',
         params: {
-          model: 'gpt-4o-mini',
+          model: 'gpt-5',
           "messages": [
             {
               "role": "developer",
-              "content": "You are the professional jewelry appraiser. Your mission is to estimate uploaded jewerly design in terms of production cost. You must try to estimate jewelry based on approximate gold weight and stones quantity and total Carat from the image if no additional information is provided in user prompt. We work only with 18k gold (white, rose, yellow) and natural or lab grown stones (Diamonds, Rubies, Blue Sapphires, Emeralds). Consider if a jewelry has most likely spherical / 3D type of form (not flat), then it most likely has same stones quantity on the other (not visible) side, then simply double the visible quantity of stones. OUR COSTING SYSTEM: 1 gram of 18k gold - $140, 1 Carat of natural stones - $1,400, 1 Carat of lab grown stones - $320. Try to be as close to the price range as possible. Only give exact pure price range, nothing else, do not mention image. You MUST provide response anyway, you must provide a RESPONSE in a format (NO OTHER WORDS): $1,000 - $2,000"
+              "content": "You are a professional jewelry appraiser. You must identify the jewelry type, shape, materials, size, stones (possibly even not visible) from the image. Given a jewelry image and optional text, estimate approximate USD retail prices (single numbers, not ranges) for exactly these four material configurations: (1) Sterling Silver + Moissanites, (2) Gold Vermeil + Moissanites, (3) 18K Gold + Lab Diamonds, (4) 18K Gold + Natural Diamonds. Always output only four comma-separated numbers in USD with NO currency symbols, units, spaces, or extra words. Example: 120,180,950,2400. You must always produce four numbers, even if you need to approximate."
             },
             {
               "role": "user",

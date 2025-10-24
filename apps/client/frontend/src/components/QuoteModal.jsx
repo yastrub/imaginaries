@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, DollarSign } from 'lucide-react';
+import { X, Loader2, DollarSign, Check } from 'lucide-react';
 import { Button } from './ui/button';
 import { useReduxAuth } from '../hooks/useReduxAuth';
 import { useToast } from './ui/use-toast';
@@ -13,7 +13,15 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
   const [error, setError] = useState(null);
   const [step, setStep] = useState(1); // 1: Estimation, 2: Form (non-authed), 3: Success
   const [isEstimating, setIsEstimating] = useState(false);
-  const [estimatedCost, setEstimatedCost] = useState(null);
+  const [estimatedCost, setEstimatedCost] = useState(null); // expected CSV: a,b,c,d
+  const [parsedPrices, setParsedPrices] = useState(null); // [n1, n2, n3, n4]
+  const [selectedIdx, setSelectedIdx] = useState(null);
+  const OPTION_LABELS = [
+    'Sterling Silver + Moissanites',
+    'Gold Vermeil + Moissanites',
+    '18K Gold + Lab Diamonds',
+    '18K Gold + Natural Diamonds',
+  ];
   
   const [formData, setFormData] = useState({
     name: '',
@@ -71,11 +79,19 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
 
       const data = await response.json();
       console.log('QuoteModal: Received estimation data:', data);
-      
-      // Handle the case where the server returns a formatted price string or a number
-      const estimatedCost = data.estimatedCost || data.estimated_cost || 'N/A';
-      setEstimatedCost(estimatedCost);
-      setFormData(prev => ({ ...prev, estimatedCost: estimatedCost }));
+
+      const legacy = data.estimatedCost || data.estimated_cost || 'N/A';
+      setEstimatedCost(legacy);
+      setFormData(prev => ({ ...prev, estimatedCost: legacy }));
+
+      // Parse CSV into 4 numbers
+      if (typeof legacy === 'string') {
+        const parts = legacy.split(',').map(s => s.trim()).filter(Boolean);
+        const nums = parts.map(p => Number(String(p).replace(/[^0-9.]/g, ''))).filter(n => Number.isFinite(n));
+        if (nums.length >= 4) setParsedPrices(nums.slice(0,4)); else setParsedPrices(null);
+      } else {
+        setParsedPrices(null);
+      }
       
       // Trigger global confetti effect when we get the price
       triggerConfetti(CONFETTI_EVENTS.PRICE_ESTIMATION);
@@ -141,39 +157,51 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
       setIsSubmitting(false);
     }
   };
-  
-  const handleProceedToForm = async () => {
-    // If user is authenticated, skip the details form and place order immediately
-    if (isAuthenticated) {
-      try {
-        setIsSubmitting(true);
-        setError(null);
-        const response = await fetch('/api/orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            imageId: image.id,
-            notes: '',
-            // Pass estimated cost text so backend can persist if image doesn't store it
-            estimatedPriceText: estimatedCost || formData.estimatedCost || null
-          })
-        });
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || 'Failed to place order');
-        }
-        triggerConfetti(CONFETTI_EVENTS.PRICE_ESTIMATION);
-        setStep(3); // Success
-      } catch (e) {
-        setError(e.message);
-        toast({ title: 'Order failed', description: e.message, variant: 'destructive' });
-      } finally {
-        setIsSubmitting(false);
-      }
-    } else {
-      setStep(2);
+
+  const formatUSD = (n) => {
+    try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n); } catch { return `$${Math.round(n).toLocaleString('en-US')}`; }
+  };
+
+  const handleOrder = async (idx) => {
+    if (!Array.isArray(parsedPrices) || parsedPrices.length < 4) return;
+    if (!isAuthenticated || !isEmailConfirmed) {
+      openAuthModal();
+      return;
     }
+    const price = Number(parsedPrices[idx]) || 0;
+    const option = OPTION_LABELS[idx];
+    try {
+      setIsSubmitting(true);
+      setError(null);
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          imageId: image.id,
+          notes: '',
+          estimatedPriceText: estimatedCost || formData.estimatedCost || null,
+          selectedOption: option,
+          selectedPriceCents: Math.round(price * 100),
+        })
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to place order');
+      }
+      triggerConfetti(CONFETTI_EVENTS.PRICE_ESTIMATION);
+      setStep(3);
+    } catch (e) {
+      setError(e.message);
+      toast({ title: 'Order failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOrderSelected = async () => {
+    if (selectedIdx == null) return;
+    await handleOrder(selectedIdx);
   };
   
   // Handle backdrop click to close modal
@@ -254,41 +282,61 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                   <p className="text-zinc-300 text-center">Estimating your jewelry price...</p>
                   <p className="text-zinc-500 text-sm text-center mt-2">This may take a moment</p>
                 </div>
-              ) : estimatedCost ? (
+              ) : Array.isArray(parsedPrices) && parsedPrices.length >= 4 ? (
                 <div className="space-y-6">
-                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-6 relative overflow-hidden">
+                  <div className="rounded-lg p-4 bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 border border-zinc-700/60">
+                    <div className="flex items-center gap-2 mb-3">
+                      <DollarSign className="w-5 h-5 text-amber-400" />
+                      <h3 className="text-zinc-200 text-sm">Select a material & stone configuration</h3>
+                    </div>
+                    <div role="radiogroup" className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {OPTION_LABELS.map((label, idx) => {
+                        const active = selectedIdx === idx;
+                        return (
+                          <label key={idx} className={`rounded-md border p-3 cursor-pointer transition-colors ${active ? 'border-amber-400 bg-amber-500/10' : 'border-zinc-700/70 bg-zinc-900/70 hover:border-zinc-600'}`}
+                                 onClick={() => setSelectedIdx(idx)}>
+                            <input
+                              type="radio"
+                              name="quote-option"
+                              className="sr-only"
+                              checked={active}
+                              onChange={() => setSelectedIdx(idx)}
+                              aria-label={label}
+                            />
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-3">
+                                <span className={`mt-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full border ${active ? 'border-amber-400' : 'border-zinc-600'}`}>
+                                  <span className={`block w-2.5 h-2.5 rounded-full ${active ? 'bg-amber-400' : 'bg-transparent'}`}></span>
+                                </span>
+                                <div className="text-zinc-200 text-sm leading-tight">{label}</div>
+                              </div>
+                              <div className="text-amber-300 font-semibold">{formatUSD(parsedPrices[idx])}</div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-4">
+                      <Button className="w-full" disabled={selectedIdx == null || isSubmitting} onClick={handleOrderSelected}>
+                        Order Selected
+                      </Button>
+                    </div>
+                    <p className="text-zinc-500 text-xs mt-3">Final pricing may vary based on precise materials, sizing, and customization. Production by <strong>OCTADIAM</strong>, Dubai, UAE.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-6">
                     <div className="flex items-center justify-center mb-3">
                       <DollarSign className="w-8 h-8 text-amber-400" />
                     </div>
-                    <h3 className="text-center text-lg font-medium text-amber-400 mb-2">Price Estimation</h3>
-                    <div className="relative">
-                      <p className="text-center text-2xl font-bold text-amber-300 mb-4">{estimatedCost} USD</p>
-                      {/* Removed inline confetti - now using global container */}
-                    </div>
-                    <p className="text-justify text-zinc-300 text-xs">
-                      Based on your design, materials, and stone types (lab grown or natural), we've estimated the price range for your jewelry. Final price may be adjusted based on the actual materials used. <br /> <br /> This product will be manufactured at <strong>OCTADIAM</strong> Factory, Dubai, UAE.
-                    </p>
+                    <h3 className="text-center text-lg font-medium text-amber-400 mb-2">Estimated Price</h3>
+                    <p className="text-center text-2xl font-bold text-amber-300 mb-4">{estimatedCost ? `${estimatedCost} USD` : 'N/A'}</p>
+                    <p className="text-justify text-zinc-300 text-xs">We could not compute all four options, but you can still order and our team will advise the best configuration for your budget.</p>
                   </div>
                   <div className="flex justify-center">
-                    <Button 
-                      onClick={handleProceedToForm}
-                      className="w-full max-w-xs"
-                      disabled={isSubmitting}
-                    >
-                      Order Now
-                    </Button>
+                    <Button onClick={() => handleOrder(2)} className="w-full max-w-xs" disabled={isSubmitting}>Order</Button>
                   </div>
-              </div>
-            ) : (
-                <div className="flex flex-col items-center justify-center py-8">
-                  <p className="text-zinc-300 text-center">Unable to estimate price</p>
-                  <Button 
-                    onClick={handleProceedToForm}
-                    className="mt-4"
-                    disabled={isSubmitting}
-                  >
-                    Order Now
-                  </Button>
                 </div>
               )}
             </div>

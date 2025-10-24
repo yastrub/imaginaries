@@ -9,7 +9,14 @@ const router = express.Router();
 router.post('/', auth, async (req, res) => {
   try {
     const user = req.user; // from auth middleware
-    const { imageId, notes = '', estimatedPriceText = null } = req.body || {};
+    const {
+      imageId,
+      notes = '',
+      estimatedPriceText = null,
+      selectedOption = null,
+      selectedPriceCents: selectedPriceCentsRaw = null,
+      selectedPriceDollars = null,
+    } = req.body || {};
 
     if (!imageId) {
       return res.status(400).json({ error: 'imageId is required' });
@@ -44,13 +51,30 @@ router.post('/', auth, async (req, res) => {
       } catch {}
     }
 
+    // Normalize selected price to cents if provided
+    let selectedPriceCents = null;
+    if (typeof selectedPriceCentsRaw === 'number' && Number.isFinite(selectedPriceCentsRaw)) {
+      selectedPriceCents = Math.round(selectedPriceCentsRaw);
+    } else if (selectedPriceDollars != null) {
+      const dollarsNum = Number(selectedPriceDollars);
+      if (Number.isFinite(dollarsNum)) selectedPriceCents = Math.round(dollarsNum * 100);
+    }
+
     // Persist the order
-    const ins = await query(
-      `INSERT INTO orders (user_id, image_id, notes, estimated_price_text)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, created_at`,
-      [user.id, String(imageId), notes || null, estimatedText || null]
-    );
+    const hasSelected = typeof selectedOption === 'string' && selectedOption.length > 0 && Number.isFinite(selectedPriceCents);
+    const sql = hasSelected
+      ? `INSERT INTO orders (user_id, image_id, notes, estimated_price_text, selected_option, selected_price_cents)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id, created_at, selected_option, selected_price_cents`
+      : `INSERT INTO orders (user_id, image_id, notes, estimated_price_text)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, created_at`;
+
+    const values = hasSelected
+      ? [user.id, String(imageId), notes || null, estimatedText || null, selectedOption, selectedPriceCents]
+      : [user.id, String(imageId), notes || null, estimatedText || null];
+
+    const ins = await query(sql, values);
 
     const order = ins.rows[0];
 
@@ -79,7 +103,9 @@ router.post('/', auth, async (req, res) => {
         imageId: imageId,
         prompt,
         createdAt: new Date().toISOString(),
-        estimatedCost: estimatedText || 'Not available'
+        estimatedCost: estimatedText || 'Not available',
+        selectedOption: selectedOption || undefined,
+        selectedPrice: Number.isFinite(selectedPriceCents) ? `$${(selectedPriceCents/100).toFixed(2)} USD` : undefined,
       });
     } catch (e) {
       // Do not fail the request if email sending fails

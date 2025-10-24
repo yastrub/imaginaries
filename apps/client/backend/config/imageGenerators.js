@@ -8,7 +8,7 @@ dotenv.config();
 // Generator types
 export const GENERATORS = {
   OPENAI: 'openai',
-  OPENAI_IMAGE: 'openai_image',
+  OPENAI_DALLE: 'openai_dalle',
   OPENAI_IMAGE_EDIT: 'openai_image_edit',
   REPLICATE: 'replicate',
   FAL: 'fal'
@@ -356,7 +356,7 @@ export async function generateImage(prompt, generator = DEFAULT_GENERATOR, optio
     switch (generator) {
       case GENERATORS.OPENAI:
         return await generateWithOpenAI(prompt);
-      case GENERATORS.OPENAI_IMAGE:
+      case GENERATORS.OPENAI_DALLE:
         return await generateWithOpenAI(prompt);
       case GENERATORS.OPENAI_IMAGE_EDIT:
         if (!options.imageData) {

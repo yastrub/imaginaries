@@ -686,10 +686,13 @@ router.post('/estimate/:imageId', auth, async (req, res) => {
     console.log('[Server] CLEAR_PRICES type:', typeof process.env.CLEAR_PRICES);
     console.log('[Server] clearPrices value after parsing:', clearPrices);
     console.log('[Server] Existing estimated_cost:', image.estimated_cost);
-    
-    // If we already have an estimation and don't need to clear it, return it
-    if (image.estimated_cost && !clearPrices) {
-      console.log('[Server] Using existing price estimation');
+
+    // Helper: validate "a,b,c,d" pattern (four integers separated by commas)
+    const validFourCSV = (v) => typeof v === 'string' && /^\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*$/.test(v);
+
+    // If we already have an estimation in desired format and don't need to clear it, return it
+    if (image.estimated_cost && !clearPrices && validFourCSV(image.estimated_cost)) {
+      console.log('[Server] Using existing price estimation (a,b,c,d)');
       return res.json({ estimatedCost: image.estimated_cost });
     }
     
@@ -700,16 +703,12 @@ router.post('/estimate/:imageId', auth, async (req, res) => {
       `${req.protocol}://${req.get('host')}/api/generate/uploads/${image.image_url}` : 
       image.image_url;
 
-    // Process the image with OpenAI for estimation
-    const estimatedCost = await processImageEstimation(imageUrl, image.prompt);
-    
-    // Save the estimation to the database
-    await query(
-      'UPDATE images SET estimated_cost = $1 WHERE id = $2',
-      [estimatedCost, imageId]
-    );
+    // Process the image with OpenAI for estimation (returns comma-separated string)
+    const csv = await processImageEstimation(imageUrl, image.prompt);
 
-    res.json({ estimatedCost });
+    // Persist into images.estimated_cost
+    await query('UPDATE images SET estimated_cost = $1 WHERE id = $2', [csv, imageId]);
+    return res.json({ estimatedCost: csv });
   } catch (error) {
     console.error('[Server] Estimation error:', error);
     res.status(500).json({ error: 'Failed to estimate jewelry price' });

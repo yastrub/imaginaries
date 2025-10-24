@@ -59,11 +59,6 @@ function formatPriceCents(cents?: number | null) {
 
 function formatEstimatedText(v?: string | null) {
   if (!v) return '—';
-  const numMatch = String(v).replace(/[\,\s]/g, '').match(/\d+(?:\.\d+)?/);
-  if (numMatch) {
-    const num = Math.round(parseFloat(numMatch[0]));
-    if (Number.isFinite(num)) return `$${num} USD`;
-  }
   return v;
 }
 

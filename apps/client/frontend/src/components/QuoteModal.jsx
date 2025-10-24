@@ -292,7 +292,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
               ) : Array.isArray(parsedPrices) && parsedPrices.length >= 4 ? (
                 <div className="space-y-6">
                   <div className="rounded-lg p-4 bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 border border-zinc-700/60">
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-3 pl-2.5">
                       <BadgeCheck className="w-5 h-5 text-amber-400" />
                       <h3 className="text-zinc-200 text-sm">Select a material & stone configuration</h3>
                     </div>
@@ -326,7 +326,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                         Order Selected
                       </Button>
                     </div>
-                    <p className="text-zinc-500 text-xs mt-3">Final pricing may vary based on precise materials, sizing, and customization. Production by <strong>OCTADIAM</strong>, Dubai, UAE.</p>
+                    <p className="text-zinc-500 text-xs mt-3 text-center">Final pricing may vary based on precise materials, sizing, and customization. Production by <strong>OCTADIAM</strong>, Dubai, UAE.</p>
                   </div>
                 </div>
               ) : (

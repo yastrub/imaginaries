@@ -196,6 +196,29 @@ deploy() {
         docker rm -f ${temp_ids} >/dev/null 2>&1 || true
     fi
 
+    # --------- run migrations once in a one-off container ---------
+    print_action "Running DB migrations (one-off container) ..."
+    # Build docker args safely (handles optional env file)
+    local -a mig_args=(
+        --rm
+        --name "${app}-migrate-$$"
+        -e NEXT_TELEMETRY_DISABLED=1
+    )
+    if [[ -n "${env_file_arg:-}" ]]; then
+        if [[ "${env_file_arg}" == --env-file* ]]; then
+        # shellcheck disable=SC2206
+        mig_args+=( ${env_file_arg} )
+        else
+        mig_args+=( --env-file "${env_file_arg}" )
+        fi
+    fi
+    mig_args+=( "${app}:prod" "sh" "-lc" "node ./scripts/run-migrations.js" )
+
+    if ! docker run "${mig_args[@]}"; then
+        print_error "Migrations failed. Aborting deploy."
+        return 1
+    fi
+
     # --------- start temp container on secondary port ---------
     print_action "Starting temporary container ${temp_name} on port ${temp_port} for health-check..."
 
@@ -216,14 +239,55 @@ deploy() {
         run_args+=( --env-file "${env_file_arg}" )
         fi
     fi
-    run_args+=( "${app}:prod" )
+    run_args+=( "${app}:prod" "sh" "-lc" "exec node ./server.js" )
 
     if ! docker run "${run_args[@]}"; then
         print_error "Failed to start temporary container ${temp_name}"
         return 1
     fi
 
+    # --------- Wait for migrations to complete (log-based gate) ---------
+    wait_for_migrations() {
+      local temp_name="${1:?temp_name required}"
+      local attempts=0
+      local max_attempts=120  # ~4 minutes at 2s interval
+      local delay=2
+      print_action "Waiting for migrations to complete in ${temp_name} (watching logs) ..."
+      while (( attempts < max_attempts )); do
+        # Look for clear completion markers from run-migrations.js
+        if docker logs --tail=300 "${temp_name}" 2>&1 | grep -E "\[migrations\] (Done\.|No \\.sql files|Skipping migrations)" >/dev/null; then
+          print_success "Migrations reported complete in logs"
+          return 0
+        fi
+        attempts=$((attempts+1))
+        if (( attempts % 10 == 0 )); then
+          print_info "Still waiting for migrations... attempt ${attempts}/${max_attempts}"
+        fi
+        sleep ${delay}
+      done
+      print_warning "Timed out waiting for migration completion markers; proceeding to HTTP health checks"
+      return 0
+    }
+
     # --------- TEMP CONTAINER HEALTH CHECK (tolerates migration time) ---------
+    wait_for_port() {
+      local host="${1:?host required}"
+      local port="${2:?port required}"
+      local attempts=0
+      local max_attempts=120  # ~2 minutes at 1s interval
+      local delay=1
+      print_action "Waiting for TCP ${host}:${port} to accept connections ..."
+      while (( attempts < max_attempts )); do
+        if (echo > "/dev/tcp/${host}/${port}") >/dev/null 2>&1; then
+          print_success "Port ${port} is accepting connections"
+          return 0
+        fi
+        attempts=$((attempts+1))
+        sleep ${delay}
+      done
+      print_warning "Timed out waiting for port ${port} to accept connections"
+      return 1
+    }
     health_check_temp() {
       local temp_name="${1:?temp_name required}"
       local temp_port="${2:?temp_port required}"
@@ -236,8 +300,8 @@ deploy() {
                 "$url" || echo 000
         }
 
-        print_action "Health-checking ${temp_name} at http://127.0.0.1:${temp_port} ... (waiting for migrations/startup)"
-      local url="http://127.0.0.1:${temp_port}"
+        print_action "Health-checking ${temp_name} at http://127.0.0.1:${temp_port} ... (waiting for startup)"
+      local url="http://127.0.0.1:${temp_port}/api/health"
       local http_code="000"
       local attempts=0
       local max_attempts=90   # ~3 minutes at 2s interval
@@ -266,6 +330,8 @@ deploy() {
       return 1
     }
 
+    # Wait for port to listen before HTTP checks
+    wait_for_port 127.0.0.1 "${temp_port}" || true
     health_check_temp "${temp_name}" "${temp_port}" || return 1
 
     # --------- swap traffic to primary port ---------
@@ -294,7 +360,7 @@ deploy() {
         run_args_primary+=( --env-file "${env_file_arg}" )
         fi
     fi
-    run_args_primary+=( "${app}:prod" )
+    run_args_primary+=( "${app}:prod" "sh" "-lc" "exec node ./server.js" )
 
     if ! docker run "${run_args_primary[@]}"; then
         print_error "Failed to start Next.js App container on port ${primary_port}. Temp ${temp_name} still running on ${temp_port} for manual fallback."
@@ -325,7 +391,7 @@ verify_deployment() {
             "$url" 2>/dev/null || echo 000
     }
 
-    local url="http://127.0.0.1:${EXPOSE_PORT}"
+    local url="http://127.0.0.1:${EXPOSE_PORT}/api/health"
 
     print_action "Verifying primary container at http://127.0.0.1:${EXPOSE_PORT} ... (tolerating startup)"
     local http_code="000"
@@ -337,7 +403,7 @@ verify_deployment() {
     sleep 5
 
     while (( attempts < max_attempts )); do
-      http_code="$(_http_code "http://127.0.0.1:${EXPOSE_PORT}")"
+      http_code="$(_http_code "http://127.0.0.1:${EXPOSE_PORT}/api/health")"
       if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
         print_success "Primary container is healthy (HTTP ${http_code})"
         return 0

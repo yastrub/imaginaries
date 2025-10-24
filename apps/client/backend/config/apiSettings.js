@@ -47,7 +47,7 @@ export const settings = {
       openai_sketch: {
         api_url: 'https://api.openai.com/v1/chat/completions',
         params: {
-          model: 'gpt-4.1-mini',
+          model: 'gpt-4.1',
           "messages": [
             {
               "role": "developer",
@@ -74,7 +74,7 @@ export const settings = {
       openai_estimate: {
         api_url: 'https://api.openai.com/v1/chat/completions',
         params: {
-          model: 'gpt-4.1-mini',
+          model: 'gpt-4.1',
           "messages": [
             {
               "role": "developer",

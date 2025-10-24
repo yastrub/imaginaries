@@ -84,13 +84,20 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
       setEstimatedCost(legacy);
       setFormData(prev => ({ ...prev, estimatedCost: legacy }));
 
-      // Parse CSV into 4 numbers
+      // Parse CSV into 4 numbers and reset selection
       if (typeof legacy === 'string') {
         const parts = legacy.split(',').map(s => s.trim()).filter(Boolean);
         const nums = parts.map(p => Number(String(p).replace(/[^0-9.]/g, ''))).filter(n => Number.isFinite(n));
-        if (nums.length >= 4) setParsedPrices(nums.slice(0,4)); else setParsedPrices(null);
+        if (nums.length >= 4) {
+          setParsedPrices(nums.slice(0,4));
+          setSelectedIdx(null);
+        } else {
+          setParsedPrices(null);
+          setSelectedIdx(null);
+        }
       } else {
         setParsedPrices(null);
+        setSelectedIdx(null);
       }
       
       // Trigger global confetti effect when we get the price
@@ -289,11 +296,11 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                       <DollarSign className="w-5 h-5 text-amber-400" />
                       <h3 className="text-zinc-200 text-sm">Select a material & stone configuration</h3>
                     </div>
-                    <div role="radiogroup" className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div role="radiogroup" className="space-y-3">
                       {OPTION_LABELS.map((label, idx) => {
                         const active = selectedIdx === idx;
                         return (
-                          <label key={idx} className={`rounded-md border p-3 cursor-pointer transition-colors ${active ? 'border-amber-400 bg-amber-500/10' : 'border-zinc-700/70 bg-zinc-900/70 hover:border-zinc-600'}`}
+                          <label key={idx} className={`flex items-center justify-between gap-4 rounded-md border p-4 cursor-pointer transition-colors ${active ? 'border-amber-400 bg-amber-500/10' : 'border-zinc-700/70 bg-zinc-900/70 hover:border-zinc-600'}`}
                                  onClick={() => setSelectedIdx(idx)}>
                             <input
                               type="radio"
@@ -303,15 +310,13 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                               onChange={() => setSelectedIdx(idx)}
                               aria-label={label}
                             />
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex items-start gap-3">
-                                <span className={`mt-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full border ${active ? 'border-amber-400' : 'border-zinc-600'}`}>
-                                  <span className={`block w-2.5 h-2.5 rounded-full ${active ? 'bg-amber-400' : 'bg-transparent'}`}></span>
-                                </span>
-                                <div className="text-zinc-200 text-sm leading-tight">{label}</div>
-                              </div>
-                              <div className="text-amber-300 font-semibold">{formatUSD(parsedPrices[idx])}</div>
+                            <div className="flex items-center gap-3">
+                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full border-2 ${active ? 'border-amber-400' : 'border-zinc-600'}`}>
+                                <span className={`block w-3 h-3 rounded-full ${active ? 'bg-amber-400' : 'bg-transparent'}`}></span>
+                              </span>
+                              <div className="text-zinc-200 text-sm leading-tight">{label}</div>
                             </div>
+                            <div className="text-amber-300 font-semibold">{formatUSD(parsedPrices[idx])}</div>
                           </label>
                         );
                       })}
@@ -332,10 +337,10 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                     </div>
                     <h3 className="text-center text-lg font-medium text-amber-400 mb-2">Estimated Price</h3>
                     <p className="text-center text-2xl font-bold text-amber-300 mb-4">{estimatedCost ? `${estimatedCost} USD` : 'N/A'}</p>
-                    <p className="text-justify text-zinc-300 text-xs">We could not compute all four options, but you can still order and our team will advise the best configuration for your budget.</p>
+                    <p className="text-justify text-zinc-300 text-xs">We could not compute all four options automatically. Please refresh estimation later or contact support. Ordering is disabled until a valid estimate is available.</p>
                   </div>
                   <div className="flex justify-center">
-                    <Button onClick={() => handleOrder(2)} className="w-full max-w-xs" disabled={isSubmitting}>Order</Button>
+                    <Button className="w-full max-w-xs" disabled>Order Selected</Button>
                   </div>
                 </div>
               )}

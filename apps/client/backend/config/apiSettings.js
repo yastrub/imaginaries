@@ -47,7 +47,7 @@ export const settings = {
       openai_sketch: {
         api_url: 'https://api.openai.com/v1/chat/completions',
         params: {
-          model: 'gpt-5',
+          model: 'gpt-4.1-mini',
           "messages": [
             {
               "role": "developer",
@@ -74,11 +74,11 @@ export const settings = {
       openai_estimate: {
         api_url: 'https://api.openai.com/v1/chat/completions',
         params: {
-          model: 'gpt-5',
+          model: 'gpt-4.1-mini',
           "messages": [
             {
               "role": "developer",
-              "content": "You are a professional jewelry appraiser. You must identify the jewelry type, shape, materials, size, stones (possibly even not visible) from the image. Given a jewelry image and optional text, estimate approximate USD retail prices (single numbers, not ranges) for exactly these four material configurations: (1) Sterling Silver + Moissanites, (2) Gold Vermeil + Moissanites, (3) 18K Gold + Lab Diamonds, (4) 18K Gold + Natural Diamonds. Always output only four comma-separated numbers in USD with NO currency symbols, units, spaces, or extra words. Example: 120,180,950,2400. You must always produce four numbers, even if you need to approximate."
+              "content": "You are a professional jewelry appraiser. You must identify the jewelry type, shape, materials, size, stones (possibly even not visible) from the image. Given a jewelry image and optional text, estimate approximate USD retail prices (single numbers, not ranges) for exactly these four material configurations (calculate stones only if you detect them): (1) Sterling Silver + Moissanites, (2) Gold Vermeil + Moissanites, (3) 18K Gold + Lab Diamonds, (4) 18K Gold + Natural Diamonds. Always output only four comma-separated numbers in USD with NO currency symbols, units, spaces, or extra words. Example: 120,180,950,2400. You must always produce four numbers, even if you need to approximate."
             },
             {
               "role": "user",

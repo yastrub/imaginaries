@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, DollarSign, Check } from 'lucide-react';
+import { X, Loader2, DollarSign, BadgeCheck } from 'lucide-react';
 import { Button } from './ui/button';
 import { useReduxAuth } from '../hooks/useReduxAuth';
 import { useToast } from './ui/use-toast';
@@ -293,7 +293,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                 <div className="space-y-6">
                   <div className="rounded-lg p-4 bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 border border-zinc-700/60">
                     <div className="flex items-center gap-2 mb-3">
-                      <DollarSign className="w-5 h-5 text-amber-400" />
+                      <BadgeCheck className="w-5 h-5 text-amber-400" />
                       <h3 className="text-zinc-200 text-sm">Select a material & stone configuration</h3>
                     </div>
                     <div role="radiogroup" className="space-y-3">

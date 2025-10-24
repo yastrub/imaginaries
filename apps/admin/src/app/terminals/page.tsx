@@ -32,7 +32,6 @@ export default function TerminalsPage() {
   const [record, setRecord] = React.useState<Terminal | null>(null);
   const [form] = Form.useForm();
   const [partners, setPartners] = React.useState<PartnerOption[]>([]);
-  const [presetSets, setPresetSets] = React.useState<{ value: string; label: string }[]>([]);
 
   const { tableProps, setFilters } = useTable<Terminal>({
     resource: "terminals",
@@ -52,17 +51,6 @@ export default function TerminalsPage() {
           const json = await res.json();
           const opts = (json.data || []).map((p: any) => ({ value: p.id as string, label: p.company_name as string }));
           setPartners(opts);
-        }
-      } catch {}
-    })();
-    // Load preset sets for terminals binding
-    (async () => {
-      try {
-        const res = await fetch(`/api/admin/preset_sets`, { credentials: 'include' });
-        if (res.ok) {
-          const json = await res.json();
-          const opts = (json.data || []).map((s: any) => ({ value: s.id as string, label: `${s.name}${s.is_default ? ' (default)' : ''}` }));
-          setPresetSets(opts);
         }
       } catch {}
     })();
@@ -96,7 +84,6 @@ export default function TerminalsPage() {
         os_version: row.os_version || "",
         last_seen_ip: row.last_seen_ip || "",
         is_active: row.is_active,
-        preset_set_id: (row as any).preset_set_id || undefined,
       });
     }, 0);
   };
@@ -182,9 +169,6 @@ export default function TerminalsPage() {
           </Form.Item>
           <Form.Item name="last_seen_ip" label="Last Seen IP"> 
             <Input placeholder="Optional override" />
-          </Form.Item>
-          <Form.Item name="preset_set_id" label="Preset Set">
-            <Select options={presetSets} allowClear showSearch optionFilterProp="label" placeholder="Select preset set (optional)" />
           </Form.Item>
           <Form.Item name="is_active" label="Active" valuePropName="checked"> 
             <Switch />

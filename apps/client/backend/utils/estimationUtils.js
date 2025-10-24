@@ -1,6 +1,5 @@
 import fetch from 'node-fetch';
 import { settings } from '../config/apiSettings.js';
-import { getPrompt, getRoute, getFallbackDefault } from '../config/aiConfig.js';
 
 /**
  * Process an image with OpenAI to estimate jewelry price
@@ -23,14 +22,6 @@ export async function processImageEstimation(imageUrl, prompt = '') {
     
     // Clone the params to avoid modifying the original
     const params = JSON.parse(JSON.stringify(estimateSettings.params));
-
-    // Override model from DB defaults if provided for 'estimate' purpose
-    try {
-      const route = await getRoute('estimate');
-      if (route?.provider_key === 'openai' && route?.model_key) {
-        params.model = route.model_key;
-      }
-    } catch {}
     
     // Replace the image URL placeholder
     params.messages[1].content[1].image_url.url = imageUrl;
@@ -38,18 +29,7 @@ export async function processImageEstimation(imageUrl, prompt = '') {
     // Replace the user prompt placeholder with the actual prompt
     params.messages[1].content[0].text = prompt || '';
     
-    // Make the API request (using DB-first prompt if available)
-    try {
-      const dbSystemPrompt = await getPrompt('system', 'openai_estimate');
-      if (dbSystemPrompt && Array.isArray(params.messages) && params.messages.length > 0) {
-        // Replace developer message content with DB prompt
-        const idx = params.messages.findIndex((m) => m.role === 'developer');
-        if (idx !== -1) {
-          params.messages[idx] = { role: 'developer', content: dbSystemPrompt };
-        }
-      }
-    } catch {}
-
+    // Make the API request
     const response = await fetch(estimateSettings.api_url, {
       method: 'POST',
       headers: {

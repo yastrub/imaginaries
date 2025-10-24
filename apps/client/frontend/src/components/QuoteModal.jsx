@@ -296,7 +296,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                       <BadgeCheck className="w-5 h-5 text-amber-400" />
                       <h3 className="text-zinc-200 text-sm">Select a material & stone configuration</h3>
                     </div>
-                    <div role="radiogroup" className="space-y-3">
+                    <div role="radiogroup" className="space-y-1.5">
                       {OPTION_LABELS.map((label, idx) => {
                         const active = selectedIdx === idx;
                         return (

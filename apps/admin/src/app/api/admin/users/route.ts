@@ -112,10 +112,15 @@ export async function POST(req: NextRequest) {
     const roleRes = await query<{ id: number }>('SELECT id FROM roles WHERE id = $1', [role_id]);
     if (!roleRes.rows.length) return NextResponse.json({ error: 'Invalid role_id' }, { status: 400 });
 
-    // Validate plan if provided
+    // Validate plan if provided; allow special 'auto' which defaults to 'free' on create
+    let planForInsert: string | null = subscription_plan ?? null;
     if (subscription_plan) {
-      const planRes = await query('SELECT 1 FROM plans WHERE key = $1', [subscription_plan]);
-      if (!planRes.rows.length) return NextResponse.json({ error: 'Invalid subscription_plan' }, { status: 400 });
+      if (subscription_plan === 'auto') {
+        planForInsert = 'free';
+      } else {
+        const planRes = await query('SELECT 1 FROM plans WHERE key = $1', [subscription_plan]);
+        if (!planRes.rows.length) return NextResponse.json({ error: 'Invalid subscription_plan' }, { status: 400 });
+      }
     }
 
     const hash = await bcrypt.hash(password, 10);
@@ -123,12 +128,12 @@ export async function POST(req: NextRequest) {
     // Insert user
     const insertSql = `
       INSERT INTO users (email, password, role_id, subscription_plan, email_confirmed, first_name, last_name, subscription_updated_at)
-      VALUES ($1, $2, $3, COALESCE($4, 'free'), COALESCE($5, true), $6, $7, CASE WHEN $4 IS NOT NULL THEN NOW() ELSE subscription_updated_at END)
+      VALUES ($1, $2, $3, COALESCE($4, 'free'), COALESCE($5, true), $6, $7, NOW())
       RETURNING id
     `;
     let userId: string;
     try {
-      const ins = await query<{ id: string }>(insertSql, [emailNorm, hash, role_id, subscription_plan ?? null, email_confirmed ?? true, first_name ?? null, last_name ?? null]);
+      const ins = await query<{ id: string }>(insertSql, [emailNorm, hash, role_id, planForInsert, email_confirmed ?? true, first_name ?? null, last_name ?? null]);
       userId = ins.rows[0].id;
     } catch (e: any) {
       if (e?.code === '23505') {

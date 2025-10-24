@@ -80,6 +80,8 @@ export default function AdminRoot({ children }: { children: React.ReactNode }) {
             { name: "roles", list: "/roles", meta: { label: "Roles", icon: <SafetyCertificateOutlined /> } },
             { name: "partners", list: "/partners", meta: { label: "Partners", icon: <DollarOutlined /> } },
             { name: "terminals", list: "/terminals", meta: { label: "Terminals", icon: <DesktopOutlined /> } },
+            { name: "ai", list: "/ai", meta: { label: "AI", icon: <AppstoreOutlined /> } },
+            { name: "presets", list: "/presets", meta: { label: "Presets", icon: <AppstoreOutlined /> } },
           ]}
         >
           {isPublicLogin ? (

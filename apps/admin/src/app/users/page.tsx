@@ -55,7 +55,11 @@ export default function UsersList() {
   });
   const plansLoading = plansQuery.isLoading;
   const planOptions = React.useMemo(() => {
-    return (plansResult?.data || []).map((p) => ({ value: p.key, label: p.name }));
+    const base = (plansResult?.data || []).map((p) => ({ value: p.key, label: p.name }));
+    return [
+      { value: 'auto', label: 'AUTO (derive from active subscription)' },
+      ...base,
+    ];
   }, [plansResult]);
 
   const onSearch = () => {

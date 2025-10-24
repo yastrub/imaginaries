@@ -50,13 +50,37 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       if (typeof role_id === 'number') { updates.push(`role_id = $${idx++}`); values.push(role_id); }
       if (typeof email_confirmed === 'boolean') { updates.push(`email_confirmed = $${idx++}`); values.push(email_confirmed); }
       if (typeof subscription_plan === 'string') {
-        // Validate provided plan exists by key
-        const planCheck = await tx('SELECT 1 FROM plans WHERE key = $1', [subscription_plan]);
-        if (!planCheck.rows || planCheck.rows.length === 0) {
-          throw Object.assign(new Error('Invalid subscription_plan'), { status: 400 });
+        if (subscription_plan === 'auto') {
+          // Derive plan from latest active subscription; fallback to 'free'
+          const subRes = await tx(
+            `SELECT plan
+             FROM subscriptions
+             WHERE user_id = $1
+               AND status IN ('active','trialing')
+               AND (current_period_end IS NULL OR current_period_end >= NOW())
+             ORDER BY current_period_end DESC NULLS LAST, updated_at DESC NULLS LAST
+             LIMIT 1`,
+            [id]
+          );
+          const autoPlan = subRes.rows?.[0]?.plan || 'free';
+          // Ensure derived plan exists in plans table to avoid typos
+          const planCheck = await tx('SELECT 1 FROM plans WHERE key = $1', [autoPlan]);
+          if (!planCheck.rows || planCheck.rows.length === 0) {
+            // If mapping mismatch, hard fallback to free
+            updates.push(`subscription_plan = 'free'`);
+          } else {
+            updates.push(`subscription_plan = $${idx++}`); values.push(autoPlan);
+          }
+          updates.push(`subscription_updated_at = NOW()`);
+        } else {
+          // Validate provided plan exists by key
+          const planCheck = await tx('SELECT 1 FROM plans WHERE key = $1', [subscription_plan]);
+          if (!planCheck.rows || planCheck.rows.length === 0) {
+            throw Object.assign(new Error('Invalid subscription_plan'), { status: 400 });
+          }
+          updates.push(`subscription_plan = $${idx++}`); values.push(subscription_plan);
+          updates.push(`subscription_updated_at = NOW()`);
         }
-        updates.push(`subscription_plan = $${idx++}`); values.push(subscription_plan);
-        updates.push(`subscription_updated_at = NOW()`);
       }
       if (typeof first_name === 'string' || first_name === null) {
         updates.push(`first_name = $${idx++}`); values.push(first_name ?? null);

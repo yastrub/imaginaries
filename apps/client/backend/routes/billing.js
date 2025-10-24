@@ -196,9 +196,15 @@ async function handleSubscriptionUpsert(customerId, subscriptionId, subscription
     [userId, plan, subscriptionId, status, current_period_start, current_period_end, cancel_at, canceled_at]
   );
 
-  // Update user's subscription_plan
+  // Update user's subscription_plan and stamp subscription_updated_at for auditing
   const newPlan = status === 'active' || status === 'trialing' ? plan : 'free';
-  await query(`UPDATE users SET subscription_plan = $1 WHERE id = $2`, [newPlan, userId]);
+  await query(
+    `UPDATE users 
+     SET subscription_plan = $1,
+         subscription_updated_at = NOW()
+     WHERE id = $2`,
+    [newPlan, userId]
+  );
 }
 
 async function handleInvoiceUpsert(invoice) {

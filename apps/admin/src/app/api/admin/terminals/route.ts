@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
     const listSql = `
       SELECT 
         t.id, t.partner_id, t.name, t.mac_address, t.last_seen_ip, t.last_seen_at, t.app_version, t.os_version, t.location_text, t.is_active,
+        t.preset_set_id,
         p.company_name AS partner_name,
         CASE WHEN (t.last_seen_at IS NOT NULL AND now() - t.last_seen_at < INTERVAL '3 minutes') THEN 'online' ELSE 'offline' END AS status,
         t.created_at, t.updated_at
@@ -86,6 +87,7 @@ export async function POST(req: NextRequest) {
       os_version = null,
       location_text = null,
       is_active = true,
+      preset_set_id = null,
     } = body || {};
 
     if (!partner_id || !isUUID(partner_id)) {
@@ -98,12 +100,12 @@ export async function POST(req: NextRequest) {
     const id = randomUUID();
     const insertSql = `
       INSERT INTO terminals (
-        id, partner_id, name, mac_address, last_seen_ip, last_seen_at, app_version, os_version, location_text, is_active
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-      RETURNING id, partner_id, name, mac_address, last_seen_ip, last_seen_at, app_version, os_version, location_text, is_active, created_at, updated_at
+        id, partner_id, name, mac_address, last_seen_ip, last_seen_at, app_version, os_version, location_text, is_active, preset_set_id
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      RETURNING id, partner_id, name, mac_address, last_seen_ip, last_seen_at, app_version, os_version, location_text, is_active, preset_set_id, created_at, updated_at
     `;
 
-    const values = [id, partner_id, name, mac_address, last_seen_ip, last_seen_at, app_version, os_version, location_text, !!is_active];
+    const values = [id, partner_id, name, mac_address, last_seen_ip, last_seen_at, app_version, os_version, location_text, !!is_active, preset_set_id];
 
     const resIns = await query(insertSql, values);
     return NextResponse.json(resIns.rows[0]);

@@ -223,10 +223,10 @@ deploy() {
         return 1
     fi
 
-    # --------- TEMP CONTAINER HEALTH CHECK (2 consecutive OKs) ---------
+    # --------- TEMP CONTAINER HEALTH CHECK (tolerates migration time) ---------
     health_check_temp() {
-        local temp_name="${1:?temp_name required}"
-        local temp_port="${2:?temp_port required}"
+      local temp_name="${1:?temp_name required}"
+      local temp_port="${2:?temp_port required}"
 
         # small helper to curl with timeouts and never hard-fail under set -e
         _http_code() {
@@ -236,24 +236,34 @@ deploy() {
                 "$url" || echo 000
         }
 
-        print_action "Health-checking ${temp_name} at http://127.0.0.1:${temp_port} ..."
-        local url="http://127.0.0.1:${temp_port}"
-        local http_code="000"
+        print_action "Health-checking ${temp_name} at http://127.0.0.1:${temp_port} ... (waiting for migrations/startup)"
+      local url="http://127.0.0.1:${temp_port}"
+      local http_code="000"
+      local attempts=0
+      local max_attempts=90   # ~3 minutes at 2s interval
+      local delay=2
 
-        sleep 5
+      # initial grace period for migrations to run
+      sleep 5
+
+      while (( attempts < max_attempts )); do
         http_code="$(_http_code "${url}")"
         if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
-            print_success "${temp_name} is healthy (HTTP ${http_code})"
-            return 0
+          print_success "${temp_name} is healthy (HTTP ${http_code})"
+          return 0
         fi
-        sleep 1
-        
-        # failed health check
-        print_error "Temporary container failed health-check; keeping existing deployment running"
-        print_action "Recent logs from ${temp_name}:"
-        docker logs --tail=100 "${temp_name}" 2>&1 | highlight_npm || true
-        # docker rm -f "${temp_name}" >/dev/null 2>&1 || true
-        return 1
+        attempts=$((attempts+1))
+        if (( attempts % 10 == 0 )); then
+          print_info "Waiting for app readiness... attempt ${attempts}/${max_attempts} (last HTTP ${http_code})"
+        fi
+        sleep ${delay}
+      done
+
+      # failed health check after retries
+      print_error "Temporary container failed health-check after waiting for readiness; keeping existing deployment running"
+      print_action "Recent logs from ${temp_name}:"
+      docker logs --tail=200 "${temp_name}" 2>&1 | highlight_npm || true
+      return 1
     }
 
     health_check_temp "${temp_name}" "${temp_port}" || return 1
@@ -317,16 +327,29 @@ verify_deployment() {
 
     local url="http://127.0.0.1:${EXPOSE_PORT}"
 
-    print_action "Verifying primary container at http://127.0.0.1:${EXPOSE_PORT} ..."
+    print_action "Verifying primary container at http://127.0.0.1:${EXPOSE_PORT} ... (tolerating startup)"
     local http_code="000"
+    local attempts=0
+    local max_attempts=90   # ~3 minutes at 2s interval
+    local delay=2
+
+    # initial grace period
     sleep 5
-    http_code="$(_http_code "http://127.0.0.1:${EXPOSE_PORT}")"
-    if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
+
+    while (( attempts < max_attempts )); do
+      http_code="$(_http_code "http://127.0.0.1:${EXPOSE_PORT}")"
+      if [[ "${http_code}" =~ ^(200|30[12478])$ ]]; then
         print_success "Primary container is healthy (HTTP ${http_code})"
         return 0
-    fi
-    sleep 1
-    print_error "Primary container check failed (last HTTP ${http_code})"
+      fi
+      attempts=$((attempts+1))
+      if (( attempts % 10 == 0 )); then
+        print_info "Waiting for primary readiness... attempt ${attempts}/${max_attempts} (last HTTP ${http_code})"
+      fi
+      sleep ${delay}
+    done
+
+    print_error "Primary container check failed after retries (last HTTP ${http_code})"
     return 1
 }
 

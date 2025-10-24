@@ -17,6 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const res = await query(`
       SELECT 
         t.id, t.partner_id, t.name, t.mac_address, t.last_seen_ip, t.last_seen_at, t.app_version, t.os_version, t.location_text, t.is_active,
+        t.preset_set_id,
         t.created_at, t.updated_at
       FROM terminals t
       WHERE t.id = $1
@@ -38,7 +39,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!isUUID(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
 
     const body = await req.json();
-    const allowed = ['partner_id','name','mac_address','last_seen_ip','last_seen_at','app_version','os_version','location_text','is_active'] as const;
+    const allowed = ['partner_id','name','mac_address','last_seen_ip','last_seen_at','app_version','os_version','location_text','is_active','preset_set_id'] as const;
     const fields: string[] = [];
     const values: any[] = [];
     let idx = 1;
@@ -51,7 +52,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!fields.length) return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
 
     values.push(id);
-    const sql = `UPDATE terminals SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING id, partner_id, name, mac_address, last_seen_ip, last_seen_at, app_version, os_version, location_text, is_active, created_at, updated_at`;
+    const sql = `UPDATE terminals SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING id, partner_id, name, mac_address, last_seen_ip, last_seen_at, app_version, os_version, location_text, is_active, preset_set_id, created_at, updated_at`;
     const resUp = await query(sql, values);
     if (!resUp.rows.length) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(resUp.rows[0]);

@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import { settings } from './apiSettings.js';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
+import { getRoute, getFallbackDefault, getPrompt } from './aiConfig.js';
 
 dotenv.config();
 
@@ -276,7 +277,8 @@ async function generateWithOpenAIImageEdit(prompt, imageData) {
   const apiKey = process.env.OPENAI_API_KEY;
   
   // Combine system prompt with user prompt
-  const systemPrompt = config.system_prompt || '';
+  const dbPrompt = await getPrompt('system', 'openai_image_edit');
+  const systemPrompt = (dbPrompt ?? config.system_prompt) || '';
   const enhancedPrompt = enhancePrompt(prompt);
   const fullPrompt = systemPrompt ? `${systemPrompt}
 
@@ -353,7 +355,14 @@ export async function generateImage(prompt, generator = DEFAULT_GENERATOR, optio
   console.log(`Generating image using ${generator}`);
 
   try {
-    switch (generator) {
+    // Resolve DB-default provider if generator is 'auto' or not provided
+    let selectedGenerator = generator;
+    if (!selectedGenerator || selectedGenerator === 'auto') {
+      const route = await getRoute('image');
+      selectedGenerator = route?.provider_key || getFallbackDefault('image').provider_key;
+    }
+
+    switch (selectedGenerator) {
       case GENERATORS.OPENAI:
         return await generateWithOpenAI(prompt);
       case GENERATORS.OPENAI_IMAGE:

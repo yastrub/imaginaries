@@ -13,6 +13,7 @@ import { feedbackRouter } from './routes/feedback.js';
 import { ordersRouter } from './routes/orders.js';
 import { imagesRouter } from './routes/images.js';
 import { plansRouter } from './routes/plans.js';
+import { presetsRouter } from './routes/presets.js';
 import { billingRouter, registerStripeWebhook } from './routes/billing.js';
 import { profileRouter } from './routes/profile.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -102,6 +103,7 @@ async function startServer() {
     app.use('/api/feedback', feedbackRouter);
     app.use('/api/images', imagesRouter);
     app.use('/api/plans', plansRouter);
+    app.use('/api/presets', presetsRouter);
     app.use('/api/profile', profileRouter);
     app.use('/api/billing', billingRouter);
     app.use('/api/orders', ordersRouter);

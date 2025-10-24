@@ -299,24 +299,41 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                     <div role="radiogroup" className="space-y-1.5">
                       {OPTION_LABELS.map((label, idx) => {
                         const active = selectedIdx === idx;
+                        const price = Number(parsedPrices[idx]) || 0;
+                        const disabled = price < 100; // disable options under $100
                         return (
-                          <label key={idx} className={`flex items-center justify-between gap-4 rounded-md border p-4 cursor-pointer transition-colors ${active ? 'border-amber-400 bg-amber-500/10' : 'border-zinc-700/70 bg-zinc-900/70 hover:border-zinc-600'}`}
-                                 onClick={() => setSelectedIdx(idx)}>
+                          <label
+                            key={idx}
+                            className={`flex items-center justify-between gap-4 rounded-md border p-4 transition-colors ${
+                              disabled
+                                ? 'border-zinc-700/50 bg-zinc-900/40 opacity-50 cursor-not-allowed'
+                                : active
+                                  ? 'border-amber-400 bg-amber-500/10 cursor-pointer'
+                                  : 'border-zinc-700/70 bg-zinc-900/70 hover:border-zinc-600 cursor-pointer'
+                            }`}
+                            onClick={() => { if (!disabled) setSelectedIdx(idx); }}
+                            aria-disabled={disabled}
+                          >
                             <input
                               type="radio"
                               name="quote-option"
                               className="sr-only"
                               checked={active}
-                              onChange={() => setSelectedIdx(idx)}
+                              onChange={() => { if (!disabled) setSelectedIdx(idx); }}
                               aria-label={label}
+                              disabled={disabled}
                             />
                             <div className="flex items-center gap-3">
-                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full border-2 ${active ? 'border-amber-400' : 'border-zinc-600'}`}>
-                                <span className={`block w-3 h-3 rounded-full ${active ? 'bg-amber-400' : 'bg-transparent'}`}></span>
+                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full border-2 ${
+                                disabled ? 'border-zinc-700' : active ? 'border-amber-400' : 'border-zinc-600'
+                              }`}>
+                                <span className={`block w-3 h-3 rounded-full ${
+                                  disabled ? 'bg-transparent' : active ? 'bg-amber-400' : 'bg-transparent'
+                                }`}></span>
                               </span>
                               <div className="text-zinc-200 text-sm leading-tight">{label}</div>
                             </div>
-                            <div className="text-amber-300 font-semibold">{formatUSD(parsedPrices[idx])}</div>
+                            <div className={`${disabled ? 'text-zinc-400' : 'text-amber-300'} font-semibold`}>{formatUSD(price)}</div>
                           </label>
                         );
                       })}

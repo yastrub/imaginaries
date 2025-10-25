@@ -219,6 +219,24 @@ function AppContent() {
   
   // Debug logging for route monitoring
   console.log('Route monitoring active:', routeData);
+
+  // Immediate celebrate guard: before Routes render, preserve celebrate flow and avoid losing the query param
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    const celebrateParam = sp.get('celebrate');
+    if (celebrateParam === '1' && window.location.pathname !== '/') {
+      const userKey = `upgrade_pending_modal_${(typeof window !== 'undefined' && (window.__USER_ID__ || 'anon'))}`;
+      const anonKey = `upgrade_pending_modal_anon`;
+      try {
+        localStorage.setItem(userKey, '1');
+        localStorage.setItem(anonKey, '1');
+        sessionStorage.setItem(userKey, '1');
+        sessionStorage.setItem(anonKey, '1');
+      } catch {}
+      window.location.replace('/?purge=1&celebrate=1');
+      return null;
+    }
+  } catch {}
   
   // Redirect authenticated users from / to /imagine
   useEffect(() => {
@@ -304,7 +322,22 @@ function AppContent() {
       sessionStorage.getItem(userFlagKey) === '1' ||
       sessionStorage.getItem(anonFlagKey) === '1';
     const already = localStorage.getItem(shownKey);
-    if ((hasPending || celebrate === '1') && !already) {
+    if (celebrate === '1') {
+      try { localStorage.removeItem(userFlagKey); } catch {}
+      try { localStorage.removeItem(anonFlagKey); } catch {}
+      try { sessionStorage.removeItem(userFlagKey); } catch {}
+      try { sessionStorage.removeItem(anonFlagKey); } catch {}
+      setShowUpgradeCongrats(true);
+      try { triggerConfetti(CONFETTI_EVENTS.GENERATION_SUCCESS); } catch {}
+      localStorage.setItem(shownKey, new Date().toISOString());
+      // Clean celebrate from URL
+      try {
+        const url = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, url);
+      } catch {}
+      return;
+    }
+    if (hasPending && !already) {
       try { localStorage.removeItem(userFlagKey); } catch {}
       try { localStorage.removeItem(anonFlagKey); } catch {}
       try { sessionStorage.removeItem(userFlagKey); } catch {}

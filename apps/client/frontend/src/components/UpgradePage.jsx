@@ -30,6 +30,25 @@ export function UpgradePage() {
   const [checkingOutPlan, setCheckingOutPlan] = useState(null);
   const [currentPlanKey, setCurrentPlanKey] = useState(null);
 
+  // Fallback: if celebrate=1 is present, aggressively set flags and purge to root
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const celebrate = sp.get('celebrate');
+      if (celebrate === '1') {
+        const userKey = `upgrade_pending_modal_${user?.id || 'anon'}`;
+        const anonKey = `upgrade_pending_modal_anon`;
+        try {
+          localStorage.setItem(userKey, '1');
+          localStorage.setItem(anonKey, '1');
+          sessionStorage.setItem(userKey, '1');
+          sessionStorage.setItem(anonKey, '1');
+        } catch {}
+        window.location.replace('/?purge=1&celebrate=1');
+      }
+    } catch {}
+  }, [user?.id]);
+
   useEffect(() => {
     let mounted = true;
     (async () => {

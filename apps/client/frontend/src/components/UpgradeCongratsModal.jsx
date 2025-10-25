@@ -49,7 +49,7 @@ export default function UpgradeCongratsModal({ isOpen, onClose, planLabel = 'Pro
         </div>
 
         {/* CTA */}
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-6">
           <div className="text-xs text-zinc-400">
             You can change plans anytime from your account.
           </div>

@@ -32,6 +32,6 @@ async function purgeCachesAndReload() {
     return;
   }
   try { localStorage.setItem('BUILD_ID', BUILD_ID); } catch (e) {}
-  // Load the app with a cache-busting query param
-  await import(`./main.jsx?v=${encodeURIComponent(BUILD_ID)}`);
+  // Load the app (static specifier to satisfy Vite's dynamic import constraints)
+  await import('./main.jsx');
 })();

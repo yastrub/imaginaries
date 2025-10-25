@@ -50,7 +50,7 @@ export default function UpgradeCongratsModal({ isOpen, onClose, planLabel = 'Pro
 
         {/* CTA */}
         <div className="flex flex-col items-center gap-6">
-          <div className="text-xs text-zinc-400">
+          <div className="text-xs text-zinc-700">
             You can change plans anytime from your account.
           </div>
           <button

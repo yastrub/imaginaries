@@ -52,7 +52,19 @@ export default function SubscriptionsPage() {
         <Table.Column dataIndex="provider_subscription_id" title="Provider Sub ID" sorter />
         <Table.Column dataIndex="status" title="Status" sorter render={(v: string)=> v ? <Tag color={v==='active'?'green': v==='canceled'?'red':'default'}>{v}</Tag> : '—'} />
         <Table.Column dataIndex="is_annual" title="Interval" sorter render={(v?: boolean)=> v ? <Tag color="blue">Annual</Tag> : <Tag>Monthly</Tag>} />
-        <Table.Column<Subscription> dataIndex="original_price_cents" title="Price" sorter render={(c?: number)=> typeof c==='number' ? `$${(c/100).toFixed(2)}` : '—'} />
+        <Table.Column<Subscription>
+          dataIndex="original_price_cents"
+          title="Price"
+          sorter
+          render={(c: number|undefined, row: Subscription)=> {
+            if (typeof c !== 'number') return '—';
+            const curr = (row as any).currency || 'usd';
+            const code = String(curr).toUpperCase();
+            // Simple currency prefix; could be enhanced with Intl.NumberFormat
+            const prefix = code === 'USD' ? '$' : code + ' ';
+            return `${prefix}${(c/100).toFixed(2)}`;
+          }}
+        />
         <Table.Column dataIndex="discount" title="Discount" sorter render={(d?: number)=> typeof d==='number' ? `-${(d*100).toFixed(0)}%` : '—'} />
         <Table.Column dataIndex="promo_code" title="Promo Code" />
         <Table.Column dataIndex="current_period_start" title="Period Start" sorter render={(v?: string|null)=> (<AdminDate value={v||undefined} />)} />

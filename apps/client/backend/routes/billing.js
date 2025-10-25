@@ -245,7 +245,8 @@ async function handleSubscriptionUpsert(customerId, subscriptionId, subscription
   // Determine our internal plan key from price
   const itemPrice = subscription.items?.data?.[0]?.price || null;
   const priceId = itemPrice?.id || null;
-  const unitAmount = (typeof itemPrice?.unit_amount === 'number') ? itemPrice.unit_amount : null; // cents
+  const unitAmount = (typeof itemPrice?.unit_amount === 'number') ? itemPrice.unit_amount : null;
+  const priceCurrency = itemPrice?.currency || null;
   const interval = itemPrice?.recurring?.interval || null; // 'month' | 'year'
   const { plan, cycle } = await mapPriceToPlan(priceId);
   const isAnnual = (cycle === 'annual') || (interval === 'year');
@@ -279,9 +280,10 @@ async function handleSubscriptionUpsert(customerId, subscriptionId, subscription
     await query(
       `UPDATE subscriptions
        SET is_annual = $1,
-           original_price_cents = $2
-       WHERE provider = 'stripe' AND provider_subscription_id = $3`,
-      [!!isAnnual, unitAmount, subscriptionId]
+           original_price_cents = $2,
+           currency = $3
+       WHERE provider = 'stripe' AND provider_subscription_id = $4`,
+      [!!isAnnual, unitAmount, priceCurrency, subscriptionId]
     );
   } catch (e) {
     if (!(e && e.code === '42703')) {
@@ -353,6 +355,28 @@ async function handleInvoiceUpsert(invoice) {
          VALUES ($1,$2,'stripe',$3,$4,$5,$6, to_timestamp($7), to_timestamp($8), $9, $10)`,
         [userId, subscriptionDbId, invoice.id, amount, currency, statusInv, pStart, pEnd, hostedUrl, pdfUrl]
       );
+    }
+    // Backfill subscription current period from invoice if missing
+    try {
+      if (subscriptionDbId) {
+        await query(
+          `UPDATE subscriptions
+           SET current_period_start = COALESCE(current_period_start, to_timestamp($1)),
+               current_period_end = COALESCE(current_period_end, to_timestamp($2))
+           WHERE id = $3`,
+          [pStart, pEnd, subscriptionDbId]
+        );
+      } else if (invoice.subscription) {
+        await query(
+          `UPDATE subscriptions
+           SET current_period_start = COALESCE(current_period_start, to_timestamp($1)),
+               current_period_end = COALESCE(current_period_end, to_timestamp($2))
+           WHERE provider = 'stripe' AND provider_subscription_id = $3`,
+          [pStart, pEnd, invoice.subscription]
+        );
+      }
+    } catch (e) {
+      console.error('[billing] failed to backfill subscription periods from invoice', e?.message || e);
     }
   } catch (e) {
     console.error('[billing] invoice upsert failed', e?.message || e);

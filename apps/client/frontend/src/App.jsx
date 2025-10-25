@@ -269,8 +269,8 @@ function AppContent() {
         const key = `upgrade_congrats_shown_${user?.id || 'anon'}`;
         const already = localStorage.getItem(key);
 
-        // Clean the URL first (remove search) then navigate to root
-        window.history.replaceState({}, document.title, '/');
+        // Navigate to root (replace) so background is not the upgrade page
+        try { navigate('/', { replace: true }); } catch {}
 
         // Show modal once
         if (!already) {

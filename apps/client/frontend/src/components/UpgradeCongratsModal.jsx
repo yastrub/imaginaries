@@ -1,31 +1,68 @@
 import React from 'react';
 import { Modal } from './Modal';
-import { BadgeCheck } from 'lucide-react';
+import { BadgeCheck, Crown, Zap, Rocket } from 'lucide-react';
 
 export default function UpgradeCongratsModal({ isOpen, onClose, planLabel = 'Pro' }) {
   return (
-    <Modal isOpen={!!isOpen} onClose={onClose} className="max-w-xl">
-      <div className="flex flex-col items-center text-center gap-4">
-        <div className="relative">
-          <div className="absolute inset-0 blur-2xl opacity-40 bg-green-500/30 rounded-full animate-pulse" />
-          <BadgeCheck className="w-24 h-24 text-green-400 drop-shadow-[0_0_30px_rgba(34,197,94,0.65)] animate-bounce" />
+    <Modal isOpen={!!isOpen} onClose={onClose} className="max-w-2xl">
+      <div className="relative flex flex-col items-center text-center gap-6">
+        {/* Background glow */}
+        <div className="pointer-events-none absolute -inset-10 -z-10">
+          <div className="mx-auto h-64 w-64 rounded-full bg-gradient-to-tr from-emerald-500/25 to-green-400/10 blur-3xl opacity-70" />
         </div>
-        <h2 className="text-2xl md:text-3xl font-semibold text-white">
-          Congratulations on upgrading!
-        </h2>
-        <p className="text-zinc-300">
-          Your account has been upgraded to <span className="text-green-400 font-semibold">{planLabel}</span>.
-          Enjoy faster generations, premium quality, and more.
-        </p>
-        <div className="mt-2 text-zinc-400 text-sm">
-          Tip: You can start creating right away on the Imagine page.
+
+        {/* Epic badge-check with animated ring */}
+        <div className="relative grid place-items-center">
+          <div className="grid place-items-center rounded-full w-28 h-28 bg-emerald-500/10 ring-4 ring-emerald-400/30 shadow-[0_0_40px_rgba(34,197,94,0.35)]">
+            <BadgeCheck className="w-16 h-16 text-emerald-400 drop-shadow-[0_0_30px_rgba(34,197,94,0.7)]" />
+          </div>
+          {/* spinning halo */}
+          <div className="pointer-events-none absolute -inset-1 rounded-full border-4 border-transparent animate-spin [animation-duration:5s]" style={{
+            borderTopColor: 'rgba(34,197,94,0.55)',
+            borderRightColor: 'transparent',
+            borderBottomColor: 'rgba(34,197,94,0.25)',
+            borderLeftColor: 'transparent',
+          }} />
         </div>
-        <button
-          onClick={onClose}
-          className="mt-2 inline-flex items-center justify-center rounded-md bg-green-600 hover:bg-green-500 text-white px-5 py-2 transition-colors"
-        >
-          Awesome!
-        </button>
+
+        {/* Headline */}
+        <div className="space-y-2">
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-300 via-white to-emerald-300 bg-clip-text text-transparent">
+            You’re Upgraded!
+          </h2>
+          <p className="text-zinc-300/95 text-base md:text-lg">
+            Welcome to <span className="text-emerald-400 font-semibold">{planLabel}</span>. Your creative horsepower just leveled up.
+          </p>
+        </div>
+
+        {/* Perks row */}
+        <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
+          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-300 text-sm">
+            <Crown className="w-4 h-4" /> Premium quality
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-300 text-sm">
+            <Zap className="w-4 h-4" /> Faster generations
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-300 text-sm">
+            <Rocket className="w-4 h-4" /> Priority features
+          </span>
+        </div>
+
+        {/* CTA */}
+        <div className="flex flex-col items-center gap-2">
+          <button
+            onClick={onClose}
+            className="group relative inline-flex items-center justify-center rounded-lg px-6 py-3 text-white font-semibold tracking-wide
+                       bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400
+                       shadow-[0_10px_30px_-10px_rgba(34,197,94,0.65)] ring-1 ring-emerald-400/30 transition-all"
+          >
+            <span className="mr-2">Awesome</span>
+            <span className="opacity-80 group-hover:opacity-100">— Let’s go</span>
+          </button>
+          <div className="text-xs text-zinc-400">
+            You can change plans anytime from your account.
+          </div>
+        </div>
       </div>
     </Modal>
   );

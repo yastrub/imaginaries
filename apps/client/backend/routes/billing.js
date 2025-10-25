@@ -233,8 +233,12 @@ async function handleSubscriptionUpsert(customerId, subscriptionId, subscription
   const canceled_at = subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null;
 
   // Determine our internal plan key from price
-  const priceId = subscription.items?.data?.[0]?.price?.id || null;
-  const { plan } = await mapPriceToPlan(priceId);
+  const itemPrice = subscription.items?.data?.[0]?.price || null;
+  const priceId = itemPrice?.id || null;
+  const unitAmount = (typeof itemPrice?.unit_amount === 'number') ? itemPrice.unit_amount : null; // cents
+  const interval = itemPrice?.recurring?.interval || null; // 'month' | 'year'
+  const { plan, cycle } = await mapPriceToPlan(priceId);
+  const isAnnual = (cycle === 'annual') || (interval === 'year');
 
   // Upsert into subscriptions table (UPDATE then INSERT to avoid ON CONFLICT dependency)
   try {
@@ -258,6 +262,21 @@ async function handleSubscriptionUpsert(customerId, subscriptionId, subscription
     }
   } catch (e) {
     console.error('[billing] subscriptions upsert failed', e?.message || e);
+  }
+
+  // Best-effort: set price snapshot fields if columns exist
+  try {
+    await query(
+      `UPDATE subscriptions
+       SET is_annual = $1,
+           original_price_cents = $2
+       WHERE provider = 'stripe' AND provider_subscription_id = $3`,
+      [!!isAnnual, unitAmount, subscriptionId]
+    );
+  } catch (e) {
+    if (!(e && e.code === '42703')) {
+      console.error('[billing] failed to set subscription price fields', e?.message || e);
+    }
   }
 
   // Update user's subscription_plan and stamp subscription_updated_at for auditing

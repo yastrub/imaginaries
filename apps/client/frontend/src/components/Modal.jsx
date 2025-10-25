@@ -23,7 +23,7 @@ export function Modal({ isOpen = true, onClose, children, title, className }) {
               </div>
             )}
           </div>
-          <div className="px-8 py-12 flex-1 overflow-y-auto">
+          <div className="px-8 py-12 flex-1 overflow-hidden">
             {children}
           </div>
         </div>

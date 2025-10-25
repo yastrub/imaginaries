@@ -1,7 +1,7 @@
 // Bootstrap entry to enforce cache busting and SW purge before loading the app
-// BUILD_ID is injected at build time via Vite define (__BUILD_ID__)
-
-const BUILD_ID = (typeof __BUILD_ID__ !== 'undefined' && __BUILD_ID__) || new Date().toISOString();
+// BUILD_ID is injected at build time via Vite define (__BUILD_ID__). Ensure string type for reliable comparisons.
+const RAW_BUILD_ID = (typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : Date.now());
+const BUILD_ID = String(RAW_BUILD_ID);
 
 async function purgeCachesAndReload() {
   try { localStorage.setItem('BUILD_ID', BUILD_ID); } catch (e) {}

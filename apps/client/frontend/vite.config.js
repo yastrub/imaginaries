@@ -5,7 +5,7 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   define: {
-    __BUILD_ID__: JSON.stringify(new Date().toISOString()),
+    __BUILD_ID__: JSON.stringify(Date.now()),
   },
   server: {
     port: 5173,

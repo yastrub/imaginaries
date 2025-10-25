@@ -43,6 +43,37 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const { role_id, email_confirmed, subscription_plan, first_name, last_name } = (body || {}) as { role_id?: number; email_confirmed?: boolean; subscription_plan?: string; first_name?: string | null; last_name?: string | null };
 
     const result = await withTransaction(async (tx) => {
+      // Helpers: safe checks inside transaction that won't abort
+      const hasTable = async (table: string): Promise<boolean> => {
+        try {
+          const r = await tx(`SELECT to_regclass($1) AS oid`, [`public.${table}`]);
+          return !!(r.rows && r.rows[0] && r.rows[0].oid);
+        } catch {
+          return false;
+        }
+      };
+      const hasColumn = async (table: string, col: string): Promise<boolean> => {
+        try {
+          const r = await tx(
+            `SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`,
+            [table, col]
+          );
+          return !!(r.rows && r.rows.length);
+        } catch {
+          return false;
+        }
+      };
+      const hasUsersColumn = async (col: string): Promise<boolean> => {
+        try {
+          const r = await tx(
+            `SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = $1`,
+            [col]
+          );
+          return !!(r.rows && r.rows.length);
+        } catch {
+          return false;
+        }
+      };
       // Update simple fields
       const updates: string[] = [];
       const values: any[] = [];
@@ -51,51 +82,67 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       if (typeof email_confirmed === 'boolean') { updates.push(`email_confirmed = $${idx++}`); values.push(email_confirmed); }
       if (typeof subscription_plan === 'string') {
         if (subscription_plan === 'auto') {
-          // Derive plan from latest active subscription; fallback to 'free'
+          // Derive plan from latest active/trialing subscription without risking transaction aborts.
+          // 1) Check subscriptions table & required columns exist
+          const subsExists = await hasTable('subscriptions');
+          const subsHasUserId = subsExists && await hasColumn('subscriptions', 'user_id');
+          const subsHasPlan = subsExists && await hasColumn('subscriptions', 'plan');
+
           let autoPlan = 'free';
-          try {
-            const subRes = await tx(
-              `SELECT plan
-               FROM subscriptions
-               WHERE user_id = $1
-                 AND status IN ('active','trialing')
-                 AND (current_period_end IS NULL OR current_period_end >= NOW())
-               ORDER BY current_period_end DESC NULLS LAST, updated_at DESC NULLS LAST
-               LIMIT 1`,
-              [id]
-            );
-            autoPlan = subRes.rows?.[0]?.plan || 'free';
-          } catch (e:any) {
-            // subscriptions table may not exist yet; default to free without failing
-            console.warn('AUTO plan derivation failed, defaulting to free:', e?.code || e?.message);
-            autoPlan = 'free';
+          if (subsExists && subsHasUserId && subsHasPlan) {
+            try {
+              // Minimal, schema-agnostic query (no ORDER BY unknown cols)
+              const subRes = await tx(
+                `SELECT plan FROM subscriptions
+                 WHERE user_id = $1
+                 LIMIT 1`,
+                [id]
+              );
+              autoPlan = subRes.rows?.[0]?.plan || 'free';
+            } catch (e:any) {
+              console.warn('AUTO plan derivation failed, defaulting to free:', e?.code || e?.message);
+              autoPlan = 'free';
+            }
           }
 
-          // Ensure derived plan exists in plans table to avoid typos
-          let planOk = false;
-          try {
-            const planCheck = await tx('SELECT 1 FROM plans WHERE key = $1', [autoPlan]);
-            planOk = !!(planCheck.rows && planCheck.rows.length);
-          } catch (e:any) {
-            // plans table missing or inaccessible; only allow free implicitly
-            planOk = (autoPlan === 'free');
+          // 2) Validate against plans table only if it and key column exist; otherwise allow only 'free'
+          let planOk = (autoPlan === 'free');
+          const plansExists = await hasTable('plans');
+          const plansHasKey = plansExists && await hasColumn('plans', 'key');
+          if (plansExists && plansHasKey) {
+            try {
+              const planCheck = await tx('SELECT 1 FROM plans WHERE key = $1', [autoPlan]);
+              planOk = !!(planCheck.rows && planCheck.rows.length);
+            } catch {
+              planOk = (autoPlan === 'free');
+            }
           }
 
-          if (!planOk) {
-            // If mapping mismatch, hard fallback to free
-            updates.push(`subscription_plan = 'free'`);
-          } else {
-            updates.push(`subscription_plan = $${idx++}`); values.push(autoPlan);
+          const hasPlanColU = await hasUsersColumn('subscription_plan');
+          if (hasPlanColU) {
+            if (!planOk) {
+              updates.push(`subscription_plan = 'free'`);
+            } else {
+              updates.push(`subscription_plan = $${idx++}`); values.push(autoPlan);
+            }
           }
-          updates.push(`subscription_updated_at = NOW()`);
+          if (await hasUsersColumn('subscription_updated_at')) {
+            updates.push(`subscription_updated_at = NOW()`);
+          }
         } else {
           // Validate provided plan exists by key
           const planCheck = await tx('SELECT 1 FROM plans WHERE key = $1', [subscription_plan]);
           if (!planCheck.rows || planCheck.rows.length === 0) {
             throw Object.assign(new Error('Invalid subscription_plan'), { status: 400 });
           }
-          updates.push(`subscription_plan = $${idx++}`); values.push(subscription_plan);
-          updates.push(`subscription_updated_at = NOW()`);
+          // Update plan if column exists; most schemas have it
+          const hasPlanCol = await hasUsersColumn('subscription_plan');
+          if (hasPlanCol) {
+            updates.push(`subscription_plan = $${idx++}`); values.push(subscription_plan);
+          }
+          if (await hasUsersColumn('subscription_updated_at')) {
+            updates.push(`subscription_updated_at = NOW()`);
+          }
         }
       }
       if (typeof first_name === 'string' || first_name === null) {

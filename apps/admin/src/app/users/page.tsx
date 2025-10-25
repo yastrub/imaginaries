@@ -131,7 +131,8 @@ export default function UsersList() {
       setOpen(false); setRecord(null);
       // Refine v6: mutations invalidate the list query automatically.
     } catch (e:any) {
-      message.error(e.message || 'Update failed');
+      const apiMsg = e?.response?.data?.error || e?.response?.data?.message;
+      message.error(apiMsg || e?.message || 'Update failed');
     }
   };
 

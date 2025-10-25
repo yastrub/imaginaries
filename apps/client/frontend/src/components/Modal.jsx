@@ -6,7 +6,7 @@ export function Modal({ isOpen = true, onClose, children, title, className }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
       <div className={`bg-zinc-900 rounded-xl w-full mx-4 overflow-hidden shadow-xl transform transition-all ${className || 'max-w-lg'}`}>
-        <div className="relative max-h-[85vh] overflow-y-auto">
+        <div className="relative max-h-[85vh] flex flex-col overflow-hidden">
           <div className="sticky top-0 z-10 bg-zinc-900/95">
             <button 
               onClick={onClose}
@@ -23,7 +23,7 @@ export function Modal({ isOpen = true, onClose, children, title, className }) {
               </div>
             )}
           </div>
-          <div className="px-8 py-12">
+          <div className="px-8 py-12 flex-1 overflow-y-auto">
             {children}
           </div>
         </div>

@@ -334,6 +334,10 @@ async function handleInvoiceUpsert(invoice) {
     const pEnd = invoice.period_end || invoice.lines?.data?.[0]?.period?.end || Math.floor(Date.now()/1000);
     const hostedUrl = invoice.hosted_invoice_url || null;
     const pdfUrl = invoice.invoice_pdf || null;
+    const firstLine = invoice.lines?.data?.[0] || null;
+    const priceIdFromClassic = firstLine?.price?.id || null;
+    const priceIdFromClover = firstLine?.pricing?.price_details?.price || null;
+    const invPriceId = priceIdFromClassic || priceIdFromClover || null;
 
     const upd = await query(
       `UPDATE invoices
@@ -355,6 +359,27 @@ async function handleInvoiceUpsert(invoice) {
          VALUES ($1,$2,'stripe',$3,$4,$5,$6, to_timestamp($7), to_timestamp($8), $9, $10)`,
         [userId, subscriptionDbId, invoice.id, amount, currency, statusInv, pStart, pEnd, hostedUrl, pdfUrl]
       );
+    }
+    // Backfill subscription plan from invoice price if subscriptions.plan is missing or 'free'
+    try {
+      if (invPriceId) {
+        const { plan: mappedPlan } = await mapPriceToPlan(invPriceId);
+        if (mappedPlan && mappedPlan !== 'free') {
+          if (subscriptionDbId) {
+            await query(
+              `UPDATE subscriptions SET plan = $1 WHERE id = $2 AND (plan IS NULL OR plan = 'free')`,
+              [mappedPlan, subscriptionDbId]
+            );
+          } else if (invoice.subscription) {
+            await query(
+              `UPDATE subscriptions SET plan = $1 WHERE provider = 'stripe' AND provider_subscription_id = $2 AND (plan IS NULL OR plan = 'free')`,
+              [mappedPlan, invoice.subscription]
+            );
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[billing] failed to backfill subscription plan from invoice', e?.message || e);
     }
     // Backfill subscription current period from invoice if missing
     try {

@@ -91,14 +91,31 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           let autoPlan = 'free';
           if (subsExists && subsHasUserId && subsHasPlan) {
             try {
-              // Minimal, schema-agnostic query (no ORDER BY unknown cols)
-              const subRes = await tx(
+              // Prefer latest active/trialing subscription
+              const activeRes = await tx(
                 `SELECT plan FROM subscriptions
-                 WHERE user_id = $1
+                 WHERE user_id = $1 AND status IN ('active','trialing')
+                 ORDER BY current_period_end DESC NULLS LAST,
+                          current_period_start DESC NULLS LAST,
+                          created_at DESC NULLS LAST
                  LIMIT 1`,
                 [id]
               );
-              autoPlan = subRes.rows?.[0]?.plan || 'free';
+              if (activeRes.rows?.length) {
+                autoPlan = activeRes.rows[0].plan;
+              } else {
+                // Fallback to most recent subscription of any status
+                const anyRes = await tx(
+                  `SELECT plan FROM subscriptions
+                   WHERE user_id = $1
+                   ORDER BY current_period_end DESC NULLS LAST,
+                            current_period_start DESC NULLS LAST,
+                            created_at DESC NULLS LAST
+                   LIMIT 1`,
+                  [id]
+                );
+                autoPlan = anyRes.rows?.[0]?.plan || 'free';
+              }
             } catch (e:any) {
               console.warn('AUTO plan derivation failed, defaulting to free:', e?.code || e?.message);
               autoPlan = 'free';

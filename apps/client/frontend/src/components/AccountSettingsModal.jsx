@@ -277,7 +277,7 @@ export default function AccountSettingsModal({ open, onClose }) {
                   <div className="text-white">{me?.user?.email || '—'}</div>
                   <div className="h-px bg-zinc-800 my-2" />
                   <label className="block text-sm text-zinc-400 mb-1">New email</label>
-                  <input type="email" value={pendingEmail} onChange={(e) => setPendingEmail(e.target.value)} className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-3 py-2 text-white" placeholder="jane.new@example.com" />
+                  <input type="email" value={pendingEmail} onChange={(e) => setPendingEmail(e.target.value)} className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-3 py-2 text-white" placeholder="user.new@example.com" />
                   <p className="text-xs text-zinc-500">We will send a confirmation link to the new address. Your email will change only after confirmation.</p>
                   <div className="flex justify-end">
                     <Button disabled={sendingEmail} className="bg-purple-600 hover:bg-purple-500 text-white gap-2 inline-flex items-center" onClick={handleSendEmailConfirmation}>

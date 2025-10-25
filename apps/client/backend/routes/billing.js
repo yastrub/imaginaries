@@ -177,6 +177,13 @@ export function registerStripeWebhook(app) {
           }
           break;
         }
+        case 'customer.subscription.created': {
+          const subscription = event.data.object;
+          const customerId = subscription.customer;
+          const subscriptionId = subscription.id;
+          await handleSubscriptionUpsert(customerId, subscriptionId, subscription);
+          break;
+        }
         case 'customer.subscription.updated':
         case 'customer.subscription.deleted': {
           const subscription = event.data.object;
@@ -229,15 +236,26 @@ async function handleSubscriptionUpsert(customerId, subscriptionId, subscription
   const priceId = subscription.items?.data?.[0]?.price?.id || null;
   const { plan } = await mapPriceToPlan(priceId);
 
-  // Upsert into subscriptions table
+  // Upsert into subscriptions table (UPDATE then INSERT to avoid ON CONFLICT dependency)
   try {
-    await query(
-      `INSERT INTO subscriptions (user_id, plan, provider, provider_subscription_id, status, current_period_start, current_period_end, cancel_at, canceled_at)
-       VALUES ($1,$2,'stripe',$3,$4,$5,$6,$7,$8)
-       ON CONFLICT (provider_subscription_id)
-       DO UPDATE SET plan = EXCLUDED.plan, status = EXCLUDED.status, current_period_start = EXCLUDED.current_period_start, current_period_end = EXCLUDED.current_period_end, cancel_at = EXCLUDED.cancel_at, canceled_at = EXCLUDED.canceled_at`,
-      [userId, plan, subscriptionId, status, current_period_start, current_period_end, cancel_at, canceled_at]
+    const updateRes = await query(
+      `UPDATE subscriptions
+       SET plan = $1,
+           status = $2,
+           current_period_start = $3,
+           current_period_end = $4,
+           cancel_at = $5,
+           canceled_at = $6
+       WHERE provider = 'stripe' AND provider_subscription_id = $7`,
+      [plan, status, current_period_start, current_period_end, cancel_at, canceled_at, subscriptionId]
     );
+    if (!updateRes.rowCount) {
+      await query(
+        `INSERT INTO subscriptions (user_id, plan, provider, provider_subscription_id, status, current_period_start, current_period_end, cancel_at, canceled_at)
+         VALUES ($1,$2,'stripe',$3,$4,$5,$6,$7,$8)`,
+        [userId, plan, subscriptionId, status, current_period_start, current_period_end, cancel_at, canceled_at]
+      );
+    }
   } catch (e) {
     console.error('[billing] subscriptions upsert failed', e?.message || e);
   }
@@ -278,13 +296,35 @@ async function handleInvoiceUpsert(invoice) {
   } catch {}
 
   try {
-    await query(
-      `INSERT INTO invoices (user_id, subscription_id, provider, provider_invoice_id, amount_total, currency, status, period_start, period_end, hosted_invoice_url, invoice_pdf)
-       VALUES ($1,$2,'stripe',$3,$4,$5,$6, to_timestamp($7), to_timestamp($8), $9, $10)
-       ON CONFLICT (provider_invoice_id)
-       DO UPDATE SET amount_total = EXCLUDED.amount_total, currency = EXCLUDED.currency, status = EXCLUDED.status, period_start = EXCLUDED.period_start, period_end = EXCLUDED.period_end, hosted_invoice_url = EXCLUDED.hosted_invoice_url, invoice_pdf = EXCLUDED.invoice_pdf`,
-      [userId, subscriptionDbId, invoice.id, invoice.amount_due || invoice.amount_paid || invoice.amount_remaining || 0, invoice.currency || 'usd', invoice.status || null, invoice.period_start || invoice.lines?.data?.[0]?.period?.start || Math.floor(Date.now()/1000), invoice.period_end || invoice.lines?.data?.[0]?.period?.end || Math.floor(Date.now()/1000), invoice.hosted_invoice_url || null, invoice.invoice_pdf || null]
+    const amount = invoice.amount_due || invoice.amount_paid || invoice.amount_remaining || 0;
+    const currency = invoice.currency || 'usd';
+    const statusInv = invoice.status || null;
+    const pStart = invoice.period_start || invoice.lines?.data?.[0]?.period?.start || Math.floor(Date.now()/1000);
+    const pEnd = invoice.period_end || invoice.lines?.data?.[0]?.period?.end || Math.floor(Date.now()/1000);
+    const hostedUrl = invoice.hosted_invoice_url || null;
+    const pdfUrl = invoice.invoice_pdf || null;
+
+    const upd = await query(
+      `UPDATE invoices
+       SET user_id = $1,
+           subscription_id = $2,
+           amount_total = $3,
+           currency = $4,
+           status = $5,
+           period_start = to_timestamp($6),
+           period_end = to_timestamp($7),
+           hosted_invoice_url = $8,
+           invoice_pdf = $9
+       WHERE provider = 'stripe' AND provider_invoice_id = $10`,
+      [userId, subscriptionDbId, amount, currency, statusInv, pStart, pEnd, hostedUrl, pdfUrl, invoice.id]
     );
+    if (!upd.rowCount) {
+      await query(
+        `INSERT INTO invoices (user_id, subscription_id, provider, provider_invoice_id, amount_total, currency, status, period_start, period_end, hosted_invoice_url, invoice_pdf)
+         VALUES ($1,$2,'stripe',$3,$4,$5,$6, to_timestamp($7), to_timestamp($8), $9, $10)`,
+        [userId, subscriptionDbId, invoice.id, amount, currency, statusInv, pStart, pEnd, hostedUrl, pdfUrl]
+      );
+    }
   } catch (e) {
     console.error('[billing] invoice upsert failed', e?.message || e);
   }

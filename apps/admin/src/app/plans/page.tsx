@@ -142,7 +142,6 @@ export default function PlansPage() {
     )}>
       <Table rowKey="id" {...tableProps}>
         <Table.Column<Plan> dataIndex="key" title="Key" sorter />
-        <Table.Column<Plan> dataIndex="stripe_product_id" title="Product ID" sorter />
         {false && <Table.Column<Plan> dataIndex="name" title="Name" />}
         <Table.Column<Plan>
           dataIndex="price_cents"

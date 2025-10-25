@@ -223,7 +223,7 @@ async function handleSubscriptionUpsert(customerId, subscriptionId, subscription
 
   let subscription = subscriptionObj;
   if (!subscription) {
-    subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['plan.product', 'items'] });
+    subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['items.data.price', 'items.data.price.product'] });
   }
 
   const status = subscription.status;
@@ -319,12 +319,22 @@ async function handleInvoiceUpsert(invoice) {
   }
   if (!userId) return;
 
+  // Determine subscription ID from invoice (classic and Clover payloads)
+  const firstLine = invoice.lines?.data?.[0] || null;
+  const subIdFromClassic = invoice.subscription || null;
+  const subIdFromParent = invoice.parent?.subscription_details?.subscription || null;
+  const subIdFromLineClassic = firstLine?.subscription || null;
+  const subIdFromLineParent = firstLine?.parent?.subscription_item_details?.subscription || null;
+  const subscriptionIdFromInvoice = subIdFromClassic || subIdFromParent || subIdFromLineClassic || subIdFromLineParent || null;
+
   // Find subscription DB id by provider_subscription_id
   let subscriptionDbId = null;
-  try {
-    const subRes = await query(`SELECT id FROM subscriptions WHERE provider = 'stripe' AND provider_subscription_id = $1`, [invoice.subscription]);
-    subscriptionDbId = subRes.rows?.[0]?.id || null;
-  } catch {}
+  if (subscriptionIdFromInvoice) {
+    try {
+      const subRes = await query(`SELECT id FROM subscriptions WHERE provider = 'stripe' AND provider_subscription_id = $1`, [subscriptionIdFromInvoice]);
+      subscriptionDbId = subRes.rows?.[0]?.id || null;
+    } catch {}
+  }
 
   try {
     const amount = invoice.amount_due || invoice.amount_paid || invoice.amount_remaining || 0;
@@ -334,7 +344,6 @@ async function handleInvoiceUpsert(invoice) {
     const pEnd = invoice.period_end || invoice.lines?.data?.[0]?.period?.end || Math.floor(Date.now()/1000);
     const hostedUrl = invoice.hosted_invoice_url || null;
     const pdfUrl = invoice.invoice_pdf || null;
-    const firstLine = invoice.lines?.data?.[0] || null;
     const priceIdFromClassic = firstLine?.price?.id || null;
     const priceIdFromClover = firstLine?.pricing?.price_details?.price || null;
     const invPriceId = priceIdFromClassic || priceIdFromClover || null;
@@ -381,6 +390,20 @@ async function handleInvoiceUpsert(invoice) {
     } catch (e) {
       console.error('[billing] failed to backfill subscription plan from invoice', e?.message || e);
     }
+    // If invoice is paid, ensure subscription status is active
+    try {
+      if (statusInv === 'paid' && subscriptionIdFromInvoice) {
+        await query(
+          `UPDATE subscriptions
+           SET status = 'active'
+           WHERE provider = 'stripe' AND provider_subscription_id = $1 AND status IN ('incomplete','past_due','trialing','unpaid')`,
+          [subscriptionIdFromInvoice]
+        );
+      }
+    } catch (e) {
+      console.error('[billing] failed to sync subscription status from invoice', e?.message || e);
+    }
+
     // Backfill subscription current period from invoice if missing
     try {
       if (subscriptionDbId) {
@@ -391,13 +414,13 @@ async function handleInvoiceUpsert(invoice) {
            WHERE id = $3`,
           [pStart, pEnd, subscriptionDbId]
         );
-      } else if (invoice.subscription) {
+      } else if (subscriptionIdFromInvoice) {
         await query(
           `UPDATE subscriptions
            SET current_period_start = COALESCE(current_period_start, to_timestamp($1)),
                current_period_end = COALESCE(current_period_end, to_timestamp($2))
            WHERE provider = 'stripe' AND provider_subscription_id = $3`,
-          [pStart, pEnd, invoice.subscription]
+          [pStart, pEnd, subscriptionIdFromInvoice]
         );
       }
     } catch (e) {

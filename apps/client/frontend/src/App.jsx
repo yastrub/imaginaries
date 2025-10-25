@@ -20,6 +20,8 @@ import { EmailConfirmationPage } from './components/EmailConfirmationPage';
 import { Header } from './components/Header';
 import { Gallery } from './components/Gallery';
 import { Modal } from './components/Modal';
+import UpgradeCongratsModal from './components/UpgradeCongratsModal';
+import { triggerConfetti, CONFETTI_EVENTS } from './components/GlobalConfetti';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { useReduxAuth } from './hooks/useReduxAuth';
 import { useImageDownload } from './hooks/useImageDownload';
@@ -250,6 +252,38 @@ function AppContent() {
     }
   }, [isAuthenticated, navigate]);
 
+  // Handle post-upgrade success redirect and one-time congrats modal
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const status = sp.get('status');
+    const celebrate = sp.get('celebrate'); // debug switch
+    const path = window.location.pathname;
+
+    const planFromUser = (typeof user?.subscription_plan === 'string' && user.subscription_plan) ? user.subscription_plan : null;
+
+    // Only react on /upgrade and when auth is present (so we know the plan)
+    if (path === '/upgrade') {
+      // If Stripe redirect appended status=success, or debug celebrate=1
+      if (status === 'success' || celebrate === '1') {
+        // Prevent showing twice: use localStorage flag keyed by date + user
+        const key = `upgrade_congrats_shown_${user?.id || 'anon'}`;
+        const already = localStorage.getItem(key);
+
+        // Clean the URL first (remove search) then navigate to root
+        window.history.replaceState({}, document.title, '/');
+
+        // Show modal once
+        if (!already) {
+          setTimeout(() => {
+            setShowUpgradeCongrats(true);
+            try { triggerConfetti(CONFETTI_EVENTS.GENERATION_SUCCESS); } catch {}
+            localStorage.setItem(key, new Date().toISOString());
+          }, 150);
+        }
+      }
+    }
+  }, [user?.id, user?.subscription_plan]);
+
   // NASA-grade quota sync: fetch on auth, reset on logout
   useEffect(() => {
     if (isAuthenticated) {
@@ -275,6 +309,7 @@ function AppContent() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [showUpgradeCongrats, setShowUpgradeCongrats] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   
   // Refs
@@ -604,6 +639,15 @@ function AppContent() {
           isLoadingMainScreen={isLoadingMainScreen}
           toast={toast}
           /* No need to pass toggleHistoryView anymore */
+        />
+      )}
+
+      {/* Upgrade Congrats Modal (one-time) */}
+      {showUpgradeCongrats && (
+        <UpgradeCongratsModal
+          isOpen={showUpgradeCongrats}
+          onClose={() => setShowUpgradeCongrats(false)}
+          planLabel={(user?.subscription_plan || 'Pro')}
         />
       )}
       

@@ -14,6 +14,42 @@ function getOrigin(req) {
   return `${proto}://${host}`;
 }
 
+// Attempt to find or attach a user to a Stripe customer if missing in billing_profiles
+async function findOrAttachUserToCustomer(customerId) {
+  // Try existing mapping first
+  try {
+    const prof = await query(`SELECT user_id FROM billing_profiles WHERE provider = 'stripe' AND provider_customer_id = $1`, [customerId]);
+    if (prof.rows?.length) return prof.rows[0].user_id;
+  } catch {}
+  if (!stripe) return null;
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    const email = (customer && customer.email) ? String(customer.email).toLowerCase() : null;
+    const metaUserId = customer && customer.metadata && customer.metadata.user_id ? String(customer.metadata.user_id) : null;
+    // Prefer explicit metadata mapping
+    if (metaUserId) {
+      try {
+        await query(`INSERT INTO billing_profiles (user_id, provider, provider_customer_id) VALUES ($1,'stripe',$2) ON CONFLICT (user_id) DO UPDATE SET provider_customer_id = EXCLUDED.provider_customer_id`, [metaUserId, customerId]);
+        return metaUserId;
+      } catch {}
+    }
+    // Fallback: match by email
+    if (email) {
+      try {
+        const u = await query(`SELECT id FROM users WHERE lower(email) = $1 LIMIT 1`, [email]);
+        if (u.rows?.length) {
+          const userId = u.rows[0].id;
+          await query(`INSERT INTO billing_profiles (user_id, provider, provider_customer_id) VALUES ($1,'stripe',$2) ON CONFLICT (user_id) DO UPDATE SET provider_customer_id = EXCLUDED.provider_customer_id`, [userId, customerId]);
+          return userId;
+        }
+      } catch {}
+    }
+  } catch (e) {
+    console.error('[billing] failed to retrieve stripe customer', e?.message || e);
+  }
+  return null;
+}
+
 async function getPriceIdFromDB(planKey, cycle) {
   const res = await query(`SELECT stripe_price_monthly_id, stripe_price_annual_id FROM plans WHERE key = $1`, [planKey]);
   if (!res.rows.length) return null;
@@ -167,10 +203,16 @@ export function registerStripeWebhook(app) {
 }
 
 async function handleSubscriptionUpsert(customerId, subscriptionId, subscriptionObj = null) {
-  // Find user by customerId
-  const userRes = await query(`SELECT user_id FROM billing_profiles WHERE provider = 'stripe' AND provider_customer_id = $1`, [customerId]);
-  if (!userRes.rows.length) return;
-  const userId = userRes.rows[0].user_id;
+  // Find or attach user by customerId
+  let userId = null;
+  try {
+    const userRes = await query(`SELECT user_id FROM billing_profiles WHERE provider = 'stripe' AND provider_customer_id = $1`, [customerId]);
+    userId = userRes.rows?.[0]?.user_id || null;
+  } catch {}
+  if (!userId) {
+    userId = await findOrAttachUserToCustomer(customerId);
+  }
+  if (!userId) return; // cannot proceed without user
 
   let subscription = subscriptionObj;
   if (!subscription) {
@@ -188,31 +230,45 @@ async function handleSubscriptionUpsert(customerId, subscriptionId, subscription
   const { plan } = await mapPriceToPlan(priceId);
 
   // Upsert into subscriptions table
-  await query(
-    `INSERT INTO subscriptions (user_id, plan, provider, provider_subscription_id, status, current_period_start, current_period_end, cancel_at, canceled_at)
-     VALUES ($1,$2,'stripe',$3,$4,$5,$6,$7,$8)
-     ON CONFLICT (provider_subscription_id)
-     DO UPDATE SET plan = EXCLUDED.plan, status = EXCLUDED.status, current_period_start = EXCLUDED.current_period_start, current_period_end = EXCLUDED.current_period_end, cancel_at = EXCLUDED.cancel_at, canceled_at = EXCLUDED.canceled_at, updated_at = NOW()`,
-    [userId, plan, subscriptionId, status, current_period_start, current_period_end, cancel_at, canceled_at]
-  );
+  try {
+    await query(
+      `INSERT INTO subscriptions (user_id, plan, provider, provider_subscription_id, status, current_period_start, current_period_end, cancel_at, canceled_at)
+       VALUES ($1,$2,'stripe',$3,$4,$5,$6,$7,$8)
+       ON CONFLICT (provider_subscription_id)
+       DO UPDATE SET plan = EXCLUDED.plan, status = EXCLUDED.status, current_period_start = EXCLUDED.current_period_start, current_period_end = EXCLUDED.current_period_end, cancel_at = EXCLUDED.cancel_at, canceled_at = EXCLUDED.canceled_at`,
+      [userId, plan, subscriptionId, status, current_period_start, current_period_end, cancel_at, canceled_at]
+    );
+  } catch (e) {
+    console.error('[billing] subscriptions upsert failed', e?.message || e);
+  }
 
   // Update user's subscription_plan and stamp subscription_updated_at for auditing
   const newPlan = status === 'active' || status === 'trialing' ? plan : 'free';
-  await query(
-    `UPDATE users 
-     SET subscription_plan = $1,
-         subscription_updated_at = NOW()
-     WHERE id = $2`,
-    [newPlan, userId]
-  );
+  try {
+    await query(
+      `UPDATE users 
+       SET subscription_plan = $1,
+           subscription_updated_at = NOW()
+       WHERE id = $2`,
+      [newPlan, userId]
+    );
+  } catch (e) {
+    console.error('[billing] failed to update user plan', e?.message || e);
+  }
 }
 
 async function handleInvoiceUpsert(invoice) {
-  // Find the user by customer via billing_profiles
+  // Find or attach user by customer via billing_profiles
   const customerId = invoice.customer;
-  const userRes = await query(`SELECT user_id FROM billing_profiles WHERE provider = 'stripe' AND provider_customer_id = $1`, [customerId]);
-  if (!userRes.rows.length) return;
-  const userId = userRes.rows[0].user_id;
+  let userId = null;
+  try {
+    const userRes = await query(`SELECT user_id FROM billing_profiles WHERE provider = 'stripe' AND provider_customer_id = $1`, [customerId]);
+    userId = userRes.rows?.[0]?.user_id || null;
+  } catch {}
+  if (!userId) {
+    userId = await findOrAttachUserToCustomer(customerId);
+  }
+  if (!userId) return;
 
   // Find subscription DB id by provider_subscription_id
   let subscriptionDbId = null;
@@ -221,13 +277,17 @@ async function handleInvoiceUpsert(invoice) {
     subscriptionDbId = subRes.rows?.[0]?.id || null;
   } catch {}
 
-  await query(
-    `INSERT INTO invoices (user_id, subscription_id, provider, provider_invoice_id, amount_total, currency, status, period_start, period_end, hosted_invoice_url, invoice_pdf)
-     VALUES ($1,$2,'stripe',$3,$4,$5,$6, to_timestamp($7), to_timestamp($8), $9, $10)
-     ON CONFLICT (provider_invoice_id)
-     DO UPDATE SET amount_total = EXCLUDED.amount_total, currency = EXCLUDED.currency, status = EXCLUDED.status, period_start = EXCLUDED.period_start, period_end = EXCLUDED.period_end, hosted_invoice_url = EXCLUDED.hosted_invoice_url, invoice_pdf = EXCLUDED.invoice_pdf, updated_at = NOW()`,
-    [userId, subscriptionDbId, invoice.id, invoice.amount_due || invoice.amount_paid || invoice.amount_remaining || 0, invoice.currency || 'usd', invoice.status || null, invoice.period_start || invoice.lines?.data?.[0]?.period?.start || Math.floor(Date.now()/1000), invoice.period_end || invoice.lines?.data?.[0]?.period?.end || Math.floor(Date.now()/1000), invoice.hosted_invoice_url || null, invoice.invoice_pdf || null]
-  );
+  try {
+    await query(
+      `INSERT INTO invoices (user_id, subscription_id, provider, provider_invoice_id, amount_total, currency, status, period_start, period_end, hosted_invoice_url, invoice_pdf)
+       VALUES ($1,$2,'stripe',$3,$4,$5,$6, to_timestamp($7), to_timestamp($8), $9, $10)
+       ON CONFLICT (provider_invoice_id)
+       DO UPDATE SET amount_total = EXCLUDED.amount_total, currency = EXCLUDED.currency, status = EXCLUDED.status, period_start = EXCLUDED.period_start, period_end = EXCLUDED.period_end, hosted_invoice_url = EXCLUDED.hosted_invoice_url, invoice_pdf = EXCLUDED.invoice_pdf`,
+      [userId, subscriptionDbId, invoice.id, invoice.amount_due || invoice.amount_paid || invoice.amount_remaining || 0, invoice.currency || 'usd', invoice.status || null, invoice.period_start || invoice.lines?.data?.[0]?.period?.start || Math.floor(Date.now()/1000), invoice.period_end || invoice.lines?.data?.[0]?.period?.end || Math.floor(Date.now()/1000), invoice.hosted_invoice_url || null, invoice.invoice_pdf || null]
+    );
+  } catch (e) {
+    console.error('[billing] invoice upsert failed', e?.message || e);
+  }
 }
 
 export { router as billingRouter };

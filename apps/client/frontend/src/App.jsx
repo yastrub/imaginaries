@@ -219,46 +219,13 @@ function AppContent() {
   
   // Debug logging for route monitoring
   console.log('Route monitoring active:', routeData);
-
-  // Immediate celebrate guard: before Routes render, preserve celebrate flow and avoid losing the query param
-  try {
-    const sp = new URLSearchParams(window.location.search);
-    const celebrateParam = sp.get('celebrate');
-    if (celebrateParam === '1' && window.location.pathname !== '/') {
-      const userKey = `upgrade_pending_modal_${(typeof window !== 'undefined' && (window.__USER_ID__ || 'anon'))}`;
-      const anonKey = `upgrade_pending_modal_anon`;
-      try {
-        localStorage.setItem(userKey, '1');
-        localStorage.setItem(anonKey, '1');
-        sessionStorage.setItem(userKey, '1');
-        sessionStorage.setItem(anonKey, '1');
-      } catch {}
-      window.location.replace('/?purge=1&celebrate=1');
-      return null;
-    }
-  } catch {}
   
   // Redirect authenticated users from / to /imagine
   useEffect(() => {
     // Get the current path on each render
     const currentPath = window.location.pathname;
     console.log('Auth redirect check - Path:', currentPath, 'isAuthenticated:', isAuthenticated);
-    // Block redirect when celebration/purge flow is in progress
-    try {
-      const sp = new URLSearchParams(window.location.search);
-      const celebrateFlag = sp.get('celebrate') === '1';
-      const userKey = `upgrade_pending_modal_${(typeof window !== 'undefined' && window.__USER_ID__) || ''}`; // fallback not reliable
-      // Also check generic keys to be safe
-      const hasPending = Boolean(
-        sp.get('purge') === '1' || celebrateFlag ||
-        localStorage.getItem('upgrade_pending_modal_anon') === '1' ||
-        sessionStorage.getItem('upgrade_pending_modal_anon') === '1'
-      );
-      if (hasPending) {
-        console.log('Auth redirect: holding due to celebrate/purge/pending flags');
-        return;
-      }
-    } catch {}
+    // No celebrate/purge URL guards anymore; rely solely on localStorage + plan
     
     // Skip redirect if we're in the middle of signing out
     const isSigningOut = sessionStorage.getItem('isSigningOut');
@@ -286,74 +253,25 @@ function AppContent() {
     }
   }, [isAuthenticated, navigate]);
 
-  // Handle post-upgrade success or debug celebrate: set pending and hard-redirect to root with purge
+  // REMOVE URL dependency: Do nothing on /upgrade or celebrate params. We rely purely on plan + localStorage
   useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    const status = sp.get('status');
-    const celebrate = sp.get('celebrate'); // debug switch
-    const path = window.location.pathname;
-
-    const shouldTrigger = (path === '/upgrade' && (status === 'success' || celebrate === '1')) || (celebrate === '1');
-    if (shouldTrigger) {
-      const userKey = `upgrade_pending_modal_${user?.id || 'anon'}`;
-      const anonKey = `upgrade_pending_modal_anon`;
-      try {
-        localStorage.setItem(userKey, '1');
-        localStorage.setItem(anonKey, '1');
-        sessionStorage.setItem(userKey, '1');
-        sessionStorage.setItem(anonKey, '1');
-      } catch {}
-      // Hard redirect ensures background route is correct and state resets
-      const nextUrl = '/?purge=1&celebrate=1';
-      window.location.replace(nextUrl);
-    }
+    return; // no-op
   }, [user?.id]);
 
-  // On load, if a pending flag exists (either anon or user), or celebrate=1 in URL, show modal once
+  // NEW: Show upgrade modal purely based on current plan and per-user localStorage record
   useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    const celebrate = sp.get('celebrate');
-    const userFlagKey = `upgrade_pending_modal_${user?.id || 'anon'}`;
-    const anonFlagKey = `upgrade_pending_modal_anon`;
-    const shownKey = `upgrade_congrats_shown_${user?.id || 'anon'}`;
-    const hasPending =
-      localStorage.getItem(userFlagKey) === '1' ||
-      localStorage.getItem(anonFlagKey) === '1' ||
-      sessionStorage.getItem(userFlagKey) === '1' ||
-      sessionStorage.getItem(anonFlagKey) === '1';
-    const already = localStorage.getItem(shownKey);
-    if (celebrate === '1') {
-      try { localStorage.removeItem(userFlagKey); } catch {}
-      try { localStorage.removeItem(anonFlagKey); } catch {}
-      try { sessionStorage.removeItem(userFlagKey); } catch {}
-      try { sessionStorage.removeItem(anonFlagKey); } catch {}
+    if (!isAuthenticated) return;
+    const plan = user?.subscription_plan;
+    if (!plan || plan === 'free') return;
+    if (!user?.id) return;
+    const key = `last_upgrade_plan_${user.id}`;
+    const stored = localStorage.getItem(key);
+    if (!stored || stored !== plan) {
       setShowUpgradeCongrats(true);
+      try { localStorage.setItem(key, plan); } catch {}
       try { triggerConfetti(CONFETTI_EVENTS.GENERATION_SUCCESS); } catch {}
-      localStorage.setItem(shownKey, new Date().toISOString());
-      // Clean celebrate from URL
-      try {
-        const url = window.location.pathname + window.location.hash;
-        window.history.replaceState({}, document.title, url);
-      } catch {}
-      return;
     }
-    if (hasPending && !already) {
-      try { localStorage.removeItem(userFlagKey); } catch {}
-      try { localStorage.removeItem(anonFlagKey); } catch {}
-      try { sessionStorage.removeItem(userFlagKey); } catch {}
-      try { sessionStorage.removeItem(anonFlagKey); } catch {}
-      setTimeout(() => {
-        setShowUpgradeCongrats(true);
-        try { triggerConfetti(CONFETTI_EVENTS.GENERATION_SUCCESS); } catch {}
-        localStorage.setItem(shownKey, new Date().toISOString());
-        // Clean celebrate from URL for nice UX
-        try {
-          const url = window.location.pathname + window.location.hash;
-          window.history.replaceState({}, document.title, url);
-        } catch {}
-      }, 120);
-    }
-  }, [user?.id]);
+  }, [isAuthenticated, user?.id, user?.subscription_plan]);
 
   // NASA-grade quota sync: fetch on auth, reset on logout
   useEffect(() => {
@@ -714,10 +632,10 @@ function AppContent() {
       )}
 
       {/* Upgrade Congrats Modal (one-time) */}
-      {showUpgradeCongrats && (
+      {isAuthenticated && showUpgradeCongrats && (
         <UpgradeCongratsModal
           isOpen={showUpgradeCongrats}
-          onClose={() => { setShowUpgradeCongrats(false); try { window.location.replace('/?purge=1'); } catch {} }}
+          onClose={() => { setShowUpgradeCongrats(false); }}
           planLabel={(user?.subscription_plan || 'Pro')}
         />
       )}

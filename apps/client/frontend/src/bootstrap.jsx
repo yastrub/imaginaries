@@ -30,14 +30,6 @@ async function purgeCachesAndReload() {
 
 (async function start() {
   const params = new URLSearchParams(location.search);
-  // If celebrate=1 is present, set anon pending flags immediately (before any purge or app load)
-  try {
-    if (params.get('celebrate') === '1') {
-      const anonKey = 'upgrade_pending_modal_anon';
-      localStorage.setItem(anonKey, '1');
-      sessionStorage.setItem(anonKey, '1');
-    }
-  } catch {}
   const needPurge = params.has('purge') || (localStorage.getItem('BUILD_ID') !== BUILD_ID);
   if (needPurge) {
     await purgeCachesAndReload();

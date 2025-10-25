@@ -76,6 +76,31 @@ async function mapPriceToPlan(priceId) {
   return { plan: 'free', cycle: 'monthly' };
 }
 
+// Try to resolve plan by Stripe product id (currency-agnostic). Safe if column is missing.
+async function mapProductToPlan(productId, interval) {
+  if (!productId) return null;
+  try {
+    const res = await query(
+      `SELECT key as plan FROM plans WHERE stripe_product_id = $1 LIMIT 1`,
+      [productId]
+    );
+    if (res.rows.length) {
+      const cycle = String(interval).toLowerCase() === 'year' ? 'annual' : 'monthly';
+      return { plan: res.rows[0].plan, cycle };
+    }
+  } catch (e) {
+    // Column may not exist in some environments; fall back silently
+  }
+  return null;
+}
+
+// Unified plan mapper: prefer product+interval, fallback to price id
+async function mapPlan({ priceId, productId, interval }) {
+  const byProduct = await mapProductToPlan(productId, interval);
+  if (byProduct && byProduct.plan && byProduct.plan !== 'free') return byProduct;
+  return await mapPriceToPlan(priceId);
+}
+
 async function ensureCustomer(user) {
   // Get or create customer and persist in billing_profiles
   const profRes = await query(
@@ -242,14 +267,15 @@ async function handleSubscriptionUpsert(customerId, subscriptionId, subscription
   const cancel_at = toIsoOrNull(subscription.cancel_at);
   const canceled_at = toIsoOrNull(subscription.canceled_at);
 
-  // Determine our internal plan key from price
+  // Determine our internal plan key from product/price
   const itemPrice = subscription.items?.data?.[0]?.price || null;
   const priceId = itemPrice?.id || null;
+  const productId = (itemPrice?.product && typeof itemPrice.product === 'object') ? itemPrice.product.id : itemPrice?.product || null;
   const unitAmount = (typeof itemPrice?.unit_amount === 'number') ? itemPrice.unit_amount : null;
   const priceCurrency = itemPrice?.currency || null;
   const interval = itemPrice?.recurring?.interval || null; // 'month' | 'year'
-  const { plan, cycle } = await mapPriceToPlan(priceId);
-  const isAnnual = (cycle === 'annual') || (interval === 'year');
+  const { plan, cycle } = await mapPlan({ priceId, productId, interval });
+  const isAnnual = (cycle === 'annual') || (String(interval).toLowerCase() === 'year');
 
   // Upsert into subscriptions table (UPDATE then INSERT to avoid ON CONFLICT dependency)
   try {
@@ -346,7 +372,13 @@ async function handleInvoiceUpsert(invoice) {
     const pdfUrl = invoice.invoice_pdf || null;
     const priceIdFromClassic = firstLine?.price?.id || null;
     const priceIdFromClover = firstLine?.pricing?.price_details?.price || null;
+    const productIdClassic = firstLine?.price?.product || null;
+    const productIdClover = firstLine?.pricing?.price_details?.product || null;
+    const intervalClassic = firstLine?.price?.recurring?.interval || null;
+    const intervalClover = firstLine?.pricing?.price_details?.price && firstLine?.pricing?.price_details?.interval ? firstLine.pricing.price_details.interval : null;
     const invPriceId = priceIdFromClassic || priceIdFromClover || null;
+    const invProductId = productIdClassic || productIdClover || null;
+    const invInterval = intervalClassic || intervalClover || null;
 
     const upd = await query(
       `UPDATE invoices
@@ -369,20 +401,20 @@ async function handleInvoiceUpsert(invoice) {
         [userId, subscriptionDbId, invoice.id, amount, currency, statusInv, pStart, pEnd, hostedUrl, pdfUrl]
       );
     }
-    // Backfill subscription plan from invoice price if subscriptions.plan is missing or 'free'
+    // Backfill subscription plan from invoice product/price if subscriptions.plan is missing or 'free'
     try {
-      if (invPriceId) {
-        const { plan: mappedPlan } = await mapPriceToPlan(invPriceId);
+      if (invPriceId || invProductId) {
+        const { plan: mappedPlan } = await mapPlan({ priceId: invPriceId, productId: invProductId, interval: invInterval });
         if (mappedPlan && mappedPlan !== 'free') {
           if (subscriptionDbId) {
             await query(
               `UPDATE subscriptions SET plan = $1 WHERE id = $2 AND (plan IS NULL OR plan = 'free')`,
               [mappedPlan, subscriptionDbId]
             );
-          } else if (invoice.subscription) {
+          } else if (subscriptionIdFromInvoice) {
             await query(
               `UPDATE subscriptions SET plan = $1 WHERE provider = 'stripe' AND provider_subscription_id = $2 AND (plan IS NULL OR plan = 'free')`,
-              [mappedPlan, invoice.subscription]
+              [mappedPlan, subscriptionIdFromInvoice]
             );
           }
         }

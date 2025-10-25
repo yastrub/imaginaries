@@ -31,7 +31,7 @@ export default function UpgradeCongratsModal({ isOpen, onClose, planLabel = 'Pro
             You’re Upgraded!
           </h2>
           <p className="text-zinc-300/95 text-base md:text-lg">
-            Welcome to <span className="text-emerald-400 font-semibold">{planLabel}</span>. Your creative horsepower just leveled up.
+            Welcome to <span className="text-emerald-400 font-semibold uppercase">{planLabel}</span>. Your creative horsepower just leveled up.
           </p>
         </div>
 

@@ -57,7 +57,7 @@ export default function UsersList() {
   const planOptions = React.useMemo(() => {
     const base = (plansResult?.data || []).map((p) => ({ value: p.key, label: p.name }));
     return [
-      { value: 'auto', label: 'AUTO (derive from active subscription)' },
+      { value: 'auto', label: 'AUTO (Active Subscription)' },
       ...base,
     ];
   }, [plansResult]);

@@ -52,20 +52,36 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       if (typeof subscription_plan === 'string') {
         if (subscription_plan === 'auto') {
           // Derive plan from latest active subscription; fallback to 'free'
-          const subRes = await tx(
-            `SELECT plan
-             FROM subscriptions
-             WHERE user_id = $1
-               AND status IN ('active','trialing')
-               AND (current_period_end IS NULL OR current_period_end >= NOW())
-             ORDER BY current_period_end DESC NULLS LAST, updated_at DESC NULLS LAST
-             LIMIT 1`,
-            [id]
-          );
-          const autoPlan = subRes.rows?.[0]?.plan || 'free';
+          let autoPlan = 'free';
+          try {
+            const subRes = await tx(
+              `SELECT plan
+               FROM subscriptions
+               WHERE user_id = $1
+                 AND status IN ('active','trialing')
+                 AND (current_period_end IS NULL OR current_period_end >= NOW())
+               ORDER BY current_period_end DESC NULLS LAST, updated_at DESC NULLS LAST
+               LIMIT 1`,
+              [id]
+            );
+            autoPlan = subRes.rows?.[0]?.plan || 'free';
+          } catch (e:any) {
+            // subscriptions table may not exist yet; default to free without failing
+            console.warn('AUTO plan derivation failed, defaulting to free:', e?.code || e?.message);
+            autoPlan = 'free';
+          }
+
           // Ensure derived plan exists in plans table to avoid typos
-          const planCheck = await tx('SELECT 1 FROM plans WHERE key = $1', [autoPlan]);
-          if (!planCheck.rows || planCheck.rows.length === 0) {
+          let planOk = false;
+          try {
+            const planCheck = await tx('SELECT 1 FROM plans WHERE key = $1', [autoPlan]);
+            planOk = !!(planCheck.rows && planCheck.rows.length);
+          } catch (e:any) {
+            // plans table missing or inaccessible; only allow free implicitly
+            planOk = (autoPlan === 'free');
+          }
+
+          if (!planOk) {
             // If mapping mismatch, hard fallback to free
             updates.push(`subscription_plan = 'free'`);
           } else {

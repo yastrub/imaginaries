@@ -19,8 +19,12 @@ async function purgeCachesAndReload() {
       await Promise.all(keys.map(k => caches.delete(k).catch(() => {})));
     }
   } catch {}
-  // Reload to same path with version param to ensure fresh resources
-  const url = `${location.pathname}?v=${encodeURIComponent(BUILD_ID)}${location.hash}`;
+  // Reload to same path with version param; preserve existing params (e.g., celebrate=1), remove only 'purge'
+  const params = new URLSearchParams(location.search);
+  params.delete('purge');
+  params.set('v', BUILD_ID);
+  const qs = params.toString();
+  const url = `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
   location.replace(url);
 }
 

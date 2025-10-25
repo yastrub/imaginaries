@@ -225,6 +225,22 @@ function AppContent() {
     // Get the current path on each render
     const currentPath = window.location.pathname;
     console.log('Auth redirect check - Path:', currentPath, 'isAuthenticated:', isAuthenticated);
+    // Block redirect when celebration/purge flow is in progress
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const celebrateFlag = sp.get('celebrate') === '1';
+      const userKey = `upgrade_pending_modal_${(typeof window !== 'undefined' && window.__USER_ID__) || ''}`; // fallback not reliable
+      // Also check generic keys to be safe
+      const hasPending = Boolean(
+        sp.get('purge') === '1' || celebrateFlag ||
+        localStorage.getItem('upgrade_pending_modal_anon') === '1' ||
+        sessionStorage.getItem('upgrade_pending_modal_anon') === '1'
+      );
+      if (hasPending) {
+        console.log('Auth redirect: holding due to celebrate/purge/pending flags');
+        return;
+      }
+    } catch {}
     
     // Skip redirect if we're in the middle of signing out
     const isSigningOut = sessionStorage.getItem('isSigningOut');
@@ -252,35 +268,56 @@ function AppContent() {
     }
   }, [isAuthenticated, navigate]);
 
-  // Handle post-upgrade success: set a pending flag and hard-redirect to root
+  // Handle post-upgrade success or debug celebrate: set pending and hard-redirect to root with purge
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const status = sp.get('status');
     const celebrate = sp.get('celebrate'); // debug switch
     const path = window.location.pathname;
 
-    if (path === '/upgrade' && (status === 'success' || celebrate === '1')) {
-      const flagKey = `upgrade_pending_modal_${user?.id || 'anon'}`;
-      localStorage.setItem(flagKey, '1');
+    const shouldTrigger = (path === '/upgrade' && (status === 'success' || celebrate === '1')) || (celebrate === '1');
+    if (shouldTrigger) {
+      const userKey = `upgrade_pending_modal_${user?.id || 'anon'}`;
+      const anonKey = `upgrade_pending_modal_anon`;
+      try {
+        localStorage.setItem(userKey, '1');
+        localStorage.setItem(anonKey, '1');
+        sessionStorage.setItem(userKey, '1');
+        sessionStorage.setItem(anonKey, '1');
+      } catch {}
       // Hard redirect ensures background route is correct and state resets
-      window.location.replace('/?purge=1');
+      const nextUrl = '/?purge=1&celebrate=1';
+      window.location.replace(nextUrl);
     }
   }, [user?.id]);
 
-  // On load, if a pending flag exists (or celebrate=1 on any route), show modal once
+  // On load, if a pending flag exists (either anon or user), or celebrate=1 in URL, show modal once
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const celebrate = sp.get('celebrate');
-    const flagKey = `upgrade_pending_modal_${user?.id || 'anon'}`;
+    const userFlagKey = `upgrade_pending_modal_${user?.id || 'anon'}`;
+    const anonFlagKey = `upgrade_pending_modal_anon`;
     const shownKey = `upgrade_congrats_shown_${user?.id || 'anon'}`;
-    const hasPending = localStorage.getItem(flagKey) === '1';
+    const hasPending =
+      localStorage.getItem(userFlagKey) === '1' ||
+      localStorage.getItem(anonFlagKey) === '1' ||
+      sessionStorage.getItem(userFlagKey) === '1' ||
+      sessionStorage.getItem(anonFlagKey) === '1';
     const already = localStorage.getItem(shownKey);
     if ((hasPending || celebrate === '1') && !already) {
-      localStorage.removeItem(flagKey);
+      try { localStorage.removeItem(userFlagKey); } catch {}
+      try { localStorage.removeItem(anonFlagKey); } catch {}
+      try { sessionStorage.removeItem(userFlagKey); } catch {}
+      try { sessionStorage.removeItem(anonFlagKey); } catch {}
       setTimeout(() => {
         setShowUpgradeCongrats(true);
         try { triggerConfetti(CONFETTI_EVENTS.GENERATION_SUCCESS); } catch {}
         localStorage.setItem(shownKey, new Date().toISOString());
+        // Clean celebrate from URL for nice UX
+        try {
+          const url = window.location.pathname + window.location.hash;
+          window.history.replaceState({}, document.title, url);
+        } catch {}
       }, 120);
     }
   }, [user?.id]);

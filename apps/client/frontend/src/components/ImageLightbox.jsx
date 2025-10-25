@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, EyeOff } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, EyeOff, Heart, ShoppingCart, Share2, Download, Repeat } from 'lucide-react';
 
 export function ImageLightbox({
   image, 
@@ -124,8 +124,6 @@ export function ImageLightbox({
   // Navigation functions
   const goToNext = () => {
     if (activeIndex < images.length - 1) {
-      // Hide controls when navigating to new image
-      setShowControls(false);
       // Reset zoom and drag position
       setScale(1);
       setDragPosition({ x: 0, y: 0 });
@@ -139,8 +137,6 @@ export function ImageLightbox({
   
   const goToPrev = () => {
     if (activeIndex > 0) {
-      // Hide controls when navigating to new image
-      setShowControls(false);
       // Reset zoom and drag position
       setScale(1);
       setDragPosition({ x: 0, y: 0 });
@@ -816,20 +812,7 @@ export function ImageLightbox({
                 {isLikeLoading ? (
                   <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                 ) : (
-                  <svg 
-                    className={`w-5 h-5 transition-colors duration-200 ${
-                      isLikedState ? 'fill-primary text-primary' : 'text-white'
-                    }`}
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                  </svg>
+                  <Heart className={`w-5 h-5 transition-colors duration-200 ${isLikedState ? 'text-primary' : 'text-white'}`} />
                 )}
               </button>
               
@@ -848,7 +831,7 @@ export function ImageLightbox({
                   className="p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors"
                   onClick={() => { onQuoteRequest(image); onClose(); }}
                 >
-                  <svg className="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                  <ShoppingCart className="w-5 h-5 text-white" />
                 </button>
               )}
               {/* Share button */}
@@ -857,7 +840,7 @@ export function ImageLightbox({
                 onClick={handleShare}
                 title="Copy share link"
               >
-                <svg className="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                <Share2 className="w-5 h-5 text-white" />
               </button>
               {onDownload && (
                 <button
@@ -868,7 +851,7 @@ export function ImageLightbox({
                   {downloadingImageId === image.id ? (
                     <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                   ) : (
-                    <svg className="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <Download className="w-5 h-5 text-white" />
                   )}
                 </button>
               )}
@@ -900,7 +883,7 @@ export function ImageLightbox({
                       onClick={handleReuseClick}
                       title="Reuse prompt"
                     >
-                      <svg className="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                      <Repeat className="w-5 h-5 text-white" />
                     </button>
                   )}
                   <div 

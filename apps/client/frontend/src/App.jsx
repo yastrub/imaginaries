@@ -263,7 +263,7 @@ function AppContent() {
       const flagKey = `upgrade_pending_modal_${user?.id || 'anon'}`;
       localStorage.setItem(flagKey, '1');
       // Hard redirect ensures background route is correct and state resets
-      window.location.replace('/');
+      window.location.replace('/?purge=1');
     }
   }, [user?.id]);
 
@@ -647,7 +647,7 @@ function AppContent() {
       {showUpgradeCongrats && (
         <UpgradeCongratsModal
           isOpen={showUpgradeCongrats}
-          onClose={() => { setShowUpgradeCongrats(false); try { navigate('/'); } catch {} }}
+          onClose={() => { setShowUpgradeCongrats(false); try { window.location.replace('/?purge=1'); } catch {} }}
           planLabel={(user?.subscription_plan || 'Pro')}
         />
       )}

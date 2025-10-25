@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, DollarSign, BadgeCheck } from 'lucide-react';
+import { X, Loader2, ShoppingCart, BadgeCheck } from 'lucide-react';
 import { Button } from './ui/button';
 import { useReduxAuth } from '../hooks/useReduxAuth';
 import { useToast } from './ui/use-toast';
@@ -350,7 +350,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                 <div className="space-y-6">
                   <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-6">
                     <div className="flex items-center justify-center mb-3">
-                      <DollarSign className="w-8 h-8 text-amber-400" />
+                      <ShoppingCart className="w-8 h-8 text-amber-400" />
                     </div>
                     <h3 className="text-center text-lg font-medium text-amber-400 mb-2">Estimated Price</h3>
                     <p className="text-center text-2xl font-bold text-amber-300 mb-4">{estimatedCost ? `${estimatedCost} USD` : 'N/A'}</p>

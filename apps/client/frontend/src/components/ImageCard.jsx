@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Download, DollarSign, Loader2, Repeat, Heart, Share2, Lock, Unlock, EyeOff } from 'lucide-react';
+import { Download, ShoppingCart, Loader2, Repeat, Heart, Share2, Lock, Unlock, EyeOff } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from './ui/use-toast';
 import { ImageLightbox } from './ImageLightbox';
@@ -389,7 +389,7 @@ function ImageCardComponent({
             onClick={() => onQuoteRequest(image)}
             className="h-10 w-10"
           >
-            <DollarSign className="w-5 h-5" />
+            <ShoppingCart className="w-5 h-5" />
           </Button>
           <Button
             variant="default"

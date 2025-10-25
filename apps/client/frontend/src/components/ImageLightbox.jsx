@@ -19,7 +19,7 @@ export function ImageLightbox({
   isPublicGallery = false // New prop to identify if this is in the public gallery
 }) {
   const [loaded, setLoaded] = useState(false);
-  const [showControls, setShowControls] = useState(false); // Start with controls hidden
+  const [showControls, setShowControls] = useState(true); // Start with controls hidden
   // Delay showing spinner to avoid quick flash on cached images
   const [showSpinner, setShowSpinner] = useState(false);
   const [isLikeLoading, setIsLikeLoading] = useState(false);

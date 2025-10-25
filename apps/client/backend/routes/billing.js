@@ -227,10 +227,20 @@ async function handleSubscriptionUpsert(customerId, subscriptionId, subscription
   }
 
   const status = subscription.status;
-  const current_period_start = new Date(subscription.current_period_start * 1000).toISOString();
-  const current_period_end = new Date(subscription.current_period_end * 1000).toISOString();
-  const cancel_at = subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null;
-  const canceled_at = subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null;
+  const toIsoOrNull = (v) => {
+    if (typeof v === 'number' && Number.isFinite(v)) {
+      try { return new Date(v * 1000).toISOString(); } catch { return null; }
+    }
+    if (typeof v === 'string' && v) {
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    }
+    return null;
+  };
+  const current_period_start = toIsoOrNull(subscription.current_period_start);
+  const current_period_end = toIsoOrNull(subscription.current_period_end);
+  const cancel_at = toIsoOrNull(subscription.cancel_at);
+  const canceled_at = toIsoOrNull(subscription.canceled_at);
 
   // Determine our internal plan key from price
   const itemPrice = subscription.items?.data?.[0]?.price || null;

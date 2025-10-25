@@ -67,6 +67,7 @@ export default function PlansPage() {
       max_free_generations: 0,
       stripe_price_monthly_id: '',
       stripe_price_annual_id: '',
+      stripe_product_id: '',
       show_watermark: true,
       allow_private_images: false,
       price_dollars: 0,
@@ -88,6 +89,7 @@ export default function PlansPage() {
       max_free_generations: (row as any).max_free_generations ?? 0,
       stripe_price_monthly_id: (row as any).stripe_price_monthly_id || '',
       stripe_price_annual_id: (row as any).stripe_price_annual_id || '',
+      stripe_product_id: (row as any).stripe_product_id || '',
       show_watermark: row.show_watermark,
       allow_private_images: row.allow_private_images,
       price_dollars: (row.price_cents || 0) / 100,
@@ -109,6 +111,7 @@ export default function PlansPage() {
       max_free_generations: Number(values.max_free_generations) || 0,
       stripe_price_monthly_id: (values.stripe_price_monthly_id || null) || null,
       stripe_price_annual_id: (values.stripe_price_annual_id || null) || null,
+      stripe_product_id: (values.stripe_product_id || null) || null,
       show_watermark: !!values.show_watermark,
       allow_private_images: !!values.allow_private_images,
       price_cents: Math.round((Number(values.price_dollars) || 0) * 100),
@@ -139,6 +142,7 @@ export default function PlansPage() {
     )}>
       <Table rowKey="id" {...tableProps}>
         <Table.Column<Plan> dataIndex="key" title="Key" sorter />
+        <Table.Column<Plan> dataIndex="stripe_product_id" title="Product ID" sorter />
         {false && <Table.Column<Plan> dataIndex="name" title="Name" />}
         <Table.Column<Plan>
           dataIndex="price_cents"
@@ -219,6 +223,9 @@ export default function PlansPage() {
           </Form.Item>
           <Form.Item name="stripe_price_annual_id" label="Stripe Price ID (Annual)">
             <Input placeholder="price_..." />
+          </Form.Item>
+          <Form.Item name="stripe_product_id" label="Stripe Product ID">
+            <Input placeholder="prod_..." />
           </Form.Item>
           <Form.Item name="show_watermark" label="Show Watermark" valuePropName="checked">
             <Switch />

@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
       max_generations_per_day: 'p.max_generations_per_day',
       max_generations_per_month: 'p.max_generations_per_month',
       max_free_generations: 'p.max_free_generations',
+      stripe_product_id: 'p.stripe_product_id',
       stripe_price_monthly_id: 'p.stripe_price_monthly_id',
       stripe_price_annual_id: 'p.stripe_price_annual_id',
       show_watermark: 'p.show_watermark',
@@ -59,6 +60,7 @@ export async function GET(req: NextRequest) {
         p.max_generations_per_day,
         p.max_generations_per_month,
         p.max_free_generations,
+        p.stripe_product_id,
         p.stripe_price_monthly_id,
         p.stripe_price_annual_id,
         p.show_watermark,
@@ -103,6 +105,7 @@ export async function POST(req: NextRequest) {
       max_generations_per_day = 0,
       max_generations_per_month = 0,
       max_free_generations = 0,
+      stripe_product_id = null,
       stripe_price_monthly_id = null,
       stripe_price_annual_id = null,
       show_watermark = true,
@@ -121,15 +124,15 @@ export async function POST(req: NextRequest) {
 
     const insertSql = `
       INSERT INTO plans (
-        key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images,
+        key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_product_id, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images,
         price_cents, annual_price_cents, currency, is_active, is_public, sort_order
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
-      RETURNING id, key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images,
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+      RETURNING id, key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_product_id, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images,
         price_cents, annual_price_cents, currency, is_active, is_public, sort_order, created_at, updated_at
     `;
 
     const values = [
-      key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images,
+      key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_product_id, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images,
       price_cents, annual_price_cents, currency, is_active, is_public, sort_order
     ];
 

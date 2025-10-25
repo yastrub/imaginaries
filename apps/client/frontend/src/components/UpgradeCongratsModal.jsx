@@ -49,7 +49,10 @@ export default function UpgradeCongratsModal({ isOpen, onClose, planLabel = 'Pro
         </div>
 
         {/* CTA */}
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-3">
+          <div className="text-xs text-zinc-400">
+            You can change plans anytime from your account.
+          </div>
           <button
             onClick={onClose}
             className="group relative inline-flex items-center justify-center rounded-lg px-6 py-3 text-white font-semibold tracking-wide
@@ -59,9 +62,6 @@ export default function UpgradeCongratsModal({ isOpen, onClose, planLabel = 'Pro
             <span className="mr-2">Awesome</span>
             <span className="opacity-80 group-hover:opacity-100">— Let’s go</span>
           </button>
-          <div className="text-xs text-zinc-400">
-            You can change plans anytime from your account.
-          </div>
         </div>
       </div>
     </Modal>

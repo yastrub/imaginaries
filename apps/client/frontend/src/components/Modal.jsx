@@ -23,7 +23,7 @@ export function Modal({ isOpen = true, onClose, children, title, className }) {
               </div>
             )}
           </div>
-          <div className="p-4">
+          <div className="px-6 py-10">
             {children}
           </div>
         </div>

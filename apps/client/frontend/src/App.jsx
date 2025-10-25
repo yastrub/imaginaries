@@ -646,7 +646,7 @@ function AppContent() {
       {showUpgradeCongrats && (
         <UpgradeCongratsModal
           isOpen={showUpgradeCongrats}
-          onClose={() => setShowUpgradeCongrats(false)}
+          onClose={() => { setShowUpgradeCongrats(false); try { navigate('/'); } catch {} }}
           planLabel={(user?.subscription_plan || 'Pro')}
         />
       )}

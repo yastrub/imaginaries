@@ -36,6 +36,15 @@ async function purgeCachesAndReload() {
     return;
   }
   try { localStorage.setItem('BUILD_ID', BUILD_ID); } catch (e) {}
+  // Clean up version param from the address bar for a magical UX
+  try {
+    if (params.has('v')) {
+      params.delete('v');
+      const qs = params.toString();
+      const cleanUrl = `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  } catch {}
   // Load the app (static specifier to satisfy Vite's dynamic import constraints)
   await import('./main.jsx');
 })();

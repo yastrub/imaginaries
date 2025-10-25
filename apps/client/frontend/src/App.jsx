@@ -252,37 +252,38 @@ function AppContent() {
     }
   }, [isAuthenticated, navigate]);
 
-  // Handle post-upgrade success redirect and one-time congrats modal
+  // Handle post-upgrade success: set a pending flag and hard-redirect to root
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const status = sp.get('status');
     const celebrate = sp.get('celebrate'); // debug switch
     const path = window.location.pathname;
 
-    const planFromUser = (typeof user?.subscription_plan === 'string' && user.subscription_plan) ? user.subscription_plan : null;
-
-    // Only react on /upgrade and when auth is present (so we know the plan)
-    if (path === '/upgrade') {
-      // If Stripe redirect appended status=success, or debug celebrate=1
-      if (status === 'success' || celebrate === '1') {
-        // Prevent showing twice: use localStorage flag keyed by date + user
-        const key = `upgrade_congrats_shown_${user?.id || 'anon'}`;
-        const already = localStorage.getItem(key);
-
-        // Navigate to root (replace) so background is not the upgrade page
-        try { navigate('/', { replace: true }); } catch {}
-
-        // Show modal once
-        if (!already) {
-          setTimeout(() => {
-            setShowUpgradeCongrats(true);
-            try { triggerConfetti(CONFETTI_EVENTS.GENERATION_SUCCESS); } catch {}
-            localStorage.setItem(key, new Date().toISOString());
-          }, 150);
-        }
-      }
+    if (path === '/upgrade' && (status === 'success' || celebrate === '1')) {
+      const flagKey = `upgrade_pending_modal_${user?.id || 'anon'}`;
+      localStorage.setItem(flagKey, '1');
+      // Hard redirect ensures background route is correct and state resets
+      window.location.replace('/');
     }
-  }, [user?.id, user?.subscription_plan]);
+  }, [user?.id]);
+
+  // On load, if a pending flag exists (or celebrate=1 on any route), show modal once
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const celebrate = sp.get('celebrate');
+    const flagKey = `upgrade_pending_modal_${user?.id || 'anon'}`;
+    const shownKey = `upgrade_congrats_shown_${user?.id || 'anon'}`;
+    const hasPending = localStorage.getItem(flagKey) === '1';
+    const already = localStorage.getItem(shownKey);
+    if ((hasPending || celebrate === '1') && !already) {
+      localStorage.removeItem(flagKey);
+      setTimeout(() => {
+        setShowUpgradeCongrats(true);
+        try { triggerConfetti(CONFETTI_EVENTS.GENERATION_SUCCESS); } catch {}
+        localStorage.setItem(shownKey, new Date().toISOString());
+      }, 120);
+    }
+  }, [user?.id]);
 
   // NASA-grade quota sync: fetch on auth, reset on logout
   useEffect(() => {

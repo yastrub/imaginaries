@@ -44,12 +44,13 @@ export function UpgradePage() {
         // Determine user's current plan
         const userKey = user?.subscription_plan || null;
         if (mounted) setCurrentPlanKey(userKey);
-        // Auto-select the first higher-tier public plan if available; otherwise keep 'free'
+        // Highlight the user's current plan card by default
         if (mounted) {
-          const currentSort = userKey ? (list.find(p => p.key === userKey)?.sortOrder ?? -Infinity) : -Infinity;
-          const firstHigher = list.find(p => (p.sortOrder ?? 0) > currentSort);
-          if (firstHigher) setSelectedPlan(firstHigher.key);
-          else if (list.some(p => p.key === 'free')) setSelectedPlan('free');
+          if (userKey && list.some(p => p.key === userKey)) {
+            setSelectedPlan(userKey);
+          } else if (list.some(p => p.key === 'free')) {
+            setSelectedPlan('free');
+          }
         }
       } catch (e) {
         console.error(e);

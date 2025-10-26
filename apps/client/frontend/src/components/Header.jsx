@@ -33,6 +33,9 @@ export const Header = React.memo(function Header({
   const dropdownRef = useRef(null);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isBugModalOpen, setIsBugModalOpen] = useState(false);
+  const [titleTapCount, setTitleTapCount] = useState(0);
+  const [showBuildVersion, setShowBuildVersion] = useState(false);
+  const titleTapTimer = useRef(null);
   
   // Determine if we're on a gallery page based on the current path
   const isGalleryPage = window.location.pathname.startsWith('/gallery');
@@ -202,10 +205,32 @@ export const Header = React.memo(function Header({
     return 'Free';
   }, [isAuthenticated, plansList, currentPlanKey]);
 
+  const buildVersionLabel = useMemo(() => {
+    try { if (typeof getVersionString === 'function') return getVersionString(); } catch {}
+    try { if (window && window.__BUILD_ID__) return String(window.__BUILD_ID__); } catch {}
+    return 'web';
+  }, []);
+
+  const handleTitleTap = () => {
+    if (showBuildVersion) {
+      setShowBuildVersion(false);
+      return;
+    }
+    const next = titleTapCount + 1;
+    setTitleTapCount(next);
+    if (titleTapTimer.current) clearTimeout(titleTapTimer.current);
+    titleTapTimer.current = setTimeout(() => { setTitleTapCount(0); }, 1500);
+    if (next >= 5) {
+      setShowBuildVersion(true);
+      setTitleTapCount(0);
+      if (titleTapTimer.current) { clearTimeout(titleTapTimer.current); titleTapTimer.current = null; }
+    }
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 p-4 flex flex-col sm:flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm z-50 gap-4 sm:gap-0">
-      <div className="font-mono text-zinc-600 text-sm text-center sm:text-left">
-        IMAGINARIES ({isAuthenticated ? planDisplayName : 'OctaDiam'})
+      <div className="font-mono text-zinc-600 text-sm text-center sm:text-left" onClick={handleTitleTap} onTouchStart={handleTitleTap}>
+        {showBuildVersion ? (`Build ${buildVersionLabel}`) : (<>IMAGINARIES ({isAuthenticated ? planDisplayName : 'OctaDiam'})</>)}
       </div>
       <nav className="flex items-center gap-4">
         

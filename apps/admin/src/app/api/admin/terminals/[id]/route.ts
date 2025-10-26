@@ -17,6 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const res = await query(`
       SELECT 
         t.id, t.partner_id, t.name, t.mac_address, t.last_seen_ip, t.last_seen_at, t.app_version, t.os_version, t.location_text, t.is_active,
+        t.pairing_code,
         t.created_at, t.updated_at
       FROM terminals t
       WHERE t.id = $1

@@ -84,6 +84,7 @@ export default function TerminalsPage() {
         os_version: row.os_version || "",
         last_seen_ip: row.last_seen_ip || "",
         is_active: row.is_active,
+        pairing_code: (row as any).pairing_code || "",
       });
     }, 0);
   };
@@ -170,6 +171,9 @@ export default function TerminalsPage() {
           </Form.Item>
           <Form.Item name="last_seen_ip" label="Last Seen IP"> 
             <Input placeholder="Optional override" />
+          </Form.Item>
+          <Form.Item name="pairing_code" label="Pairing Code"> 
+            <Input placeholder="Enter code to pair a device" />
           </Form.Item>
           <Form.Item name="is_active" label="Active" valuePropName="checked"> 
             <Switch />

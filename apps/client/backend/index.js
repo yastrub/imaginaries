@@ -29,6 +29,12 @@ async function startServer() {
   try {
     loadEnv();
     console.log('Initializing server...');
+    // Stable build identifier for this server instance/deploy
+    const SERVER_BUILD_ID = process.env.BUILD_ID
+      || process.env.RENDER_GIT_COMMIT
+      || process.env.VERCEL_GIT_COMMIT_SHA
+      || process.env.GIT_COMMIT
+      || new Date().toISOString();
 
     let connected = false;
     let retries = 3;
@@ -107,6 +113,13 @@ async function startServer() {
     app.use('/api/billing', billingRouter);
     app.use('/api/orders', ordersRouter);
     app.use('/api/terminals', terminalsRouter);
+
+    // Version endpoint for clients/terminals to detect new deploys
+    app.get('/api/version', (req, res) => {
+      res.set('Cache-Control', 'no-cache, must-revalidate');
+      res.set('ETag', SERVER_BUILD_ID);
+      res.json({ buildId: SERVER_BUILD_ID, timestamp: new Date().toISOString() });
+    });
 
     // Health check endpoint with detailed status
     app.get('/api/health', async (req, res) => {

@@ -11,8 +11,10 @@ let wakeLock = null;
 let started = false;
 let pairingModalEl = null;
 let UPDATE_ETAG = null;
-let UPDATE_SIG = null;
+let UPDATE_SIG = null; // SHA-256 hex of last index.html content
 let updatingInProgress = false;
+let SERVER_VERSION_ETAG = null;
+let SERVER_BUILD_SEEN = null;
 
 function isTerminalApp() {
   try {
@@ -20,6 +22,26 @@ function isTerminalApp() {
     if (document.referrer?.startsWith('android-app://com.octadiam.imaginarium')) {
       return true;
     }
+
+async function checkServerVersion() {
+  if (updatingInProgress) return;
+  try {
+    const headers = { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' };
+    if (SERVER_VERSION_ETAG) headers['If-None-Match'] = SERVER_VERSION_ETAG;
+    const res = await fetch(`/api/version`, { method: 'GET', cache: 'no-store', headers, credentials: 'include' });
+    if (res.status === 304) return; // no change
+    if (!res.ok) return;
+    const et = res.headers.get('ETag') || res.headers.get('etag') || res.headers.get('Etag');
+    if (et && !SERVER_VERSION_ETAG) { SERVER_VERSION_ETAG = et; }
+    const json = await res.json().catch(() => ({}));
+    const buildId = json?.buildId || et || null;
+    if (!SERVER_BUILD_SEEN && buildId) { SERVER_BUILD_SEEN = buildId; return; }
+    if (buildId && SERVER_BUILD_SEEN && buildId !== SERVER_BUILD_SEEN) {
+      SERVER_BUILD_SEEN = buildId;
+      return purgeCachesAndReloadWithOverlay();
+    }
+  } catch {}
+}
     // Explicit flag from TWA startUrl
     const sp = new URLSearchParams(location.search);
     if (sp.get('terminal') === '1') return true;
@@ -240,7 +262,8 @@ async function checkForSelfUpdate() {
   try {
     const headers = { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' };
     if (UPDATE_ETAG) headers['If-None-Match'] = UPDATE_ETAG;
-    const res = await fetch('/index.html', { method: 'GET', cache: 'no-store', headers, credentials: 'include' });
+    const cb = encodeURIComponent(UPDATE_ETAG || UPDATE_SIG || Date.now());
+    const res = await fetch(`/index.html?ping=${cb}`, { method: 'GET', cache: 'no-store', headers, credentials: 'include' });
     if (res.status === 304) return;
     if (!res.ok) return;
     const et = res.headers.get('ETag') || res.headers.get('etag') || res.headers.get('Etag');
@@ -249,12 +272,31 @@ async function checkForSelfUpdate() {
       if (UPDATE_ETAG && et !== UPDATE_ETAG) { UPDATE_ETAG = et; return purgeCachesAndReloadWithOverlay(); }
       return; // same etag
     }
-    // Fallback: compute a simple signature from content when ETag is missing
+    // Fallback: compute a strong signature from content when ETag is missing
     const text = await res.text();
-    const sig = String(text.length) + ':' + (text.charCodeAt(0) || 0) + ':' + (text.charCodeAt(text.length - 1) || 0);
+    const sig = await sha256(text);
     if (!UPDATE_SIG) { UPDATE_SIG = sig; return; }
     if (UPDATE_SIG !== sig) { UPDATE_SIG = sig; return purgeCachesAndReloadWithOverlay(); }
   } catch {}
+}
+
+async function sha256(text) {
+  try {
+    const enc = new TextEncoder();
+    const data = enc.encode(text);
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    const bytes = new Uint8Array(buf);
+    let hex = '';
+    for (let i = 0; i < bytes.length; i++) {
+      const h = bytes[i].toString(16).padStart(2, '0');
+      hex += h;
+    }
+    return hex;
+  } catch {
+    // Fallback to length-based weak signature if crypto is unavailable
+    const len = (text || '').length;
+    return `len-${len}`;
+  }
 }
 
 function applyViewportPolicies({ disablePinchZoom = true, overscrollBehavior = 'none' } = {}) {
@@ -404,8 +446,9 @@ export function startTerminalAgent({ appVersion = 'web' } = {}) {
       } catch {}
     };
     // Start update monitor even while unpaired, so app can refresh
-    setInterval(checkForSelfUpdate, 60 * 1000);
+    setInterval(() => { checkServerVersion(); checkForSelfUpdate(); }, 60 * 1000);
     // Trigger an immediate check now
+    checkServerVersion();
     checkForSelfUpdate();
     // Do not proceed to loops until paired
     return;
@@ -428,7 +471,8 @@ function startLoops(tid, appVersion) {
     if (cfg.fullscreen) setupFullscreenOnGesture(true);
 
     await sendHeartbeat(tid, appVersion);
-    // Check for self-update
+    // Check for self-update (server version is primary)
+    await checkServerVersion();
     await checkForSelfUpdate();
   };
   loop();

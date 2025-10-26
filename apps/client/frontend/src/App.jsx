@@ -34,7 +34,7 @@ import { UpgradePage } from './components/UpgradePage';
 import { decrement, fetchQuota, reset as resetQuota } from './store/quotaSlice';
 
 /**
- * Main App component 
+ * Main App component
  */
 // Main App wrapper that provides Router context
 function App() {

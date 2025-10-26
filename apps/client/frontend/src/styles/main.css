@@ -61,7 +61,6 @@
   }
 }
 
-/* Bulletproof: disable text selection and callouts globally */
 @layer base {
   html, body, *, *::before, *::after {
     -webkit-user-select: none !important;
@@ -71,7 +70,6 @@
     -webkit-touch-callout: none !important;
     -webkit-tap-highlight-color: transparent;
   }
-  /* Prevent drag on common elements to avoid accidental drags */
   img, a, button {
     -webkit-user-drag: none;
     user-drag: none;

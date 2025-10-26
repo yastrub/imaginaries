@@ -15,6 +15,15 @@ try {
   document.addEventListener('selectstart', prevent);
   document.addEventListener('dragstart', prevent);
   document.addEventListener('contextmenu', prevent);
+  const preventKbdMenu = (e) => {
+    const key = e.key;
+    const code = e.keyCode || e.which;
+    if ((e.shiftKey && (key === 'F10' || code === 121)) || key === 'ContextMenu' || code === 93) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+  document.addEventListener('keydown', preventKbdMenu, { capture: true });
 } catch {}
 
 try {

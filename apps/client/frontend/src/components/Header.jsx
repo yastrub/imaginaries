@@ -36,6 +36,8 @@ export const Header = React.memo(function Header({
   const [titleTapCount, setTitleTapCount] = useState(0);
   const [showBuildVersion, setShowBuildVersion] = useState(false);
   const titleTapTimer = useRef(null);
+  const allowHideAt = useRef(0);
+  const suppressClickUntil = useRef(0);
   
   // Determine if we're on a gallery page based on the current path
   const isGalleryPage = window.location.pathname.startsWith('/gallery');
@@ -211,9 +213,13 @@ export const Header = React.memo(function Header({
     return 'web';
   }, []);
 
-  const handleTitleTap = () => {
+  const handleTitleTap = (e) => {
+    const now = Date.now();
+    if (now < suppressClickUntil.current) return;
     if (showBuildVersion) {
-      setShowBuildVersion(false);
+      if (now >= allowHideAt.current) {
+        setShowBuildVersion(false);
+      }
       return;
     }
     const next = titleTapCount + 1;
@@ -224,12 +230,14 @@ export const Header = React.memo(function Header({
       setShowBuildVersion(true);
       setTitleTapCount(0);
       if (titleTapTimer.current) { clearTimeout(titleTapTimer.current); titleTapTimer.current = null; }
+      allowHideAt.current = now + 1500; // cooldown before allowing hide
+      suppressClickUntil.current = now + 300; // absorb immediate ghost click after touch
     }
   };
 
   return (
     <header className="fixed top-0 left-0 right-0 p-4 flex flex-col sm:flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm z-50 gap-4 sm:gap-0">
-      <div className="font-mono text-zinc-600 text-sm text-center sm:text-left" onClick={handleTitleTap} onTouchStart={handleTitleTap}>
+      <div className="font-mono text-zinc-600 text-sm text-center sm:text-left" onClick={handleTitleTap} onTouchEnd={handleTitleTap}>
         {showBuildVersion ? (`Build ${buildVersionLabel}`) : (<>IMAGINARIES ({isAuthenticated ? planDisplayName : 'OctaDiam'})</>)}
       </div>
       <nav className="flex items-center gap-4">

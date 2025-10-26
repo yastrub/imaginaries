@@ -26,7 +26,7 @@
     <string name="fullScopeUrl" translatable="false">https://imaginaries.app/</string>
     <string name="generatorApp" translatable="false">bubblewrap-cli</string>
     <string name="hostName" translatable="false">imaginaries.app</string>
-    <string name="launchUrl" translatable="false">https://imaginaries.app/</string>
+    <string name="launchUrl" translatable="false">https://imaginaries.app/?terminal=1</string>
     <string name="launcherName" translatable="false">Imaginarium</string>
     <string name="orientation" translatable="false">portrait</string>
     <string name="providerAuthority" translatable="false">com.octadiam.imaginarium.fileprovider</string>

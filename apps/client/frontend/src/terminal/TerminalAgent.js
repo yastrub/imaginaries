@@ -38,10 +38,12 @@ async function checkServerVersion() {
     const et = res.headers.get('ETag') || res.headers.get('etag') || res.headers.get('Etag');
     if (et && !SERVER_VERSION_ETAG) { SERVER_VERSION_ETAG = et; }
     const json = await res.json().catch(() => ({}));
-    const buildId = json?.buildId || et || null;
-    if (!SERVER_BUILD_SEEN && buildId) { SERVER_BUILD_SEEN = buildId; return; }
-    if (buildId && SERVER_BUILD_SEEN && String(buildId) !== String(SERVER_BUILD_SEEN)) {
-      SERVER_BUILD_SEEN = buildId;
+    const buildId = json?.buildId ?? et ?? null;
+    const bstr = buildId != null ? String(buildId) : null;
+    if (!bstr || !/^\d+$/.test(bstr)) { return; }
+    if (!SERVER_BUILD_SEEN) { SERVER_BUILD_SEEN = bstr; return; }
+    if (String(bstr) !== String(SERVER_BUILD_SEEN)) {
+      SERVER_BUILD_SEEN = bstr;
       return purgeCachesAndReloadWithOverlay();
     }
   } catch {}
@@ -354,9 +356,19 @@ function setupFullscreenOnGesture(enabled) {
   window.addEventListener('pointerdown', handler, { capture: true, once: true });
 }
 
-async function sendHeartbeat(tid, appVersion) {
+async function sendHeartbeat(tid) {
   try {
     const osVersion = navigator.userAgent || 'unknown';
+    // Prefer server-provided unix build id if available and numeric
+    let appVersion = null;
+    try {
+      if (SERVER_BUILD_SEEN && /^\d+$/.test(String(SERVER_BUILD_SEEN))) {
+        appVersion = String(SERVER_BUILD_SEEN);
+      } else if (typeof window !== 'undefined' && window.__BUILD_ID__ != null) {
+        const local = String(window.__BUILD_ID__);
+        if (/^\d+$/.test(local)) appVersion = local;
+      }
+    } catch {}
     await fetch('/api/terminals/heartbeat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -459,6 +471,8 @@ export function startTerminalAgent({ appVersion = 'web' } = {}) {
 function startLoops(tid, appVersion) {
   // Periodic tasks
   const loop = async () => {
+    // First, detect server version so heartbeat reports the latest numeric build id
+    await checkServerVersion();
     const cfg = await fetchConfig(tid);
     // Apply policies from config if present
     applyViewportPolicies({
@@ -468,9 +482,8 @@ function startLoops(tid, appVersion) {
     if (cfg.keepAwake !== false) await requestWakeLock(true);
     if (cfg.fullscreen) setupFullscreenOnGesture(true);
 
-    await sendHeartbeat(tid, appVersion);
+    await sendHeartbeat(tid);
     // Check for self-update (server version is primary)
-    await checkServerVersion();
     await checkForSelfUpdate();
   };
   loop();

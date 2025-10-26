@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './authSlice';
 import quotaReducer from './quotaSlice';
+import envReducer from './envSlice';
 
 /**
  * Redux store configuration
@@ -9,7 +10,8 @@ import quotaReducer from './quotaSlice';
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    quota: quotaReducer
+    quota: quotaReducer,
+    env: envReducer
   },
   // Enable Redux DevTools in development
   devTools: import.meta.env.DEV

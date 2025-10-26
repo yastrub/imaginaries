@@ -13,14 +13,15 @@ let pairingModalEl = null;
 
 function isTerminalApp() {
   try {
+    // Primary: Trusted Web Activity referrer from our Android package
+    if (document.referrer?.startsWith('android-app://com.octadiam.imaginarium')) {
+      return true;
+    }
+    // Explicit flag from TWA startUrl
     const sp = new URLSearchParams(location.search);
     if (sp.get('terminal') === '1') return true;
-    const standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    return standalone && isAndroid;
-  } catch {
-    return false;
-  }
+  } catch {}
+  return false;
 }
 
 function getTerminalId() {

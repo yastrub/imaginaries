@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, EyeOff, Heart, CircleDollarSign, Share2, Download, Repeat } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, EyeOff, Heart, DollarSign, Share2, Download, Repeat } from 'lucide-react';
 
 export function ImageLightbox({
   image, 
@@ -831,7 +831,7 @@ export function ImageLightbox({
                   className="p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors"
                   onClick={() => { onQuoteRequest(image); onClose(); }}
                 >
-                  <CircleDollarSign className="w-5 h-5 text-white" />
+                  <DollarSign className="w-5 h-5 text-white" />
                 </button>
               )}
               {/* Share button */}

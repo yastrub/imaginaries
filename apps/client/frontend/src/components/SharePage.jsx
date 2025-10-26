@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { ImageCard } from './ImageCard';
-import { Heart, Loader2, Home, Sparkles, Download, CircleDollarSign, Share2 } from 'lucide-react';
+import { Heart, Loader2, Home, Sparkles, Download, DollarSign, Share2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { openAuthModal } from './CompletelyIsolatedAuth';
 import { useLikes } from '../hooks/useLikes';
@@ -554,7 +554,7 @@ export function SharePage() {
                   title={isAuthenticated ? 'Request a quote for this design' : 'Sign in to request a quote'}
                 >
                   {!isAuthenticated && <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full" />}
-                  <CircleDollarSign className="w-5 h-5" />
+                  <DollarSign className="w-5 h-5" />
                 </Button>
                 
                 <Button

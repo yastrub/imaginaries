@@ -238,9 +238,9 @@ async function purgeCachesAndReloadWithOverlay() {
 async function checkForSelfUpdate() {
   if (updatingInProgress) return;
   try {
-    const headers = {};
+    const headers = { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' };
     if (UPDATE_ETAG) headers['If-None-Match'] = UPDATE_ETAG;
-    const res = await fetch('/index.html', { method: 'GET', cache: 'no-cache', headers, credentials: 'include' });
+    const res = await fetch('/index.html', { method: 'GET', cache: 'no-store', headers, credentials: 'include' });
     if (res.status === 304) return;
     if (!res.ok) return;
     const et = res.headers.get('ETag') || res.headers.get('etag') || res.headers.get('Etag');
@@ -405,6 +405,8 @@ export function startTerminalAgent({ appVersion = 'web' } = {}) {
     };
     // Start update monitor even while unpaired, so app can refresh
     setInterval(checkForSelfUpdate, 60 * 1000);
+    // Trigger an immediate check now
+    checkForSelfUpdate();
     // Do not proceed to loops until paired
     return;
   }

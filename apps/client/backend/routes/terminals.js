@@ -62,3 +62,37 @@ terminalsRouter.get('/config', async (req, res) => {
     return res.status(500).json({ error: 'config_failed' });
   }
 });
+
+// POST /api/terminals/pair
+// Body: { code }
+// Looks up terminals.pairing_code = code, clears it, and returns { terminal_id }
+terminalsRouter.post('/pair', async (req, res) => {
+  try {
+    const { code } = req.body || {};
+    const pairingCode = String(code || '').trim();
+    if (!pairingCode) {
+      return res.status(400).json({ error: 'pairing_code_required' });
+    }
+
+    const ip = req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.ip;
+
+    const findSql = `SELECT id FROM terminals WHERE pairing_code = $1 LIMIT 1`;
+    const found = await query(findSql, [pairingCode]);
+    if (!found.rows.length) {
+      return res.status(404).json({ error: 'pairing_code_not_found' });
+    }
+    const terminalId = found.rows[0].id;
+
+    const clearSql = `
+      UPDATE terminals
+      SET pairing_code = NULL, last_seen_at = now(), last_seen_ip = $2, updated_at = now()
+      WHERE id = $1
+    `;
+    await query(clearSql, [terminalId, ip]);
+
+    return res.json({ terminal_id: terminalId });
+  } catch (e) {
+    console.error('Pairing error', e);
+    return res.status(500).json({ error: 'pairing_failed' });
+  }
+});

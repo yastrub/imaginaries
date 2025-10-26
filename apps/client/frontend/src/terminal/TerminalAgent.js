@@ -5,9 +5,23 @@
 // - Applies: fullscreen (best-effort), wake lock (keep screen on), disable pinch-zoom/overscroll
 
 const LS_KEY_TID = 'terminal_id';
+const LS_KEY_PAIR_CODE = 'terminal_pairing_code';
 const CFG_CACHE = { value: null, etag: null };
 let wakeLock = null;
 let started = false;
+let pairingModalEl = null;
+
+function isTerminalApp() {
+  try {
+    const sp = new URLSearchParams(location.search);
+    if (sp.get('terminal') === '1') return true;
+    const standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    return standalone && isAndroid;
+  } catch {
+    return false;
+  }
+}
 
 function getTerminalId() {
   try {
@@ -23,6 +37,93 @@ function getTerminalId() {
         const clean = `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
         window.history.replaceState({}, document.title, clean);
       } catch {}
+
+function ensurePairingModal(code) {
+  // Create a minimal, styled modal without React
+  if (pairingModalEl) return pairingModalEl;
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.inset = '0';
+  overlay.style.background = 'rgba(0,0,0,0.6)';
+  overlay.style.backdropFilter = 'blur(4px)';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.zIndex = '99999';
+
+  const panel = document.createElement('div');
+  panel.style.background = '#0b0b0f';
+  panel.style.border = '1px solid #27272a';
+  panel.style.borderRadius = '16px';
+  panel.style.width = 'min(92vw, 480px)';
+  panel.style.padding = '24px';
+  panel.style.color = '#e4e4e7';
+  panel.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+
+  const title = document.createElement('h2');
+  title.textContent = 'Terminal Pairing';
+  title.style.fontSize = '20px';
+  title.style.margin = '0 0 8px 0';
+
+  const desc = document.createElement('p');
+  desc.textContent = 'Enter this code into Admin > Terminals (pairing_code), then tap Pair.';
+  desc.style.opacity = '0.8';
+  desc.style.margin = '0 0 16px 0';
+
+  const codeBox = document.createElement('div');
+  codeBox.textContent = code;
+  codeBox.style.fontSize = '36px';
+  codeBox.style.letterSpacing = '6px';
+  codeBox.style.textAlign = 'center';
+  codeBox.style.padding = '16px';
+  codeBox.style.margin = '8px 0 16px 0';
+  codeBox.style.background = '#111114';
+  codeBox.style.border = '1px solid #27272a';
+  codeBox.style.borderRadius = '12px';
+
+  const row = document.createElement('div');
+  row.style.display = 'flex';
+  row.style.gap = '12px';
+  row.style.marginTop = '8px';
+
+  const pairBtn = document.createElement('button');
+  pairBtn.textContent = 'Pair';
+  pairBtn.style.flex = '1';
+  pairBtn.style.height = '44px';
+  pairBtn.style.borderRadius = '10px';
+  pairBtn.style.border = '1px solid #3f3f46';
+  pairBtn.style.background = '#18181b';
+  pairBtn.style.color = '#fff';
+  pairBtn.style.fontWeight = '600';
+
+  const regenBtn = document.createElement('button');
+  regenBtn.textContent = 'New Code';
+  regenBtn.style.flex = '1';
+  regenBtn.style.height = '44px';
+  regenBtn.style.borderRadius = '10px';
+  regenBtn.style.border = '1px solid #3f3f46';
+  regenBtn.style.background = '#0e7490';
+  regenBtn.style.color = '#fff';
+  regenBtn.style.fontWeight = '600';
+
+  row.appendChild(pairBtn);
+  row.appendChild(regenBtn);
+
+  panel.appendChild(title);
+  panel.appendChild(desc);
+  panel.appendChild(codeBox);
+  panel.appendChild(row);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  pairingModalEl = { overlay, codeBox, pairBtn, regenBtn };
+  return pairingModalEl;
+}
+
+function generateCode() {
+  // 6-digit numeric code; leading zeros allowed
+  return String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
+}
       return fromUrl;
     }
     const stored = localStorage.getItem(LS_KEY_TID);
@@ -120,14 +221,73 @@ async function fetchConfig(tid) {
 export function startTerminalAgent({ appVersion = 'web' } = {}) {
   if (started) return; started = true;
   const tid = getTerminalId();
-  if (!tid) return; // only activate on terminals
+  const terminalEnv = isTerminalApp();
 
-  // Initial policies (will be refined by config once fetched)
-  applyViewportPolicies({ disablePinchZoom: true, overscrollBehavior: 'none' });
-  requestWakeLock(true);
-  setupWakeLockReacquire(true);
-  setupFullscreenOnGesture(true);
+  // Initial policies for terminals only
+  if (terminalEnv) {
+    applyViewportPolicies({ disablePinchZoom: true, overscrollBehavior: 'none' });
+    requestWakeLock(true);
+    setupWakeLockReacquire(true);
+    setupFullscreenOnGesture(true);
+  }
 
+  if (!tid) {
+    // Only show pairing for terminal app; skip on web/PWA
+    if (!terminalEnv) return;
+
+    let pairCode = null;
+    try { pairCode = localStorage.getItem(LS_KEY_PAIR_CODE); } catch {}
+    if (!pairCode) {
+      pairCode = generateCode();
+      try { localStorage.setItem(LS_KEY_PAIR_CODE, pairCode); } catch {}
+    }
+
+    const modal = ensurePairingModal(pairCode);
+    // New code generation
+    modal.regenBtn.onclick = () => {
+      const fresh = generateCode();
+      modal.codeBox.textContent = fresh;
+      try { localStorage.setItem(LS_KEY_PAIR_CODE, fresh); } catch {}
+    };
+    // Pair action
+    modal.pairBtn.onclick = async () => {
+      const current = (modal.codeBox.textContent || '').trim();
+      if (!current) return;
+      try {
+        const res = await fetch('/api/terminals/pair', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ code: current }),
+        });
+        if (!res.ok) {
+          // brief visual feedback
+          modal.pairBtn.textContent = 'Invalid Code';
+          setTimeout(() => { modal.pairBtn.textContent = 'Pair'; }, 1200);
+          return;
+        }
+        const json = await res.json().catch(() => ({}));
+        const newTid = json?.terminal_id;
+        if (newTid && /^[0-9a-f\-]{36}$/i.test(newTid)) {
+          localStorage.setItem(LS_KEY_TID, newTid);
+          localStorage.removeItem(LS_KEY_PAIR_CODE);
+          // Dismiss modal
+          try { modal.overlay.remove(); } catch {}
+          pairingModalEl = null;
+          // Start loops now that we have a terminal id
+          startLoops(newTid, appVersion);
+        }
+      } catch {}
+    };
+    // Do not proceed to loops until paired
+    return;
+  }
+
+  // Already have a terminal id
+  startLoops(tid, appVersion);
+}
+
+function startLoops(tid, appVersion) {
   // Periodic tasks
   const loop = async () => {
     const cfg = await fetchConfig(tid);
@@ -141,8 +301,6 @@ export function startTerminalAgent({ appVersion = 'web' } = {}) {
 
     await sendHeartbeat(tid, appVersion);
   };
-
-  // Run immediately and then every 60s
   loop();
   setInterval(loop, 60 * 1000);
 }

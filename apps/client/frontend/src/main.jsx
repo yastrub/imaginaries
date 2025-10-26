@@ -11,6 +11,14 @@ import { AuthInitializer } from './components/AuthInitializer';
 import { AppUnlocker } from './components/AppUnlocker';
 import './styles/main.css';
 
+// Global hardening: disable selection, drag, and context menu across the app
+try {
+  const prevent = (e) => { e.preventDefault(); };
+  document.addEventListener('selectstart', prevent);
+  document.addEventListener('dragstart', prevent);
+  document.addEventListener('contextmenu', prevent);
+} catch {}
+
 // Detect terminal environment (TWA or explicit startUrl flag) and set global state
 try {
   const isTwaReferrer = document.referrer?.startsWith('android-app://com.octadiam.imaginarium');

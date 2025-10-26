@@ -61,6 +61,23 @@
   }
 }
 
+/* Bulletproof: disable text selection and callouts globally */
+@layer base {
+  html, body, *, *::before, *::after {
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Prevent drag on common elements to avoid accidental drags */
+  img, a, button {
+    -webkit-user-drag: none;
+    user-drag: none;
+  }
+}
+
 @layer components {
   .input-wrapper {
     @apply flex-grow relative bg-secondary rounded-[var(--radius)] overflow-hidden border border-border/50;

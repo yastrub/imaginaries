@@ -38,6 +38,14 @@ function getTerminalId() {
         const clean = `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
         window.history.replaceState({}, document.title, clean);
       } catch {}
+      return fromUrl;
+    }
+    const stored = localStorage.getItem(LS_KEY_TID);
+    return stored || null;
+  } catch {
+    return null;
+  }
+}
 
 function ensurePairingModal(code) {
   // Create a minimal, styled modal without React
@@ -124,14 +132,6 @@ function ensurePairingModal(code) {
 function generateCode() {
   // 6-digit numeric code; leading zeros allowed
   return String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
-}
-      return fromUrl;
-    }
-    const stored = localStorage.getItem(LS_KEY_TID);
-    return stored || null;
-  } catch {
-    return null;
-  }
 }
 
 function applyViewportPolicies({ disablePinchZoom = true, overscrollBehavior = 'none' } = {}) {

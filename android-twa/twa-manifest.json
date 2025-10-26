@@ -1,0 +1,51 @@
+{
+  "packageId": "com.octadiam.imaginarium",
+  "host": "imaginaries.app",
+  "name": "Imaginarium",
+  "launcherName": "Imaginarium",
+  "display": "fullscreen-sticky",
+  "themeColor": "#0B0B0F",
+  "themeColorDark": "#000000",
+  "navigationColor": "#000000",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#0B0B0F",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://imaginaries.app/icon.png",
+  "maskableIconUrl": "https://imaginaries.app/icon.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "/Users/god/.secrets/imaginaries/imaginaries-terminal.keystore",
+    "alias": "imaginarium"
+  },
+  "appVersionName": "1",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://imaginaries.app/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": true
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://imaginaries.app/",
+  "minSdkVersion": 21,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "launchHandlerClientMode": "",
+  "displayOverride": [],
+  "appVersion": "1"
+}

@@ -263,6 +263,7 @@ export const Header = React.memo(function Header({
             size="sm"
             onClick={() => navigate('/upgrade')}
             className="bg-purple-600 hover:bg-purple-500 text-white gap-2"
+            data-hide-in-terminal="true"
           >
             <Crown className="w-4 h-4" />
             Upgrade
@@ -314,7 +315,7 @@ export const Header = React.memo(function Header({
             </Button>
             {/* Avatar dropdown (last item) */}
             {!isTerminalApp && (
-              <div className="relative" ref={dropdownRef}>
+              <div className="relative" ref={dropdownRef} data-hide-in-terminal="true">
                 <button
                   ref={avatarBtnRef}
                   onClick={() => setIsDropdownOpen((v) => !v)}

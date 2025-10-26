@@ -14,7 +14,7 @@
   "enableNotifications": true,
   "startUrl": "/?terminal=1",
   "iconUrl": "https://imaginaries.app/icon.png",
-  "maskableIconUrl": "https://imaginaries.app/icon-masked.png",
+  "maskableIconUrl": "https://imaginaries.app/icon-maskable.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "/Users/god/.secrets/imaginaries/imaginaries-terminal.keystore",

@@ -16,14 +16,28 @@ let updatingInProgress = false;
 let SERVER_VERSION_ETAG = null;
 let SERVER_BUILD_SEEN = null;
 let updateCheckInFlight = false;
+let PENDING_BUILD = null;
+let PENDING_SINCE = 0;
+let READY_OK_STREAK = 0;
+let PENDING_HTML_TARGET = null;
+let PENDING_HTML_SINCE = 0;
+let PENDING_SIG_TARGET = null;
+let PENDING_SIG_SINCE = 0;
+const MIN_UPDATE_DELAY_MS = 60 * 1000;
 
 function isTerminalApp() {
   try {
+    if (document.documentElement.classList.contains('terminal-app')) return true;
+    try { if (localStorage.getItem('terminal_app') === '1') return true; } catch {}
     if (document.referrer?.startsWith('android-app://com.octadiam.imaginarium')) {
+      try { localStorage.setItem('terminal_app', '1'); } catch {}
       return true;
     }
     const sp = new URLSearchParams(location.search);
-    if (sp.get('terminal') === '1') return true;
+    if (sp.get('terminal') === '1') {
+      try { localStorage.setItem('terminal_app', '1'); } catch {}
+      return true;
+    }
   } catch {}
   return false;
 }
@@ -44,13 +58,22 @@ async function checkServerVersion() {
     if (!bstr || !/^\d+$/.test(bstr)) { return; }
     if (!SERVER_BUILD_SEEN) { SERVER_BUILD_SEEN = bstr; return; }
     if (String(bstr) !== String(SERVER_BUILD_SEEN)) {
+      const now = Date.now();
+      if (PENDING_BUILD !== bstr) {
+        PENDING_BUILD = bstr;
+        PENDING_SINCE = now;
+        READY_OK_STREAK = 0;
+        return; // Start 60s delay window
+      }
+      if ((now - PENDING_SINCE) < MIN_UPDATE_DELAY_MS) return; // wait out delay
       if (updateCheckInFlight) return;
       updateCheckInFlight = true;
       const ready = await isServerReady();
       updateCheckInFlight = false;
-      if (!ready) return; // Poker face: do nothing if server not ready
-      // Proceed to update; mark seen so we don't loop if reload is prevented by environment
-      SERVER_BUILD_SEEN = bstr;
+      if (!ready) { READY_OK_STREAK = 0; return; }
+      READY_OK_STREAK += 1;
+      if (READY_OK_STREAK < 1) return; // require at least one ready pass after delay
+      SERVER_BUILD_SEEN = bstr; // commit and proceed
       return purgeCachesAndReloadWithOverlay();
     }
   } catch {}
@@ -279,6 +302,13 @@ async function checkForSelfUpdate() {
     if (et) {
       if (!UPDATE_ETAG) { UPDATE_ETAG = et; return; }
       if (UPDATE_ETAG && et !== UPDATE_ETAG) {
+        const now = Date.now();
+        if (PENDING_HTML_TARGET !== et) {
+          PENDING_HTML_TARGET = et;
+          PENDING_HTML_SINCE = now;
+          return; // start delay window
+        }
+        if ((now - PENDING_HTML_SINCE) < MIN_UPDATE_DELAY_MS) return;
         const ready = await isServerReady();
         if (!ready) return; // Poker face
         UPDATE_ETAG = et; 
@@ -291,6 +321,13 @@ async function checkForSelfUpdate() {
     const sig = await sha256(text);
     if (!UPDATE_SIG) { UPDATE_SIG = sig; return; }
     if (UPDATE_SIG !== sig) {
+      const now = Date.now();
+      if (PENDING_SIG_TARGET !== sig) {
+        PENDING_SIG_TARGET = sig;
+        PENDING_SIG_SINCE = now;
+        return; // start delay window
+      }
+      if ((now - PENDING_SIG_SINCE) < MIN_UPDATE_DELAY_MS) return;
       const ready = await isServerReady();
       if (!ready) return; // Poker face
       UPDATE_SIG = sig; 

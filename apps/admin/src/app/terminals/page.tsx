@@ -87,6 +87,25 @@ export default function TerminalsPage() {
         pairing_code: (row as any).pairing_code || "",
       });
     }, 0);
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/terminals/${row.id}`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          form.setFieldsValue({
+            partner_id: data.partner_id,
+            name: data.name,
+            mac_address: data.mac_address || "",
+            location_text: data.location_text || "",
+            app_version: data.app_version || "",
+            os_version: data.os_version || "",
+            last_seen_ip: data.last_seen_ip || "",
+            is_active: data.is_active,
+            pairing_code: data.pairing_code || "",
+          });
+        }
+      } catch {}
+    })();
   };
 
   const onSubmit = async (values: any) => {

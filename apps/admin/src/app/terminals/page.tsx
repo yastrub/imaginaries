@@ -98,6 +98,7 @@ export default function TerminalsPage() {
       os_version: values.os_version || null,
       last_seen_ip: values.last_seen_ip || null,
       is_active: !!values.is_active,
+      ...(Object.prototype.hasOwnProperty.call(values, 'pairing_code') ? { pairing_code: values.pairing_code || null } : {}),
     };
     if (record) {
       await update({ resource: 'terminals', id: record.id, values: payload });

@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!isUUID(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
 
     const body = await req.json();
-    const allowed = ['partner_id','name','mac_address','last_seen_ip','last_seen_at','app_version','os_version','location_text','is_active'] as const;
+    const allowed = ['partner_id','name','mac_address','last_seen_ip','last_seen_at','app_version','os_version','location_text','is_active','pairing_code'] as const;
     const fields: string[] = [];
     const values: any[] = [];
     let idx = 1;

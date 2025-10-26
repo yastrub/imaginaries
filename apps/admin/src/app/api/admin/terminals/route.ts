@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
       os_version = null,
       location_text = null,
       is_active = true,
+      pairing_code = null,
     } = body || {};
 
     if (!partner_id || !isUUID(partner_id)) {
@@ -98,12 +99,12 @@ export async function POST(req: NextRequest) {
     const id = randomUUID();
     const insertSql = `
       INSERT INTO terminals (
-        id, partner_id, name, mac_address, last_seen_ip, last_seen_at, app_version, os_version, location_text, is_active
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        id, partner_id, name, mac_address, last_seen_ip, last_seen_at, app_version, os_version, location_text, is_active, pairing_code
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
       RETURNING id, partner_id, name, mac_address, last_seen_ip, last_seen_at, app_version, os_version, location_text, is_active, created_at, updated_at
     `;
 
-    const values = [id, partner_id, name, mac_address, last_seen_ip, last_seen_at, app_version, os_version, location_text, !!is_active];
+    const values = [id, partner_id, name, mac_address, last_seen_ip, last_seen_at, app_version, os_version, location_text, !!is_active, pairing_code];
 
     const resIns = await query(insertSql, values);
     return NextResponse.json(resIns.rows[0]);

@@ -101,6 +101,34 @@ async function mapPlan({ priceId, productId, interval }) {
   return await mapPriceToPlan(priceId);
 }
 
+async function getCustomerCurrency(customerId) {
+  if (!stripe) return null;
+  try {
+    const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', expand: ['data.items.data.price'], limit: 1 });
+    const cur = subs?.data?.[0]?.items?.data?.[0]?.price?.currency || null;
+    if (cur) return cur;
+  } catch {}
+  try {
+    const invs = await stripe.invoices.list({ customer: customerId, limit: 1 });
+    const cur = invs?.data?.[0]?.currency || null;
+    if (cur) return cur;
+  } catch {}
+  return null;
+}
+
+async function pickCompatiblePriceId(priceId, targetCurrency, cycle) {
+  if (!stripe) return priceId;
+  const base = await stripe.prices.retrieve(priceId, { expand: ['product'] });
+  const baseCurrency = base?.currency || null;
+  const interval = base?.recurring?.interval || (String(cycle).toLowerCase() === 'annual' ? 'year' : 'month');
+  if (!targetCurrency || !baseCurrency || targetCurrency === baseCurrency) return priceId;
+  const productId = (base?.product && typeof base.product === 'object') ? base.product.id : base?.product;
+  if (!productId) return null;
+  const list = await stripe.prices.list({ product: productId, active: true, limit: 100 });
+  const match = (list?.data || []).find(p => p?.currency === targetCurrency && p?.type === 'recurring' && p?.recurring?.interval === interval);
+  return match ? match.id : null;
+}
+
 async function ensureCustomer(user) {
   // Get or create customer and persist in billing_profiles
   const profRes = await query(
@@ -137,11 +165,14 @@ router.post('/checkout', auth, async (req, res) => {
     const user = req.user;
     const customerId = await ensureCustomer(user);
     const origin = getOrigin(req);
+    const custCurrency = await getCustomerCurrency(customerId);
+    const compatiblePriceId = await pickCompatiblePriceId(priceId, custCurrency, cycle);
+    if (!compatiblePriceId) return res.status(400).json({ error: 'Price not available for customer currency' });
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [{ price: compatiblePriceId, quantity: 1 }],
       allow_promotion_codes: true,
       success_url: success_url || `${origin}/upgrade?status=success`,
       cancel_url: cancel_url || `${origin}/upgrade?status=cancel`,

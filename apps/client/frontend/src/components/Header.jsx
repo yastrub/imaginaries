@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { History, LogIn, LogOut, Grid, Sparkles, Crown, User, Settings, Bug } from 'lucide-react';
 import { Button } from './ui/button';
-import { getVersionString } from '../config/app';
 import { useToast } from './ui/use-toast';
 import { useSelector } from 'react-redux';
 // Authentication is handled via props instead of direct hook usage
@@ -38,6 +37,7 @@ export const Header = React.memo(function Header({
   const titleTapTimer = useRef(null);
   const allowHideAt = useRef(0);
   const suppressClickUntil = useRef(0);
+  const [serverBuildId, setServerBuildId] = useState(null);
   
   // Determine if we're on a gallery page based on the current path
   const isGalleryPage = window.location.pathname.startsWith('/gallery');
@@ -207,11 +207,27 @@ export const Header = React.memo(function Header({
     return 'Free';
   }, [isAuthenticated, plansList, currentPlanKey]);
 
+  useEffect(() => {
+    let aborted = false;
+    (async () => {
+      if (!showBuildVersion || serverBuildId) return;
+      try {
+        const res = await fetch('/api/version', { cache: 'no-store', credentials: 'include' });
+        if (!res.ok) throw new Error('version failed');
+        const et = res.headers.get('ETag') || res.headers.get('etag') || res.headers.get('Etag');
+        const json = await res.json().catch(() => ({}));
+        const buildId = json?.buildId || et || null;
+        if (!aborted) setServerBuildId(buildId);
+      } catch {}
+    })();
+    return () => { aborted = true; };
+  }, [showBuildVersion, serverBuildId]);
+
   const buildVersionLabel = useMemo(() => {
-    try { if (typeof getVersionString === 'function') return getVersionString(); } catch {}
+    if (serverBuildId) return serverBuildId;
     try { if (window && window.__BUILD_ID__) return String(window.__BUILD_ID__); } catch {}
-    return 'web';
-  }, []);
+    return 'unknown';
+  }, [serverBuildId]);
 
   const handleTitleTap = (e) => {
     const now = Date.now();

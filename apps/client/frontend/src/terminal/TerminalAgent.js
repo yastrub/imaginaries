@@ -18,10 +18,14 @@ let SERVER_BUILD_SEEN = null;
 
 function isTerminalApp() {
   try {
-    // Primary: Trusted Web Activity referrer from our Android package
     if (document.referrer?.startsWith('android-app://com.octadiam.imaginarium')) {
       return true;
     }
+    const sp = new URLSearchParams(location.search);
+    if (sp.get('terminal') === '1') return true;
+  } catch {}
+  return false;
+}
 
 async function checkServerVersion() {
   if (updatingInProgress) return;
@@ -29,24 +33,18 @@ async function checkServerVersion() {
     const headers = { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' };
     if (SERVER_VERSION_ETAG) headers['If-None-Match'] = SERVER_VERSION_ETAG;
     const res = await fetch(`/api/version`, { method: 'GET', cache: 'no-store', headers, credentials: 'include' });
-    if (res.status === 304) return; // no change
+    if (res.status === 304) return;
     if (!res.ok) return;
     const et = res.headers.get('ETag') || res.headers.get('etag') || res.headers.get('Etag');
     if (et && !SERVER_VERSION_ETAG) { SERVER_VERSION_ETAG = et; }
     const json = await res.json().catch(() => ({}));
     const buildId = json?.buildId || et || null;
     if (!SERVER_BUILD_SEEN && buildId) { SERVER_BUILD_SEEN = buildId; return; }
-    if (buildId && SERVER_BUILD_SEEN && buildId !== SERVER_BUILD_SEEN) {
+    if (buildId && SERVER_BUILD_SEEN && String(buildId) !== String(SERVER_BUILD_SEEN)) {
       SERVER_BUILD_SEEN = buildId;
       return purgeCachesAndReloadWithOverlay();
     }
   } catch {}
-}
-    // Explicit flag from TWA startUrl
-    const sp = new URLSearchParams(location.search);
-    if (sp.get('terminal') === '1') return true;
-  } catch {}
-  return false;
 }
 
 function getTerminalId() {

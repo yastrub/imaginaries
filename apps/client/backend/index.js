@@ -29,12 +29,16 @@ async function startServer() {
   try {
     loadEnv();
     console.log('Initializing server...');
-    // Stable build identifier for this server instance/deploy
-    const SERVER_BUILD_ID = process.env.BUILD_ID
-      || process.env.RENDER_GIT_COMMIT
-      || process.env.VERCEL_GIT_COMMIT_SHA
-      || process.env.GIT_COMMIT
-      || new Date().toISOString();
+    // Stable build identifier (Unix seconds) for this server instance/deploy
+    const pickUnixBuildId = () => {
+      const raw = process.env.BUILD_ID_UNIX || process.env.BUILD_ID || '';
+      if (/^\d{10,13}$/.test(raw)) {
+        const n = Number(raw);
+        return String(raw.length > 10 ? Math.floor(n / 1000) : n);
+      }
+      return String(Math.floor(Date.now() / 1000));
+    };
+    const SERVER_BUILD_ID = pickUnixBuildId();
 
     let connected = false;
     let retries = 3;
@@ -118,7 +122,9 @@ async function startServer() {
     app.get('/api/version', (req, res) => {
       res.set('Cache-Control', 'no-cache, must-revalidate');
       res.set('ETag', SERVER_BUILD_ID);
-      res.json({ buildId: SERVER_BUILD_ID, timestamp: new Date().toISOString() });
+      const buildUnix = Number(SERVER_BUILD_ID);
+      const buildIso = new Date(buildUnix * 1000).toISOString();
+      res.json({ buildId: buildUnix, buildIso });
     });
 
     // Health check endpoint with detailed status

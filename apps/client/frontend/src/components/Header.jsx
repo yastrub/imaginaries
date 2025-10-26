@@ -254,7 +254,12 @@ export const Header = React.memo(function Header({
   return (
     <header className="fixed top-0 left-0 right-0 p-4 flex flex-col sm:flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm z-50 gap-4 sm:gap-0">
       <div className="font-mono text-zinc-600 text-sm text-center sm:text-left" onClick={handleTitleTap} onTouchEnd={handleTitleTap}>
-        {showBuildVersion ? (`Build ${buildVersionLabel}`) : (<>IMAGINARIES ({isAuthenticated ? planDisplayName : 'OctaDiam'})</>)}
+        {showBuildVersion
+          ? (`Build ${buildVersionLabel}`)
+          : (isTerminalApp
+              ? (<>IMAGINARIUM (OctaDiam)</>)
+              : (<>IMAGINARIES ({isAuthenticated ? planDisplayName : 'OctaDiam'})</>)
+            )}
       </div>
       <nav className="flex items-center gap-4">
         

@@ -47,7 +47,7 @@ function App() {
   );
 }
 
-// AppContent component that uses Router hooks
+// AppContent component that uses Router hooks 
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();

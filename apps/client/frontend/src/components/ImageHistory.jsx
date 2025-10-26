@@ -6,6 +6,7 @@ import { ImageCard } from './ImageCard';
 import { ImageCardSkeleton } from './ImageCardSkeleton';
 import { useInView } from 'react-intersection-observer';
 import { useSubscription } from '../hooks/useSubscription';
+import { ALLOW_DELETE_IMAGES } from '../config/featureFlags';
 
 const ITEMS_PER_PAGE = 12;
 const SKELETON_COUNT = 10; // Number of skeleton cards to show during loading
@@ -107,6 +108,7 @@ export function ImageHistory({
   }, [hasMore, isLoadingMore, loadNextPage]);
 
   const handleClearHistory = async () => {
+    if (!ALLOW_DELETE_IMAGES) return;
     try {
       setIsDeletingHistory(true);
       await onClearHistory();
@@ -238,7 +240,7 @@ export function ImageHistory({
             <h2 className="text-xl font-semibold text-white">My Jewelry</h2>
           </div>
           <div className="flex items-center gap-4">
-            {images.length > 0 && (
+            {ALLOW_DELETE_IMAGES && images.length > 0 && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -333,7 +335,7 @@ export function ImageHistory({
         </div>
       </div>
 
-      {showDeleteConfirm && renderDeleteConfirmModal}
+      {ALLOW_DELETE_IMAGES && showDeleteConfirm && renderDeleteConfirmModal}
       
       {showQuoteModal && selectedImage && (
         <QuoteModal

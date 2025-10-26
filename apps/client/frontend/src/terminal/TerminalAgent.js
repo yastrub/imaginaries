@@ -163,7 +163,7 @@ function ensureUpdateOverlay() {
   const overlay = document.createElement('div');
   overlay.style.position = 'fixed';
   overlay.style.inset = '0';
-  overlay.style.background = 'radial-gradient(1200px 600px at 50% -20%, rgba(88,28,135,0.35), transparent), rgba(0,0,0,0.85)';
+  overlay.style.background = 'radial-gradient(1200px 600px at 50% -20%, rgba(88,28,135,0.25), transparent), rgba(0,0,0,0.92)';
   overlay.style.backdropFilter = 'blur(6px)';
   overlay.style.display = 'flex';
   overlay.style.flexDirection = 'column';
@@ -171,51 +171,40 @@ function ensureUpdateOverlay() {
   overlay.style.justifyContent = 'center';
   overlay.style.zIndex = '100000';
 
+  const styleTag = document.createElement('style');
+  styleTag.textContent = `@keyframes spin{to{transform:rotate(360deg)}}`;
+  document.head.appendChild(styleTag);
+
   const title = document.createElement('div');
   title.textContent = 'Updating application';
-  title.style.fontSize = '22px';
+  title.style.fontSize = '20px';
   title.style.fontWeight = '700';
   title.style.letterSpacing = '0.5px';
   title.style.color = '#fafafa';
-  title.style.marginBottom = '10px';
+  title.style.marginBottom = '14px';
 
-  const subtitle = document.createElement('div');
-  subtitle.textContent = 'NASA-grade rollout in progress';
-  subtitle.style.color = '#a1a1aa';
-  subtitle.style.marginBottom = '20px';
-
-  const barWrap = document.createElement('div');
-  barWrap.style.width = 'min(90vw, 520px)';
-  barWrap.style.height = '14px';
-  barWrap.style.border = '1px solid #3f3f46';
-  barWrap.style.borderRadius = '999px';
-  barWrap.style.background = 'linear-gradient(180deg, #0b0b0f, #0e0e12)';
-  barWrap.style.overflow = 'hidden';
-
-  const bar = document.createElement('div');
-  bar.style.height = '100%';
-  bar.style.width = '0%';
-  bar.style.background = 'linear-gradient(90deg, #7c3aed, #22d3ee)';
-  bar.style.boxShadow = '0 0 20px rgba(124,58,237,0.4)';
-  bar.style.transition = 'width 300ms ease';
-  barWrap.appendChild(bar);
+  const spinner = document.createElement('div');
+  spinner.style.width = '48px';
+  spinner.style.height = '48px';
+  spinner.style.border = '3px solid rgba(255,255,255,0.15)';
+  spinner.style.borderTopColor = '#7c3aed';
+  spinner.style.borderRadius = '999px';
+  spinner.style.animation = 'spin 1s linear infinite';
+  spinner.style.boxShadow = '0 0 24px rgba(124,58,237,0.35)';
+  spinner.style.marginBottom = '12px';
 
   const step = document.createElement('div');
-  step.style.marginTop = '12px';
+  step.style.marginTop = '6px';
   step.style.color = '#d4d4d8';
   step.style.fontSize = '13px';
 
   overlay.appendChild(title);
-  overlay.appendChild(subtitle);
-  overlay.appendChild(barWrap);
+  overlay.appendChild(spinner);
   overlay.appendChild(step);
   document.body.appendChild(overlay);
 
   return {
-    setProgress(pct, text) {
-      try { bar.style.width = `${Math.max(0, Math.min(100, pct))}%`; } catch {}
-      if (text) step.textContent = text;
-    },
+    setStatus(text) { if (text) step.textContent = text; },
     remove() { try { overlay.remove(); } catch {} },
   };
 }
@@ -223,9 +212,9 @@ function ensureUpdateOverlay() {
 async function purgeCachesAndReloadWithOverlay() {
   if (updatingInProgress) return; updatingInProgress = true;
   const ui = ensureUpdateOverlay();
-  ui.setProgress(5, 'Checking resources');
+  ui.setStatus('Checking resources');
   try {
-    ui.setProgress(20, 'Unregistering service workers');
+    ui.setStatus('Unregistering service workers');
     try {
       if ('serviceWorker' in navigator) {
         const regs = await navigator.serviceWorker.getRegistrations();
@@ -233,7 +222,7 @@ async function purgeCachesAndReloadWithOverlay() {
       }
     } catch {}
 
-    ui.setProgress(55, 'Purging caches');
+    ui.setStatus('Purging caches');
     try {
       if (window.caches && caches.keys) {
         const keys = await caches.keys();
@@ -241,11 +230,11 @@ async function purgeCachesAndReloadWithOverlay() {
       }
     } catch {}
 
-    ui.setProgress(80, 'Preparing fresh launch');
+    ui.setStatus('Preparing fresh launch');
     // Small delay for UX polish
     await new Promise(r => setTimeout(r, 250));
 
-    ui.setProgress(100, 'Reloading');
+    ui.setStatus('Reloading');
     const sp = new URLSearchParams(location.search);
     sp.set('v', String(Date.now()));
     const qs = sp.toString();

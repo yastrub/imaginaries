@@ -1,4 +1,0 @@
-#Sun Oct 26 19:19:24 GST 2025
-base.0=/Users/god/Code/imaginaries/android-twa/app/build/intermediates/dex/release/minifyReleaseWithR8/classes.dex
-renamed.0=classes.dex
-path.0=classes.dex

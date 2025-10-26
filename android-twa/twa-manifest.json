@@ -21,7 +21,7 @@
     "alias": "imaginarium"
   },
   "appVersionName": "7",
-  "appVersionCode": 6,
+  "appVersionCode": 7,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://imaginaries.app/manifest.webmanifest",
@@ -47,5 +47,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "6"
+  "appVersion": "7"
 }

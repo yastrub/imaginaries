@@ -3,6 +3,7 @@ import { History, LogIn, LogOut, Grid, Sparkles, Crown, User, Settings, Bug } fr
 import { Button } from './ui/button';
 import { getVersionString } from '../config/app';
 import { useToast } from './ui/use-toast';
+import { useSelector } from 'react-redux';
 // Authentication is handled via props instead of direct hook usage
 import { useSubscription } from '../hooks/useSubscription';
 import { openAuthModal } from './CompletelyIsolatedAuth';
@@ -20,6 +21,7 @@ export const Header = React.memo(function Header({
 }) {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
   // Use the isAuthenticated prop passed from parent instead of direct useAuth
   // This ensures consistency with the rest of the app
   const { plan } = useSubscription();
@@ -187,22 +189,27 @@ export const Header = React.memo(function Header({
     return () => { mounted = false; };
   }, [currentPlanKey, isAuthenticated]);
 
-  const planSuffix = useMemo(() => {
-    if (isAuthenticated) {
-      const match = plansList.find(p => p.key === currentPlanKey);
-      if (match?.name) return match.name;
+  const planDisplayName = useMemo(() => {
+    if (!isAuthenticated) return null;
+    const match = plansList.find(p => p.key === currentPlanKey);
+    if (match?.name) return match.name;
+    if (currentPlanKey) {
+      const raw = String(currentPlanKey);
+      return raw
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
     }
-    return 'OctaDiam';
+    return 'Free';
   }, [isAuthenticated, plansList, currentPlanKey]);
 
   return (
     <header className="fixed top-0 left-0 right-0 p-4 flex flex-col sm:flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm z-50 gap-4 sm:gap-0">
       <div className="font-mono text-zinc-600 text-sm text-center sm:text-left">
-        IMAGINARIES ({planSuffix})
+        IMAGINARIES ({isAuthenticated ? planDisplayName : 'OctaDiam'})
       </div>
       <nav className="flex items-center gap-4">
         
-        {isAuthenticated && canUpgrade && (
+        {isAuthenticated && !isTerminalApp && canUpgrade && (
           <Button
             size="sm"
             onClick={() => navigate('/upgrade')}
@@ -257,48 +264,50 @@ export const Header = React.memo(function Header({
               My Jewelry
             </Button>
             {/* Avatar dropdown (last item) */}
-            <div className="relative" ref={dropdownRef}>
-              <button
-                ref={avatarBtnRef}
-                onClick={() => setIsDropdownOpen((v) => !v)}
-                className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-700 hover:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
-                aria-haspopup="menu"
-                aria-expanded={isDropdownOpen}
-              >
-                <User className="w-4 h-4" />
-              </button>
-              {isDropdownOpen && (
-                <div
-                  role="menu"
-                  className="absolute right-0 mt-2 w-48 rounded-md bg-zinc-900 border border-zinc-700 shadow-lg overflow-hidden z-50"
+            {!isTerminalApp && (
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  ref={avatarBtnRef}
+                  onClick={() => setIsDropdownOpen((v) => !v)}
+                  className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-700 hover:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+                  aria-haspopup="menu"
+                  aria-expanded={isDropdownOpen}
                 >
-                  <button
-                    role="menuitem"
-                    onClick={() => { setIsDropdownOpen(false); setIsAccountModalOpen(true); }}
-                    className="w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
+                  <User className="w-4 h-4" />
+                </button>
+                {isDropdownOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 mt-2 w-48 rounded-md bg-zinc-900 border border-zinc-700 shadow-lg overflow-hidden z-50"
                   >
-                    <Settings className="w-4 h-4" />
-                    Account Settings
-                  </button>
-                  <button
-                    role="menuitem"
-                    onClick={() => { setIsDropdownOpen(false); setIsBugModalOpen(true); }}
-                    className="w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
-                  >
-                    <Bug className="w-4 h-4" />
-                    Report a Bug
-                  </button>
-                  <button
-                    role="menuitem"
-                    onClick={handleSignOutClick}
-                    className="w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign out
-                  </button>
-                </div>
-              )}
-            </div>
+                    <button
+                      role="menuitem"
+                      onClick={() => { setIsDropdownOpen(false); setIsAccountModalOpen(true); }}
+                      className="w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
+                    >
+                      <Settings className="w-4 h-4" />
+                      Account Settings
+                    </button>
+                    <button
+                      role="menuitem"
+                      onClick={() => { setIsDropdownOpen(false); setIsBugModalOpen(true); }}
+                      className="w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
+                    >
+                      <Bug className="w-4 h-4" />
+                      Report a Bug
+                    </button>
+                    <button
+                      role="menuitem"
+                      onClick={handleSignOutClick}
+                      className="w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <Button

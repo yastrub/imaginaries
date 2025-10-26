@@ -15,6 +15,7 @@ let UPDATE_SIG = null; // SHA-256 hex of last index.html content
 let updatingInProgress = false;
 let SERVER_VERSION_ETAG = null;
 let SERVER_BUILD_SEEN = null;
+let updateCheckInFlight = false;
 
 function isTerminalApp() {
   try {
@@ -43,10 +44,29 @@ async function checkServerVersion() {
     if (!bstr || !/^\d+$/.test(bstr)) { return; }
     if (!SERVER_BUILD_SEEN) { SERVER_BUILD_SEEN = bstr; return; }
     if (String(bstr) !== String(SERVER_BUILD_SEEN)) {
+      if (updateCheckInFlight) return;
+      updateCheckInFlight = true;
+      const ready = await isServerReady();
+      updateCheckInFlight = false;
+      if (!ready) return; // Poker face: do nothing if server not ready
+      // Proceed to update; mark seen so we don't loop if reload is prevented by environment
       SERVER_BUILD_SEEN = bstr;
       return purgeCachesAndReloadWithOverlay();
     }
   } catch {}
+}
+
+async function isServerReady() {
+  try {
+    const timeout = (p, ms) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('timeout')), ms))]);
+    const headers = { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' };
+    const v = await timeout(fetch('/api/version', { cache: 'no-store', headers, credentials: 'include' }), 4000);
+    if (!v || !v.ok) return false;
+    const cb = Date.now();
+    const h = await timeout(fetch(`/index.html?check=${cb}`, { cache: 'no-store', headers, credentials: 'include' }), 4000);
+    if (!h || !h.ok) return false;
+    return true;
+  } catch { return false; }
 }
 
 function getTerminalId() {
@@ -258,14 +278,24 @@ async function checkForSelfUpdate() {
     const et = res.headers.get('ETag') || res.headers.get('etag') || res.headers.get('Etag');
     if (et) {
       if (!UPDATE_ETAG) { UPDATE_ETAG = et; return; }
-      if (UPDATE_ETAG && et !== UPDATE_ETAG) { UPDATE_ETAG = et; return purgeCachesAndReloadWithOverlay(); }
+      if (UPDATE_ETAG && et !== UPDATE_ETAG) {
+        const ready = await isServerReady();
+        if (!ready) return; // Poker face
+        UPDATE_ETAG = et; 
+        return purgeCachesAndReloadWithOverlay();
+      }
       return; // same etag
     }
     // Fallback: compute a strong signature from content when ETag is missing
     const text = await res.text();
     const sig = await sha256(text);
     if (!UPDATE_SIG) { UPDATE_SIG = sig; return; }
-    if (UPDATE_SIG !== sig) { UPDATE_SIG = sig; return purgeCachesAndReloadWithOverlay(); }
+    if (UPDATE_SIG !== sig) {
+      const ready = await isServerReady();
+      if (!ready) return; // Poker face
+      UPDATE_SIG = sig; 
+      return purgeCachesAndReloadWithOverlay();
+    }
   } catch {}
 }
 

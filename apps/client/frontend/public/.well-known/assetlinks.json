@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.octadiam.imaginarium",
+      "sha256_cert_fingerprints": [
+        "09:36:E3:43:FE:0C:7C:3C:95:31:C1:29:7E:73:E8:F7:C4:F0:56:17:52:94:F3:55:2A:DE:FA:7A:F8:50:23:C6"
+      ]
+    }
+  }
+]

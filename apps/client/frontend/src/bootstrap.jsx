@@ -2,6 +2,7 @@
 // BUILD_ID is injected at build time via Vite define (__BUILD_ID__). Ensure string type for reliable comparisons.
 const RAW_BUILD_ID = (typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : Date.now());
 const BUILD_ID = String(RAW_BUILD_ID);
+try { window.__BUILD_ID__ = BUILD_ID; } catch {}
 
 async function purgeCachesAndReload() {
   try { localStorage.setItem('BUILD_ID', BUILD_ID); } catch (e) {}
@@ -43,6 +44,13 @@ async function purgeCachesAndReload() {
       const qs = params.toString();
       const cleanUrl = `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
       window.history.replaceState({}, document.title, cleanUrl);
+    }
+  } catch {}
+  // Start TerminalAgent (best-effort) before app loads
+  try {
+    const mod = await import('./terminal/TerminalAgent.js');
+    if (mod && typeof mod.startTerminalAgent === 'function') {
+      mod.startTerminalAgent({ appVersion: BUILD_ID });
     }
   } catch {}
   // Load the app (static specifier to satisfy Vite's dynamic import constraints)

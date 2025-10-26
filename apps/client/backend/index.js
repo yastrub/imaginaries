@@ -11,6 +11,7 @@ import { likesRouter } from './routes/likes.js';
 import { usersRouter } from './routes/users.js';
 import { feedbackRouter } from './routes/feedback.js';
 import { ordersRouter } from './routes/orders.js';
+import { terminalsRouter } from './routes/terminals.js';
 import { imagesRouter } from './routes/images.js';
 import { plansRouter } from './routes/plans.js';
 import { billingRouter, registerStripeWebhook } from './routes/billing.js';
@@ -105,6 +106,7 @@ async function startServer() {
     app.use('/api/profile', profileRouter);
     app.use('/api/billing', billingRouter);
     app.use('/api/orders', ordersRouter);
+    app.use('/api/terminals', terminalsRouter);
 
     // Health check endpoint with detailed status
     app.get('/api/health', async (req, res) => {

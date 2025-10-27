@@ -46,7 +46,6 @@ export function ImageLightbox({
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
   const canGoNextRef = useRef(false);
   const canGoPrevRef = useRef(false);
-  useEffect(() => { canGoNextRef.current = canGoNext; canGoPrevRef.current = canGoPrev; }, [canGoNext, canGoPrev]);
   
   // Get the current image from the array or use the single image prop
   const currentImage = images.length > 0 ? images[activeIndex] : image;
@@ -121,6 +120,11 @@ export function ImageLightbox({
   const hasMultipleImages = images.length > 1;
   const canGoNext = hasMultipleImages && activeIndex < images.length - 1;
   const canGoPrev = hasMultipleImages && activeIndex > 0;
+  // Sync navigation booleans into refs after they are defined
+  useEffect(() => {
+    canGoNextRef.current = canGoNext;
+    canGoPrevRef.current = canGoPrev;
+  }, [canGoNext, canGoPrev]);
   
   // Track the last navigation direction for keyboard navigation recovery
   const [lastNavDirection, setLastNavDirection] = useState(null);

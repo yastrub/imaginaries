@@ -483,7 +483,7 @@ export function SharePage() {
   const imageUrl = image?.url;
   
   return (
-    <div className="min-h-screen bg-black pb-4 flex flex-col">
+    <div className="min-h-[100dvh] bg-black grid grid-rows-[auto_1fr_auto]">
       {/* Dynamic meta tags for social sharing */}
       <MetaTags 
         title={pageTitle}
@@ -492,8 +492,8 @@ export function SharePage() {
         url={pageUrl}
       />
       
-      {/* Header overlay (removed from flow so main content centers to viewport) */}
-      <header className="absolute top-0 left-0 right-0 p-4 flex flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm z-10">
+      {/* Header */}
+      <header className="p-4 flex flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm">
         <div className="font-mono text-zinc-600 text-sm text-left">
           IMAGINARIES
         </div>
@@ -510,9 +510,9 @@ export function SharePage() {
         </nav>
       </header>
 
-      <div className="grid place-items-center h-screen">
-        <div className="container mx-auto px-4 p-8">
-          <div className="max-w-2xl mx-auto">
+      <main className="flex items-center justify-center">
+        <div className="w-full mx-auto lg:max-w-[50vw] lg:min-w-[375px] px-4 p-8">
+          <div className="w-full">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-white text-2xl font-semibold">
                 Make to Order
@@ -562,7 +562,12 @@ export function SharePage() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="p-4 text-center text-zinc-600 text-xs">
+        © IMAGINARIES
+      </footer>
 
       {/* Auth modal is now handled by CompletelyIsolatedAuth component */}
       

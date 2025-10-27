@@ -323,7 +323,7 @@ export function ImageLightbox({
       if (['ArrowLeft', 'ArrowRight', 'Escape'].includes(e.key)) {
         e.preventDefault();
       }
-      if (isKeyboardNavigating) return;
+      if (isKeyboardNavigatingRef.current) return;
       if (e.key === 'Escape') {
         onCloseRef.current && onCloseRef.current();
       } else if (e.key === 'ArrowRight') {
@@ -351,22 +351,9 @@ export function ImageLightbox({
       }
     };
 
-    const viewportMeta = document.querySelector('meta[name="viewport"]');
-    let orig = null;
-    if (viewportMeta) {
-      orig = viewportMeta.getAttribute('content');
-      viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0');
-    }
-
     document.addEventListener('keydown', handleKeyDown);
-    document.body.style.overflow = 'hidden';
-
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = 'auto';
-      if (viewportMeta && orig) {
-        viewportMeta.setAttribute('content', orig);
-      }
     };
   }, [open]);
 

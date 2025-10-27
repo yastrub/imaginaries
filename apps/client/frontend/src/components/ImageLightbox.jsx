@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useSelector } from 'react-redux';
 import { createPortal } from 'react-dom';
+import { showQrModal } from '../lib/qr';
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, EyeOff, Heart, DollarSign, Share2, Download, Repeat } from 'lucide-react';
 
 export function ImageLightbox({
@@ -40,6 +42,7 @@ export function ImageLightbox({
   const [isDragging, setIsDragging] = useState(false);
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
   const [dragStart, setDragStart] = useState(null);
+  const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
   
   // Get the current image from the array or use the single image prop
   const currentImage = images.length > 0 ? images[activeIndex] : image;
@@ -534,6 +537,10 @@ export function ImageLightbox({
     const shareUrl = `${window.location.origin}/share/${currentImage.id}`;
     
     try {
+      if (isTerminalApp) {
+        showQrModal({ url: shareUrl, title: 'Scan to open', subtitle: 'Open this design on your phone' });
+        return;
+      }
       await navigator.clipboard.writeText(shareUrl);
       alert("Link copied! Share link has been copied to your clipboard");
       
@@ -842,7 +849,7 @@ export function ImageLightbox({
               >
                 <Share2 className="w-5 h-5 text-white" />
               </button>
-              {onDownload && (
+              {onDownload && !isTerminalApp && (
                 <button
                   className="p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors"
                   onClick={() => onDownload(image)}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Navigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { ImageCard } from './ImageCard';
 import { Heart, Loader2, Home, Sparkles, Download, DollarSign, Share2 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -61,6 +61,7 @@ function useOptimizedData() {
 
 export function SharePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   // Get imageId directly from useParams since we're mounted directly by the router
   const { imageId } = useParams();
   
@@ -164,6 +165,31 @@ export function SharePage() {
       }
     };
   }, [imageId]); // Only depend on the image ID
+
+  // Auto-open Quote flow when arriving with ?quote=1
+  const quoteOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!image) return;
+    if (quoteOpenedRef.current) return;
+    try {
+      const sp = new URLSearchParams(location.search);
+      if (sp.get('quote') === '1') {
+        quoteOpenedRef.current = true;
+        // Reuse the same logic as clicking Quote
+        const formattedImage = {
+          id: image.id,
+          prompt: image.prompt,
+          url: image.url,
+          image_url: image.url,
+          watermarked: image.watermarked || null,
+          user_id: image.user_id,
+          created_at: image.createdAt || new Date().toISOString()
+        };
+        setSelectedImage(formattedImage);
+        setShowQuoteModal(true);
+      }
+    } catch {}
+  }, [image, location.search]);
 
   const handleImagineClick = () => {
     // Navigate without replacing the history entry so Back button works

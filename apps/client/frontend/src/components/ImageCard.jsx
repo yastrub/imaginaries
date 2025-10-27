@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Download, DollarSign, Loader2, Repeat, Heart, Share2, Lock, Unlock, EyeOff } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from './ui/use-toast';
+import { useSelector } from 'react-redux';
 import { ImageLightbox } from './ImageLightbox';
+import { showQrModal } from '../lib/qr';
 
 
 // CRITICAL PERFORMANCE OPTIMIZATION:
@@ -42,6 +44,7 @@ function ImageCardComponent({
   const [imageHeight, setImageHeight] = useState(0);
   const imageRef = useRef(null);
   const { toast } = useToast();
+  const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
 
   // Update local state when props change
   useEffect(() => {
@@ -215,20 +218,12 @@ function ImageCardComponent({
     const shareUrl = `${window.location.origin}/share/${image.id}`;
     
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      
-      // Show different toast messages based on privacy status
-      if (image.is_private) {
-        toast({
-          title: "Private image link copied!",
-          description: "Anyone with this link can view this private image",
-        });
-      } else {
-        toast({
-          title: "Link copied!",
-          description: "Share link has been copied to your clipboard",
-        });
+      if (isTerminalApp) {
+        showQrModal({ url: shareUrl, title: 'Scan to open', subtitle: 'Open this design on your phone' });
+        return;
       }
+      await navigator.clipboard.writeText(shareUrl);
+      toast({ title: 'Link copied!', description: 'Share link has been copied to your clipboard' });
     } catch (err) {
       console.error('Failed to copy:', err);
       toast({
@@ -399,27 +394,29 @@ function ImageCardComponent({
           >
             <Share2 className="w-5 h-5" />
           </Button>
-          <Button
-            variant="default"
-            size="icon"
-            onClick={(e) => {
-              // Prevent event propagation and default behavior
-              e.preventDefault();
-              e.stopPropagation();
-              // Use setTimeout to break the event chain completely
-              setTimeout(() => {
-                onDownload(image);
-              }, 0);
-            }}
-            disabled={downloadingImageId === image.id}
-            className="h-10 w-10"
-          >
-            {downloadingImageId === image.id ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Download className="w-5 h-5" />
-            )}
-          </Button>
+          {!isTerminalApp && (
+            <Button
+              variant="default"
+              size="icon"
+              onClick={(e) => {
+                // Prevent event propagation and default behavior
+                e.preventDefault();
+                e.stopPropagation();
+                // Use setTimeout to break the event chain completely
+                setTimeout(() => {
+                  onDownload(image);
+                }, 0);
+              }}
+              disabled={downloadingImageId === image.id}
+              className="h-10 w-10"
+            >
+              {downloadingImageId === image.id ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Download className="w-5 h-5" />
+              )}
+            </Button>
+          )}
         </div>
       )}
 

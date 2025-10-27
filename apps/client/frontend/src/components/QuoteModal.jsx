@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import { X, Loader2, DollarSign, BadgeCheck } from 'lucide-react';
 import { Button } from './ui/button';
 import { useReduxAuth } from '../hooks/useReduxAuth';
 import { useToast } from './ui/use-toast';
 import { triggerConfetti, CONFETTI_EVENTS } from './GlobalConfetti';
+import { showQrModal } from '../lib/qr';
 import { openAuthModal } from './CompletelyIsolatedAuth';
 
 export function QuoteModal({ image, onClose, fromSharePage = false }) {
@@ -16,6 +18,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
   const [estimatedCost, setEstimatedCost] = useState(null); // expected CSV: a,b,c,d
   const [parsedPrices, setParsedPrices] = useState(null); // [n1, n2, n3, n4]
   const [selectedIdx, setSelectedIdx] = useState(null);
+  const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
   const OPTION_LABELS = [
     'Sterling Silver + Moissanites',
     'Gold Vermeil + Moissanites',
@@ -32,11 +35,14 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
 
   // Fetch price estimation when the modal opens
   useEffect(() => {
-    // Gate by auth: if not authenticated or not confirmed, open auth and close modal
-    if (!isAuthenticated || !isEmailConfirmed) {
-      openAuthModal();
-      onClose();
-      return;
+    // In Terminal app, allow QR flow without auth gating
+    if (!isTerminalApp) {
+      // Gate by auth: if not authenticated or not confirmed, open auth and close modal
+      if (!isAuthenticated || !isEmailConfirmed) {
+        openAuthModal();
+        onClose();
+        return;
+      }
     }
     if (step === 1) {
       fetchEstimation();
@@ -207,6 +213,11 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
   };
 
   const handleOrderSelected = async () => {
+    if (isTerminalApp) {
+      const shareUrl = `${window.location.origin}/share/${image.id}?quote=1`;
+      showQrModal({ url: shareUrl, title: 'Continue on your phone', subtitle: 'Scan to open order page for this design' });
+      return;
+    }
     if (selectedIdx == null) return;
     await handleOrder(selectedIdx);
   };
@@ -339,8 +350,8 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                       })}
                     </div>
                     <div className="mt-4">
-                      <Button className="w-full" disabled={selectedIdx == null || isSubmitting} onClick={handleOrderSelected}>
-                        Order Selected
+                      <Button className="w-full" disabled={!isTerminalApp && (selectedIdx == null || isSubmitting)} onClick={handleOrderSelected}>
+                        {isTerminalApp ? 'Continue' : 'Order Selected'}
                       </Button>
                     </div>
                     <p className="text-zinc-500 text-xs mt-3 text-center">Final pricing may vary based on precise materials, sizing, and customization. Production by <strong>OCTADIAM</strong>, Dubai, UAE.</p>
@@ -357,7 +368,13 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                     <p className="text-justify text-zinc-300 text-xs">We could not compute all four options automatically. Please refresh estimation later or contact support. Ordering is disabled until a valid estimate is available.</p>
                   </div>
                   <div className="flex justify-center">
-                    <Button className="w-full max-w-xs" disabled>Order Selected</Button>
+                    {isTerminalApp ? (
+                      <Button className="w-full max-w-xs" onClick={() => showQrModal({ url: `${window.location.origin}/share/${image.id}?quote=1`, title: 'Continue on your phone', subtitle: 'Scan to open order page for this design' })}>
+                        Continue
+                      </Button>
+                    ) : (
+                      <Button className="w-full max-w-xs" disabled>Order Selected</Button>
+                    )}
                   </div>
                 </div>
               )}

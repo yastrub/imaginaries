@@ -62,6 +62,7 @@ function useOptimizedData() {
 export function SharePage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const rootRef = useRef(null);
   // Get imageId directly from useParams since we're mounted directly by the router
   const { imageId } = useParams();
   
@@ -190,6 +191,26 @@ export function SharePage() {
       }
     } catch {}
   }, [image, location.search]);
+
+  // Hide any app-level footer outside this page while mounted
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const hidden = [];
+    const footers = Array.from(document.querySelectorAll('footer'));
+    footers.forEach((el) => {
+      if (!root.contains(el)) {
+        const prev = el.style.display;
+        hidden.push({ el, prev });
+        el.style.display = 'none';
+      }
+    });
+    return () => {
+      hidden.forEach(({ el, prev }) => {
+        el.style.display = prev || '';
+      });
+    };
+  }, []);
 
   const handleImagineClick = () => {
     // Navigate without replacing the history entry so Back button works
@@ -483,7 +504,7 @@ export function SharePage() {
   const imageUrl = image?.url;
   
   return (
-    <div className="min-h-[100dvh] bg-black grid grid-rows-[auto_1fr_auto]">
+    <div ref={rootRef} className="min-h-[100dvh] bg-black grid grid-rows-[auto_1fr_auto]">
       {/* Dynamic meta tags for social sharing */}
       <MetaTags 
         title={pageTitle}
@@ -566,7 +587,7 @@ export function SharePage() {
 
       {/* Footer */}
       <footer className="p-4 text-center text-zinc-600 text-xs">
-        © IMAGINARIES
+        © OCTADIAM FZCO
       </footer>
 
       {/* Auth modal is now handled by CompletelyIsolatedAuth component */}

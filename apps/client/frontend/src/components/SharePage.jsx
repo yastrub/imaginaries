@@ -495,7 +495,7 @@ export function SharePage() {
       {/* Header with gradient overlay - non-sticky for share page */}
       <header className="relative p-4 flex flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm">
         <div className="font-mono text-zinc-600 text-sm text-left">
-          IMARINARIES
+          IMAGINARIES
         </div>
         <nav className="flex items-center gap-4">
           <Button

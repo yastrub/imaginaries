@@ -587,7 +587,7 @@ export function SharePage() {
 
       {/* Footer */}
       <footer className="p-4 text-center text-zinc-600 text-xs">
-        © OCTADIAM FZCO
+        © IMAGINARIES - OCTADIAM FZCO
       </footer>
 
       {/* Auth modal is now handled by CompletelyIsolatedAuth component */}

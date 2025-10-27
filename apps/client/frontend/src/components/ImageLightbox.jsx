@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { createPortal } from 'react-dom';
 import { showQrModal } from '../lib/qr';
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, EyeOff, Heart, DollarSign, Share2, Download, Repeat } from 'lucide-react';
+import { useToast } from './ui/use-toast';
 
 export function ImageLightbox({
   image, 
@@ -44,6 +45,7 @@ export function ImageLightbox({
   const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  const { toast } = useToast();
   const canGoNextRef = useRef(false);
   const canGoPrevRef = useRef(false);
   
@@ -517,17 +519,17 @@ export function ImageLightbox({
         return;
       }
       await navigator.clipboard.writeText(shareUrl);
-      alert("Link copied! Share link has been copied to your clipboard");
+      toast({ title: 'Link copied!', description: 'Share link has been copied to your clipboard' });
       
       // If it's a private image, show a note about privacy
       if (currentImage.is_private) {
         setTimeout(() => {
-          alert("Note: This is a private image, but anyone with this direct link can view it.");
+          toast({ title: 'Private image', description: 'Anyone with this direct link can view it.' });
         }, 500);
       }
     } catch (err) {
       console.error('Failed to copy:', err);
-      alert("Failed to copy. Please try again.");
+      toast({ title: 'Failed to copy', description: 'Please try again', variant: 'destructive' });
     }
   };
 

@@ -284,39 +284,51 @@ export const Header = React.memo(function Header({
         )}
         {isAuthenticated ? (
           <>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleGalleryToggle}
-              className="text-zinc-400 hover:text-white gap-2"
-            >
-              {window.location.pathname.startsWith('/gallery') ? (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  Imagine
-                </>
-              ) : window.location.pathname === '/imagine' ? (
-                <>
-                  <Grid className="w-4 h-4" />
-                  Gallery
-                </>
-              ) : window.location.pathname === '/upgrade' ? (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  Imagine
-                </>
-              ) : showGallery ? (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  Imagine
-                </>
-              ) : (
-                <>
-                  <Grid className="w-4 h-4" />
-                  Gallery
-                </>
-              )}
-            </Button>
+            {isTerminalApp ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/imagine')}
+                className="text-zinc-400 hover:text-white gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                Imagine
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleGalleryToggle}
+                className="text-zinc-400 hover:text-white gap-2"
+              >
+                {window.location.pathname.startsWith('/gallery') ? (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Imagine
+                  </>
+                ) : window.location.pathname === '/imagine' ? (
+                  <>
+                    <Grid className="w-4 h-4" />
+                    Gallery
+                  </>
+                ) : window.location.pathname === '/upgrade' ? (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Imagine
+                  </>
+                ) : showGallery ? (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Imagine
+                  </>
+                ) : (
+                  <>
+                    <Grid className="w-4 h-4" />
+                    Gallery
+                  </>
+                )}
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

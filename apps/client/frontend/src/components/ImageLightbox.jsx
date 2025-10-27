@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { createPortal } from 'react-dom';
 import { showQrModal } from '../lib/qr';
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, EyeOff, Heart, DollarSign, Share2, Download, Repeat } from 'lucide-react';
-import { useToast } from './ui/use-toast';
+// Note: Avoid using global toast here to prevent app-level rerenders that can reload grids
 
 export function ImageLightbox({
   image, 
@@ -45,7 +45,10 @@ export function ImageLightbox({
   const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
-  const { toast } = useToast();
+  // Local ephemeral notice to avoid global toast rerenders
+  const [notice, setNotice] = useState(null);
+  const noticeTimerRef = useRef(null);
+  useEffect(() => () => { if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current); }, []);
   const canGoNextRef = useRef(false);
   const canGoPrevRef = useRef(false);
   
@@ -519,17 +522,23 @@ export function ImageLightbox({
         return;
       }
       await navigator.clipboard.writeText(shareUrl);
-      toast({ title: 'Link copied!', description: 'Share link has been copied to your clipboard' });
+      if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+      setNotice('Link copied to clipboard');
+      noticeTimerRef.current = setTimeout(() => setNotice(null), 1500);
       
       // If it's a private image, show a note about privacy
       if (currentImage.is_private) {
-        setTimeout(() => {
-          toast({ title: 'Private image', description: 'Anyone with this direct link can view it.' });
-        }, 500);
+        const prev = noticeTimerRef.current;
+        noticeTimerRef.current = setTimeout(() => {
+          setNotice('Private image: anyone with the link can view it');
+          noticeTimerRef.current = setTimeout(() => setNotice(null), 1800);
+        }, 600);
       }
     } catch (err) {
       console.error('Failed to copy:', err);
-      toast({ title: 'Failed to copy', description: 'Please try again', variant: 'destructive' });
+      if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+      setNotice('Failed to copy. Please try again');
+      noticeTimerRef.current = setTimeout(() => setNotice(null), 1500);
     }
   };
 
@@ -564,6 +573,13 @@ export function ImageLightbox({
         bottom: 0
       }}
     >
+      {notice && (
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
+          <div className="bg-black/70 text-white text-sm px-3 py-1 rounded-full shadow">
+            {notice}
+          </div>
+        </div>
+      )}
       {/* Close button */}
       <button 
         className="absolute top-6 right-6 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors z-[60]"

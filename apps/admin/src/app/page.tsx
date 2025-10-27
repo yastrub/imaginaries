@@ -55,6 +55,7 @@ export default function Dashboard() {
   const [newUsers, setNewUsers] = React.useState(0);
   const [activeSubs, setActiveSubs] = React.useState(0);
   const [revenue, setRevenue] = React.useState(0);
+  const [revenueByCurrency, setRevenueByCurrency] = React.useState<Array<{ code: string; amount: number }>>([]);
   const [totalUsers, setTotalUsers] = React.useState(0);
   const [totalImages, setTotalImages] = React.useState(0);
   const gap = 8;
@@ -116,8 +117,33 @@ export default function Dashboard() {
         const m = json.metrics || {};
         setNewUsers(Number(m.newUsers24h || 0));
         setActiveSubs(Number(m.activeSubscriptions || 0));
+        // Legacy single-currency revenue in cents
         const cents = Number(m.revenue30dCents || 0);
         setRevenue(Math.round((cents / 100) * 100) / 100);
+
+        // New: revenue grouped by currency
+        // Supported shapes:
+        // - m.revenue30dByCurrencyCents: { USD: 12345, AED: 11900 }
+        // - m.revenue30dByCurrency: { USD: 123.45, AED: 119 }
+        const byCents = m.revenue30dByCurrencyCents && typeof m.revenue30dByCurrencyCents === 'object'
+          ? m.revenue30dByCurrencyCents as Record<string, number>
+          : null;
+        const byAmount = !byCents && m.revenue30dByCurrency && typeof m.revenue30dByCurrency === 'object'
+          ? m.revenue30dByCurrency as Record<string, number>
+          : null;
+        if (byCents) {
+          const entries = Object.entries(byCents)
+            .filter(([code, val]) => typeof val === 'number' && !isNaN(val))
+            .map(([code, val]) => ({ code, amount: Math.round((val / 100) * 100) / 100 }));
+          setRevenueByCurrency(entries);
+        } else if (byAmount) {
+          const entries = Object.entries(byAmount)
+            .filter(([code, val]) => typeof val === 'number' && !isNaN(val))
+            .map(([code, val]) => ({ code, amount: Math.round(val * 100) / 100 }));
+          setRevenueByCurrency(entries);
+        } else {
+          setRevenueByCurrency([]);
+        }
         setTotalUsers(Number(m.totalUsers || 0));
         setTotalImages(Number(m.totalImages || 0));
       } catch (e) {
@@ -151,7 +177,19 @@ export default function Dashboard() {
           <Card><Statistic title="Active Subs" value={activeSubs} /></Card>
         </Col>
         <Col xs={12} md={6}>
-          <Card><Statistic title="Revenue (30d)" prefix="$" value={revenue} precision={2} /></Card>
+          <Card>
+            {revenueByCurrency.length > 0 ? (
+              <Statistic
+                title="Revenue (30d)"
+                value={revenueByCurrency
+                  .sort((a, b) => a.code.localeCompare(b.code))
+                  .map((r) => `${r.code === 'USD' ? '$' : ''}${r.amount.toFixed(2)} (${r.code})`)
+                  .join(' + ')}
+              />
+            ) : (
+              <Statistic title="Revenue (30d)" prefix="$" value={revenue} precision={2} />
+            )}
+          </Card>
         </Col>
       </Row>
 

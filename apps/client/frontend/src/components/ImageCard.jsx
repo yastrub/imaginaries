@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Download, DollarSign, Loader2, Repeat, Heart, Share2, Lock, Unlock, EyeOff } from 'lucide-react';
 import { Button } from './ui/button';
-import { useToast } from './ui/use-toast';
 import { useSelector } from 'react-redux';
 import { ImageLightbox } from './ImageLightbox';
 import { showQrModal } from '../lib/qr';
@@ -43,7 +42,9 @@ function ImageCardComponent({
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [imageHeight, setImageHeight] = useState(0);
   const imageRef = useRef(null);
-  const { toast } = useToast();
+  const [notice, setNotice] = useState(null);
+  const noticeTimerRef = useRef(null);
+  useEffect(() => () => { if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current); }, []);
   const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
 
   // Update local state when props change
@@ -223,14 +224,14 @@ function ImageCardComponent({
         return;
       }
       await navigator.clipboard.writeText(shareUrl);
-      toast({ title: 'Link copied!', description: 'Share link has been copied to your clipboard' });
+      if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+      setNotice('Link copied');
+      noticeTimerRef.current = setTimeout(() => setNotice(null), 1500);
     } catch (err) {
       console.error('Failed to copy:', err);
-      toast({
-        title: "Failed to copy",
-        description: "Please try again",
-        variant: "destructive",
-      });
+      if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+      setNotice('Failed to copy');
+      noticeTimerRef.current = setTimeout(() => setNotice(null), 1500);
     }
   };
 
@@ -282,6 +283,13 @@ function ImageCardComponent({
         className="relative group rounded-lg overflow-hidden bg-zinc-800 aspect-square cursor-pointer"
         onClick={handleImageClick}
       >
+      {notice && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+          <div className="bg-black/70 text-white text-xs px-2 py-0.5 rounded-full shadow">
+            {notice}
+          </div>
+        </div>
+      )}
       <img
         ref={imageRef}
         src={image.image_url || image.url}

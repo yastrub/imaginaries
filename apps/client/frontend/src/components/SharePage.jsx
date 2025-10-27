@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { ImageCard } from './ImageCard';
-import { Heart, Loader2, Home, Sparkles, Share2, ShoppingCart } from 'lucide-react';
+import { Heart, Loader2, Home, Sparkles, Share2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { openAuthModal } from './CompletelyIsolatedAuth';
 import { useLikes } from '../hooks/useLikes';
@@ -483,7 +483,7 @@ export function SharePage() {
   const imageUrl = image?.url;
   
   return (
-    <div className="min-h-screen bg-black pb-4">
+    <div className="min-h-screen bg-black pb-4 flex flex-col">
       {/* Dynamic meta tags for social sharing */}
       <MetaTags 
         title={pageTitle}
@@ -510,22 +510,24 @@ export function SharePage() {
         </nav>
       </header>
 
-      <div className="container mx-auto px-4 p-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-white text-2xl font-semibold">
-              Make to Order
-            </h1>
-            <div className="flex items-center gap-2">
-              <div className="h-10 w-10 flex items-center justify-center">
-                <Heart
-                  className={`w-5 h-5 transition-colors duration-200 ${
-                    isLiked ? 'fill-primary text-primary' : 'text-white/70'
-                  }`}
-                />
-                {likesCount > 0 && (
-                  <span className="text-white/70 ml-1">{likesCount}</span>
-                )}
+      <div className="flex-1 flex items-center">
+        <div className="container mx-auto px-4 p-8">
+          <div className="max-w-2xl mx-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-white text-2xl font-semibold">
+                Make to Order
+              </h1>
+              <div className="flex items-center gap-2">
+                <div className="h-10 w-10 flex items-center justify-center">
+                  <Heart
+                    className={`w-5 h-5 transition-colors duration-200 ${
+                      isLiked ? 'fill-primary text-primary' : 'text-white/70'
+                    }`}
+                  />
+                  {likesCount > 0 && (
+                    <span className="text-white/70 ml-1">{likesCount}</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -555,8 +557,7 @@ export function SharePage() {
                 className="h-11 px-6 text-base font-medium"
                 title={isAuthenticated ? 'Order this design' : 'Sign in to order this design'}
               >
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                <span>Order</span>
+                <span>Order Now</span>
               </Button>
             </div>
           </div>

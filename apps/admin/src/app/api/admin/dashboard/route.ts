@@ -33,6 +33,16 @@ export async function GET(req: NextRequest) {
       WHERE i.created_at >= NOW() - interval '30 days'
         AND i.status IN ('paid', 'succeeded')
     `;
+    const metricsRevenue30dByCurrencySql = `
+      SELECT 
+        COALESCE(i.currency, 'USD') AS code,
+        COALESCE(SUM(i.amount_total), 0)::bigint AS cents
+      FROM invoices i
+      WHERE i.created_at >= NOW() - interval '30 days'
+        AND i.status IN ('paid', 'succeeded')
+      GROUP BY COALESCE(i.currency, 'USD')
+      ORDER BY COALESCE(i.currency, 'USD')
+    `;
     const metricsTotalImagesSql = `
       SELECT COUNT(*)::int AS count
       FROM images
@@ -119,6 +129,7 @@ export async function GET(req: NextRequest) {
       totalImagesRes,
       activeSubsRes,
       revenue30dRes,
+      revenue30dByCurrencyRes,
     ] = await Promise.all([
       query(topLikedSql),
       query(newImagesSql),
@@ -129,6 +140,7 @@ export async function GET(req: NextRequest) {
       query(metricsTotalImagesSql),
       query(metricsActiveSubsSql),
       query(metricsRevenue30dSql),
+      query(metricsRevenue30dByCurrencySql),
     ]);
 
     return NextResponse.json({
@@ -142,6 +154,13 @@ export async function GET(req: NextRequest) {
         totalImages: (totalImagesRes.rows[0] as any)?.count ?? 0,
         activeSubscriptions: (activeSubsRes.rows[0] as any)?.count ?? 0,
         revenue30dCents: (revenue30dRes.rows[0] as any)?.cents ?? 0,
+        // New: revenue grouped by currency
+        revenue30dByCurrencyCents: Object.fromEntries(
+          (revenue30dByCurrencyRes.rows as Array<{ code: string; cents: string | number }>).
+            map(r => [String(r.code || 'USD').toUpperCase(), Number(r.cents) || 0])
+        ),
+        revenue30dCurrencies: (revenue30dByCurrencyRes.rows as Array<{ code: string; cents: string | number }>).
+          map(r => ({ code: String(r.code || 'USD').toUpperCase(), amount: Math.round(((Number(r.cents) || 0) / 100) * 100) / 100 })),
       },
     });
   } catch (e: any) {

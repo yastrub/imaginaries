@@ -125,11 +125,15 @@ export default function Dashboard() {
         // Supported shapes:
         // - m.revenue30dByCurrencyCents: { USD: 12345, AED: 11900 }
         // - m.revenue30dByCurrency: { USD: 123.45, AED: 119 }
+        // - m.revenue30dCurrencies: Array<{ code|currency: string; amount?: number; cents?: number }>
         const byCents = m.revenue30dByCurrencyCents && typeof m.revenue30dByCurrencyCents === 'object'
           ? m.revenue30dByCurrencyCents as Record<string, number>
           : null;
         const byAmount = !byCents && m.revenue30dByCurrency && typeof m.revenue30dByCurrency === 'object'
           ? m.revenue30dByCurrency as Record<string, number>
+          : null;
+        const byArray = !byCents && !byAmount && Array.isArray(m.revenue30dCurrencies)
+          ? (m.revenue30dCurrencies as Array<any>)
           : null;
         if (byCents) {
           const entries = Object.entries(byCents)
@@ -140,6 +144,15 @@ export default function Dashboard() {
           const entries = Object.entries(byAmount)
             .filter(([code, val]) => typeof val === 'number' && !isNaN(val))
             .map(([code, val]) => ({ code, amount: Math.round(val * 100) / 100 }));
+          setRevenueByCurrency(entries);
+        } else if (byArray) {
+          const entries = byArray
+            .map((r) => {
+              const code = (r.code || r.currency || '').toString().toUpperCase();
+              const amount = typeof r.amount === 'number' ? r.amount : (typeof r.cents === 'number' ? r.cents / 100 : NaN);
+              return { code, amount: Math.round((amount || 0) * 100) / 100 };
+            })
+            .filter((r) => r.code && !isNaN(r.amount));
           setRevenueByCurrency(entries);
         } else {
           setRevenueByCurrency([]);

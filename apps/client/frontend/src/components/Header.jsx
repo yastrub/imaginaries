@@ -235,6 +235,19 @@ export const Header = React.memo(function Header({
     return 'unknown';
   }, [serverBuildId]);
 
+  // Determine whether to hide the primary "Imagine" action
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+  const shouldHideImagineButton = currentPath === '/' || currentPath === '' || currentPath === '/imagine';
+  // Predict the primary toggle label for non-terminal apps
+  const primaryLabelIsImagine = useMemo(() => {
+    if (!currentPath) return false;
+    if (currentPath.startsWith('/gallery')) return true; // shows Imagine
+    if (currentPath === '/imagine') return false; // shows Gallery
+    if (currentPath === '/upgrade') return true; // shows Imagine
+    return !!showGallery; // root/others depend on showGallery
+  }, [currentPath, showGallery]);
+  const hideNonTerminalPrimary = shouldHideImagineButton && primaryLabelIsImagine;
+
   const handleTitleTap = (e) => {
     const now = Date.now();
     if (now < suppressClickUntil.current) return;
@@ -285,22 +298,25 @@ export const Header = React.memo(function Header({
         {isAuthenticated ? (
           <>
             {isTerminalApp ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/imagine')}
-                className="text-zinc-400 hover:text-white gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                Imagine
-              </Button>
+              !shouldHideImagineButton && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/imagine')}
+                  className="text-zinc-400 hover:text-white gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Imagine
+                </Button>
+              )
             ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleGalleryToggle}
-                className="text-zinc-400 hover:text-white gap-2"
-              >
+              !hideNonTerminalPrimary && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleGalleryToggle}
+                  className="text-zinc-400 hover:text-white gap-2"
+                >
                 {window.location.pathname.startsWith('/gallery') ? (
                   <>
                     <Sparkles className="w-4 h-4" />
@@ -327,7 +343,8 @@ export const Header = React.memo(function Header({
                     Gallery
                   </>
                 )}
-              </Button>
+                </Button>
+              )
             )}
             <Button
               variant="ghost"

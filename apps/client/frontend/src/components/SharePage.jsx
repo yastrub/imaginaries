@@ -492,8 +492,8 @@ export function SharePage() {
         url={pageUrl}
       />
       
-      {/* Header with gradient overlay - non-sticky for share page */}
-      <header className="relative p-4 flex flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm">
+      {/* Header overlay (removed from flow so main content centers to viewport) */}
+      <header className="absolute top-0 left-0 right-0 p-4 flex flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm z-10">
         <div className="font-mono text-zinc-600 text-sm text-left">
           IMAGINARIES
         </div>
@@ -510,7 +510,7 @@ export function SharePage() {
         </nav>
       </header>
 
-      <div className="flex-1 flex items-center">
+      <div className="grid place-items-center h-screen">
         <div className="container mx-auto px-4 p-8">
           <div className="max-w-2xl mx-auto">
             <div className="flex items-center justify-between mb-4">

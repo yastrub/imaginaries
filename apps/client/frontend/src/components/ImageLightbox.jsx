@@ -736,7 +736,7 @@ export function ImageLightbox({
                 textShadow: '0 1px 2px rgba(255,255,255,0.5)'
               }}
             >
-              IMAGINARIES
+              {isPublicGallery ? '© IMAGINARIES' : 'IMAGINARIES'}
             </div>
           )}
           

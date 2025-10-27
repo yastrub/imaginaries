@@ -493,9 +493,9 @@ export function SharePage() {
       />
       
       {/* Header with gradient overlay - non-sticky for share page */}
-      <header className="relative p-4 flex flex-col sm:flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm gap-4 sm:gap-0">
-        <div className="font-mono text-zinc-600 text-sm text-center sm:text-left">
-          IMAGINARIES
+      <header className="relative p-4 flex flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm">
+        <div className="font-mono text-zinc-600 text-sm text-left">
+          IMARINARIES
         </div>
         <nav className="flex items-center gap-4">
           <Button
@@ -536,6 +536,7 @@ export function SharePage() {
               showActions={false}
               hideDescription={true}
               isAuthenticated={false}
+              isPublicGallery={true}
               onReusePrompt={() => navigate('/')}
             />
             <div className="mt-6 flex items-center justify-between">
@@ -551,10 +552,10 @@ export function SharePage() {
                 variant="default"
                 size="lg"
                 onClick={handleQuoteRequest}
-                className="gap-2"
+                className="h-11 px-6 text-base font-medium"
                 title={isAuthenticated ? 'Order this design' : 'Sign in to order this design'}
               >
-                <ShoppingCart className="w-5 h-5" />
+                <ShoppingCart className="mr-2 h-4 w-4" />
                 <span>Order</span>
               </Button>
             </div>

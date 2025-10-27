@@ -42,6 +42,16 @@ function isTerminalApp() {
   return false;
 }
 
+function publishTerminalName(name) {
+  try {
+    if (typeof name !== 'string') return;
+    const clean = name.trim();
+    if (!clean) return;
+    try { window.__TERMINAL_NAME__ = clean; } catch {}
+    try { window.dispatchEvent(new CustomEvent('terminal:name', { detail: { name: clean } })); } catch {}
+  } catch {}
+}
+
 async function checkServerVersion() {
   if (updatingInProgress) return;
   try {
@@ -53,6 +63,10 @@ async function checkServerVersion() {
     const et = res.headers.get('ETag') || res.headers.get('etag') || res.headers.get('Etag');
     if (et && !SERVER_VERSION_ETAG) { SERVER_VERSION_ETAG = et; }
     const json = await res.json().catch(() => ({}));
+    try {
+      const n = json?.terminalName || json?.terminal?.name || json?.name || null;
+      if (n) publishTerminalName(String(n));
+    } catch {}
     const buildId = json?.buildId ?? et ?? null;
     const bstr = buildId != null ? String(buildId) : null;
     if (!bstr || !/^\d+$/.test(bstr)) { return; }
@@ -168,9 +182,9 @@ function ensurePairingModal(code) {
   pairBtn.style.flex = '1';
   pairBtn.style.height = '44px';
   pairBtn.style.borderRadius = '10px';
-  pairBtn.style.border = '1px solid #3f3f46';
-  pairBtn.style.background = '#18181b';
-  pairBtn.style.color = '#fff';
+  pairBtn.style.border = '1px solid #7c3aed';
+  pairBtn.style.background = '#7c3aed';
+  pairBtn.style.color = '#ffffff';
   pairBtn.style.fontWeight = '600';
 
   const regenBtn = document.createElement('button');
@@ -178,13 +192,14 @@ function ensurePairingModal(code) {
   regenBtn.style.flex = '1';
   regenBtn.style.height = '44px';
   regenBtn.style.borderRadius = '10px';
-  regenBtn.style.border = '1px solid #3f3f46';
-  regenBtn.style.background = '#0e7490';
-  regenBtn.style.color = '#fff';
+  regenBtn.style.border = '1px solid #27272a';
+  regenBtn.style.background = '#111114';
+  regenBtn.style.color = '#a1a1aa';
   regenBtn.style.fontWeight = '600';
 
-  row.appendChild(pairBtn);
+  // Order: New Code (inactive) then Pair (active)
   row.appendChild(regenBtn);
+  row.appendChild(pairBtn);
 
   panel.appendChild(title);
   panel.appendChild(desc);
@@ -444,6 +459,10 @@ async function fetchConfig(tid) {
     const json = await res.json().catch(() => ({}));
     CFG_CACHE.value = json || {};
     CFG_CACHE.etag = etag;
+    try {
+      const n = CFG_CACHE.value?.terminalName || CFG_CACHE.value?.terminal?.name || CFG_CACHE.value?.name || null;
+      if (n) publishTerminalName(String(n));
+    } catch {}
     return CFG_CACHE.value;
   } catch {
     return CFG_CACHE.value || {};

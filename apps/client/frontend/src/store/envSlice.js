@@ -2,6 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   isTerminalApp: false,
+  terminalName: '',
 };
 
 const envSlice = createSlice({
@@ -11,8 +12,11 @@ const envSlice = createSlice({
     setIsTerminalApp(state, action) {
       state.isTerminalApp = !!action.payload;
     },
+    setTerminalName(state, action) {
+      state.terminalName = typeof action.payload === 'string' ? action.payload : '';
+    },
   },
 });
 
-export const { setIsTerminalApp } = envSlice.actions;
+export const { setIsTerminalApp, setTerminalName } = envSlice.actions;
 export default envSlice.reducer;

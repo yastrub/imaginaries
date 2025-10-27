@@ -21,6 +21,7 @@ export const Header = React.memo(function Header({
   const { toast } = useToast();
   const navigate = useNavigate();
   const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
+  const terminalName = useSelector((state) => state?.env?.terminalName);
   // Use the isAuthenticated prop passed from parent instead of direct useAuth
   // This ensures consistency with the rest of the app
   const { plan } = useSubscription();
@@ -173,11 +174,16 @@ export const Header = React.memo(function Header({
           const data = Array.isArray(json?.data) ? json.data : [];
           setPlansList(data);
           if (data.length) {
-            const maxSort = Math.max(...data.map(p => p.sortOrder ?? 0));
             const userPlanKey = currentPlanKey || null;
             const userPlan = userPlanKey ? data.find(p => p.key === userPlanKey) : null;
+            const maxSort = Math.max(...data.map(p => p.sortOrder ?? 0));
             const atTop = !!userPlan && (userPlan.sortOrder ?? 0) >= maxSort;
-            setCanUpgrade(!atTop);
+            const isTerminalPlan = !!userPlan && typeof userPlan.key === 'string' && /terminal/i.test(userPlan.key);
+            const isPublicPlan = !!userPlan && (
+              userPlan.isPublic === true || userPlan.public === true || userPlan.is_public === true
+            );
+            const can = !!userPlan && !atTop && !isTerminalPlan && isPublicPlan;
+            setCanUpgrade(can);
           } else {
             // Unknown plan list -> don't show Upgrade by default
             setCanUpgrade(false);
@@ -257,7 +263,9 @@ export const Header = React.memo(function Header({
         {showBuildVersion
           ? (`Build ${buildVersionLabel}`)
           : (isTerminalApp
-              ? (<>IMAGINARIUM (OctaDiam)</>)
+              ? (<>
+                  {`IMAGINARIUM${terminalName ? ` (${terminalName})` : ''}`}
+                </>)
               : (<>IMAGINARIES ({isAuthenticated ? planDisplayName : 'OctaDiam'})</>)
             )}
       </div>

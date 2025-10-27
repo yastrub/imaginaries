@@ -86,20 +86,8 @@ export function showQrModal({ url, title = 'Scan to open', subtitle = '', hint =
     link.style.wordBreak = 'break-all';
     link.style.textAlign = 'center';
 
-    const copy = document.createElement('button');
-    copy.textContent = 'Copy Link';
-    copy.style.marginTop = '8px';
-    copy.style.background = '#111114';
-    copy.style.border = '1px solid #27272a';
-    copy.style.color = '#e4e4e7';
-    copy.style.borderRadius = '10px';
-    copy.style.height = '36px';
-    copy.style.padding = '0 14px';
-    copy.onclick = async () => { try { await navigator.clipboard.writeText(url); copy.textContent = 'Copied!'; setTimeout(()=> copy.textContent='Copy Link', 1200); } catch {} };
-
     wrap.appendChild(img);
     wrap.appendChild(link);
-    wrap.appendChild(copy);
 
     panel.appendChild(head);
     panel.appendChild(note);

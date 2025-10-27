@@ -119,12 +119,29 @@ async function startServer() {
     app.use('/api/terminals', terminalsRouter);
 
     // Version endpoint for clients/terminals to detect new deploys
-    app.get('/api/version', (req, res) => {
-      res.set('Cache-Control', 'no-cache, must-revalidate');
-      res.set('ETag', SERVER_BUILD_ID);
-      const buildUnix = Number(SERVER_BUILD_ID);
-      const buildIso = new Date(buildUnix * 1000).toISOString();
-      res.json({ buildId: buildUnix, buildIso });
+    app.get('/api/version', async (req, res) => {
+      try {
+        res.set('Cache-Control', 'no-cache, must-revalidate');
+        res.set('ETag', SERVER_BUILD_ID);
+        const buildUnix = Number(SERVER_BUILD_ID);
+        const buildIso = new Date(buildUnix * 1000).toISOString();
+        const out = { buildId: buildUnix, buildIso };
+        const tid = req.query.tid?.toString();
+        if (tid && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(tid)) {
+          try {
+            const row = await query('SELECT id, name FROM terminals WHERE id = $1 LIMIT 1', [tid]);
+            if (row.rows && row.rows[0]) {
+              out.terminalName = row.rows[0].name;
+              out.terminal = { id: row.rows[0].id, name: row.rows[0].name };
+            }
+          } catch {}
+        }
+        res.json(out);
+      } catch (e) {
+        // Fallback minimal
+        const buildUnix = Number(SERVER_BUILD_ID);
+        res.json({ buildId: buildUnix });
+      }
     });
 
     // Health check endpoint with detailed status

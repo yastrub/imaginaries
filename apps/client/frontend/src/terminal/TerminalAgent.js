@@ -52,12 +52,13 @@ function publishTerminalName(name) {
   } catch {}
 }
 
-async function checkServerVersion() {
+async function checkServerVersion(tid) {
   if (updatingInProgress) return;
   try {
     const headers = { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' };
     if (SERVER_VERSION_ETAG) headers['If-None-Match'] = SERVER_VERSION_ETAG;
-    const res = await fetch(`/api/version`, { method: 'GET', cache: 'no-store', headers, credentials: 'include' });
+    const qs = tid && /^[0-9a-f\-]{36}$/i.test(String(tid)) ? `?tid=${encodeURIComponent(tid)}` : '';
+    const res = await fetch(`/api/version${qs}`, { method: 'GET', cache: 'no-store', headers, credentials: 'include' });
     if (res.status === 304) return;
     if (!res.ok) return;
     const et = res.headers.get('ETag') || res.headers.get('etag') || res.headers.get('Etag');
@@ -547,7 +548,7 @@ function startLoops(tid, appVersion) {
   // Periodic tasks
   const loop = async () => {
     // First, detect server version so heartbeat reports the latest numeric build id
-    await checkServerVersion();
+    await checkServerVersion(tid);
     const cfg = await fetchConfig(tid);
     // Apply policies from config if present
     applyViewportPolicies({

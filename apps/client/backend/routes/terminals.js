@@ -46,13 +46,25 @@ terminalsRouter.get('/config', async (req, res) => {
       return res.status(400).json({ error: 'invalid_terminal_id' });
     }
 
-    // TODO: Optionally fetch per-terminal config from DB later
+    // Fetch terminal record for display name and per-terminal overrides
+    let terminal = null;
+    try {
+      const row = await query('SELECT id, name, is_active FROM terminals WHERE id = $1 LIMIT 1', [tid]);
+      if (row.rows && row.rows[0]) {
+        terminal = { id: row.rows[0].id, name: row.rows[0].name, is_active: row.rows[0].is_active };
+      }
+    } catch (e) {
+      // non-fatal; continue with defaults
+    }
+
     const cfg = {
       fullscreen: true,
       keepAwake: true,
       disablePinchZoom: true,
       overscrollBehavior: 'none',
       commands: [],
+      // Name surface for terminals; clients look for terminalName or terminal.name
+      ...(terminal ? { terminalName: terminal.name, terminal } : {}),
     };
 
     res.setHeader('Cache-Control', 'no-store');

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { ImageCard } from './ImageCard';
-import { Heart, Loader2, Home, Sparkles, Download, DollarSign, Share2 } from 'lucide-react';
+import { Heart, Loader2, Home, Sparkles, Share2, ShoppingCart } from 'lucide-react';
 import { Button } from './ui/button';
 import { openAuthModal } from './CompletelyIsolatedAuth';
 import { useLikes } from '../hooks/useLikes';
@@ -495,7 +495,7 @@ export function SharePage() {
       {/* Header with gradient overlay - non-sticky for share page */}
       <header className="relative p-4 flex flex-col sm:flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm gap-4 sm:gap-0">
         <div className="font-mono text-zinc-600 text-sm text-center sm:text-left">
-          IMAGINARIES {getVersionString()}
+          IMAGINARIES
         </div>
         <nav className="flex items-center gap-4">
           <Button
@@ -514,7 +514,7 @@ export function SharePage() {
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-white text-2xl font-semibold">
-              Jewelry Idea
+              Make to Order
             </h1>
             <div className="flex items-center gap-2">
               <div className="h-10 w-10 flex items-center justify-center">
@@ -538,76 +538,25 @@ export function SharePage() {
               isAuthenticated={false}
               onReusePrompt={() => navigate('/')}
             />
-            
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-4">
-
-                  <div className="flex items-center gap-2">
-                    <div>
-                    <h2 className="text-white text-lg font-medium">
-                      Like, Share, Order
-                    </h2>
-                  </div>
-                </div>
-                
-                <div className="flex items-center">
-                  {/* Privacy indicator removed */}
-                  
-                  <Button
-                    variant={isLiked ? "secondary" : "default"}
-                    size="lg"
-                    onClick={handleLikeClick}
-                    className="flex items-center gap-2 min-w-[100px] justify-center"
-                    title={isAuthenticated ? (isLiked ? 'Unlike this design' : 'Like this design') : 'Sign in to like this design'}
-                  >
-                    {!isAuthenticated && <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full" />}
-                    <Heart
-                      className={`w-5 h-5 transition-colors duration-200 ${
-                        isLiked ? 'fill-primary text-primary' : ''
-                      }`}
-                    />
-                    <span>{isLiked ? 'Liked' : 'Like'}</span>
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleQuoteRequest}
-                  className="h-10 w-10 relative"
-                  title={isAuthenticated ? 'Request a quote for this design' : 'Sign in to request a quote'}
-                >
-                  {!isAuthenticated && <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full" />}
-                  <DollarSign className="w-5 h-5" />
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleShare}
-                  className="h-10 w-10"
-                >
-                  <Share2 className="w-5 h-5" />
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleDownload}
-                  disabled={downloadingImageId === image?.id}
-                  className="h-10 w-10 relative"
-                  title={isAuthenticated ? 'Download this design' : 'Sign in to download this design'}
-                >
-                  {!isAuthenticated && <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full" />}
-                  {downloadingImageId === image?.id ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <Download className="w-5 h-5" />
-                  )}
-                </Button>
-              </div>
+            <div className="mt-6 flex items-center justify-between">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleShare}
+                className="h-10 w-10"
+              >
+                <Share2 className="w-5 h-5" />
+              </Button>
+              <Button
+                variant="default"
+                size="lg"
+                onClick={handleQuoteRequest}
+                className="gap-2"
+                title={isAuthenticated ? 'Order this design' : 'Sign in to order this design'}
+              >
+                <ShoppingCart className="w-5 h-5" />
+                <span>Order</span>
+              </Button>
             </div>
           </div>
         </div>

@@ -69,14 +69,42 @@ export function showQrModal({ url, title = 'Scan to open', subtitle = '', hint =
     wrap.style.justifyContent = 'center';
     wrap.style.padding = '10px';
 
+    // Spinner keyframes (scoped)
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `@keyframes qrspin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
+    overlay.appendChild(styleEl);
+
+    // Fixed-size square box to prevent layout shift
+    const box = document.createElement('div');
+    box.style.width = 'min(78vw, 420px)';
+    box.style.aspectRatio = '1 / 1';
+    box.style.borderRadius = '12px';
+    box.style.background = '#fff';
+    box.style.padding = '12px';
+    box.style.display = 'flex';
+    box.style.alignItems = 'center';
+    box.style.justifyContent = 'center';
+    box.style.overflow = 'hidden';
+
+    const spinner = document.createElement('div');
+    spinner.style.width = '56px';
+    spinner.style.height = '56px';
+    spinner.style.border = '4px solid rgba(0,0,0,0.1)';
+    spinner.style.borderTop = '4px solid rgba(0,0,0,0.55)';
+    spinner.style.borderRadius = '50%';
+    spinner.style.animation = 'qrspin 1s linear infinite';
+
+    // Image element (hidden until loaded)
     const img = document.createElement('img');
-    img.src = qrUrl;
     img.alt = 'QR Code';
-    img.style.width = 'min(78vw, 420px)';
-    img.style.height = 'auto';
-    img.style.borderRadius = '12px';
-    img.style.background = '#fff';
-    img.style.padding = '12px';
+    img.style.display = 'none';
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'contain';
+    img.style.borderRadius = '8px';
+
+    box.appendChild(spinner);
+    box.appendChild(img);
 
     const link = document.createElement('div');
     link.textContent = url;
@@ -86,7 +114,7 @@ export function showQrModal({ url, title = 'Scan to open', subtitle = '', hint =
     link.style.wordBreak = 'break-all';
     link.style.textAlign = 'center';
 
-    wrap.appendChild(img);
+    wrap.appendChild(box);
     wrap.appendChild(link);
 
     panel.appendChild(head);
@@ -98,5 +126,27 @@ export function showQrModal({ url, title = 'Scan to open', subtitle = '', hint =
 
     document.body.appendChild(overlay);
     qrOverlay = overlay;
+
+    // Load QR after DOM is in place to ensure spinner shows
+    img.onload = () => {
+      spinner.style.display = 'none';
+      img.style.display = 'block';
+    };
+    img.onerror = () => {
+      spinner.style.display = 'none';
+      const err = document.createElement('div');
+      err.textContent = 'Failed to load QR. Open the link below on your phone.';
+      err.style.color = '#ef4444';
+      err.style.fontSize = '12px';
+      err.style.textAlign = 'center';
+      err.style.position = 'absolute';
+      err.style.bottom = '8px';
+      err.style.left = '0';
+      err.style.right = '0';
+      err.style.opacity = '0.9';
+      box.appendChild(err);
+    };
+    // Set src last to trigger load
+    img.src = qrUrl;
   } catch {}
 }

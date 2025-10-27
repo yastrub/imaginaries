@@ -853,15 +853,17 @@ export function ImageLightbox({
           {!isPublicGallery && currentImage.prompt && loaded && showControls && scale === 1 && (
             <div className="absolute bottom-0 left-0 right-0 px-6 pb-6 pointer-events-none">
               <div 
-                className="bg-[#c7c7c74a] backdrop-blur-sm rounded p-3 pointer-events-auto transition-all duration-200" 
+                className="bg-[#c7c7c74a] backdrop-blur-sm rounded p-3 pointer-events-none select-none transition-all duration-200" 
                 onClick={handleDescriptionClick}
                 onMouseEnter={() => setIsDescriptionHovering(true)}
                 onMouseLeave={() => setIsDescriptionHovering(false)}
+                draggable={false}
+                onDragStart={(e) => e.preventDefault()}
               >
                 <div className="relative">
                   {(isDescriptionExpanded || isDescriptionHovering) && onReusePrompt && (
                     <button
-                      className="absolute bottom-0 right-0 p-2 rounded-md bg-[rgba(0,0,0,0.2)] hover:bg-[rgba(0,0,0,0.3)] transition-colors flex-shrink-0 z-10"
+                      className="absolute bottom-0 right-0 p-2 rounded-md bg-[rgba(0,0,0,0.2)] hover:bg-[rgba(0,0,0,0.3)] transition-colors flex-shrink-0 z-10 pointer-events-auto"
                       onClick={handleReuseClick}
                       title="Reuse prompt"
                     >
@@ -869,10 +871,7 @@ export function ImageLightbox({
                     </button>
                   )}
                   <div 
-                    className={`text-[rgb(10,10,10)] text-lg pr-10 
-                      ${!isDescriptionExpanded && !isDescriptionHovering ? 'line-clamp-2' : 
-                      'overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-500 scrollbar-track-transparent scrollbar-track-rounded-md scrollbar-thumb-rounded-md'}
-                    `}
+                    className={`text-[rgb(10,10,10)] text-lg pr-10 ${!isDescriptionExpanded && !isDescriptionHovering ? 'line-clamp-2' : 'overflow-hidden'}`}
                     style={{
                       maxHeight: isDescriptionExpanded || isDescriptionHovering ? 
                         // More mobile-friendly approach with fallbacks
@@ -881,6 +880,8 @@ export function ImageLightbox({
                       fontSize: '16px',
                       lineHeight: '1.5'
                     }}
+                    draggable={false}
+                    onDragStart={(e) => e.preventDefault()}
                   >
                     {currentImage.prompt}
                   </div>

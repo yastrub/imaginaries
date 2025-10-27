@@ -514,7 +514,7 @@ export function SharePage() {
       />
       
       {/* Header */}
-      <header className="p-4 flex flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm">
+      <header className="p-4 flex flex-row items-center justify-between bg-gradient-to-b from-black/95 to-transparent backdrop-blur-sm">
         <div className="font-mono text-zinc-600 text-sm text-left">
           IMAGINARIES
         </div>

@@ -38,11 +38,15 @@ export function ImageLightbox({
   const [touchEnd, setTouchEnd] = useState(null);
   const [touchDragStart, setTouchDragStart] = useState(null);
   const [scale, setScale] = useState(1);
-  const [originalViewport, setOriginalViewport] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
   const [dragStart, setDragStart] = useState(null);
   const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  const canGoNextRef = useRef(false);
+  const canGoPrevRef = useRef(false);
+  useEffect(() => { canGoNextRef.current = canGoNext; canGoPrevRef.current = canGoPrev; }, [canGoNext, canGoPrev]);
   
   // Get the current image from the array or use the single image prop
   const currentImage = images.length > 0 ? images[activeIndex] : image;
@@ -308,96 +312,63 @@ export function ImageLightbox({
   
   // State for debouncing keyboard navigation
   const [isKeyboardNavigating, setIsKeyboardNavigating] = useState(false);
+  const isKeyboardNavigatingRef = useRef(false);
+  useEffect(() => { isKeyboardNavigatingRef.current = isKeyboardNavigating; }, [isKeyboardNavigating]);
   
   // Add keyboard event listeners for escape key and arrow navigation (only when open)
   useEffect(() => {
     if (!open) return;
 
     const handleKeyDown = (e) => {
-      // Prevent default behavior for arrow keys to avoid page scrolling
       if (['ArrowLeft', 'ArrowRight', 'Escape'].includes(e.key)) {
         e.preventDefault();
       }
-      
-      // If already navigating with keyboard, ignore additional keypresses
-      if (isKeyboardNavigating) {
-        return;
-      }
-      
+      if (isKeyboardNavigating) return;
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current && onCloseRef.current();
       } else if (e.key === 'ArrowRight') {
-        // Set last navigation direction
         setLastNavDirection('right');
-        
-        // Only navigate if we can go next
-        if (canGoNext) {
-          // Handle right arrow navigation with debounce
+        if (canGoNextRef.current) {
           setIsKeyboardNavigating(true);
-        
-        // Reset zoom and position first
-        setScale(1);
-        setDragPosition({ x: 0, y: 0 });
-        setIsDescriptionExpanded(false);
-        setIsDescriptionHovering(false);
-        
-        // Update index; loaded state will be set by cache-aware effect
-        setActiveIndex(prevIndex => prevIndex + 1);
-        
-          // Reset keyboard navigation flag after a delay
-          setTimeout(() => {
-            setIsKeyboardNavigating(false);
-          }, 300);
+          setScale(1);
+          setDragPosition({ x: 0, y: 0 });
+          setIsDescriptionExpanded(false);
+          setIsDescriptionHovering(false);
+          setActiveIndex(prevIndex => prevIndex + 1);
+          setTimeout(() => { setIsKeyboardNavigating(false); }, 300);
         }
       } else if (e.key === 'ArrowLeft') {
-        // Set last navigation direction
         setLastNavDirection('left');
-        
-        // Only navigate if we can go prev
-        if (canGoPrev) {
-          // Handle left arrow navigation with debounce
+        if (canGoPrevRef.current) {
           setIsKeyboardNavigating(true);
-        
-        // Reset zoom and position first
-        setScale(1);
-        setDragPosition({ x: 0, y: 0 });
-        setIsDescriptionExpanded(false);
-        setIsDescriptionHovering(false);
-        
-        // Update index; loaded state will be set by cache-aware effect
-        setActiveIndex(prevIndex => prevIndex - 1);
-          
-          // Reset keyboard navigation flag after a delay
-          setTimeout(() => {
-            setIsKeyboardNavigating(false);
-          }, 300);
+          setScale(1);
+          setDragPosition({ x: 0, y: 0 });
+          setIsDescriptionExpanded(false);
+          setIsDescriptionHovering(false);
+          setActiveIndex(prevIndex => prevIndex - 1);
+          setTimeout(() => { setIsKeyboardNavigating(false); }, 300);
         }
       }
     };
-    
-    // Save original viewport meta tag
+
     const viewportMeta = document.querySelector('meta[name="viewport"]');
+    let orig = null;
     if (viewportMeta) {
-      setOriginalViewport(viewportMeta.getAttribute('content'));
-      // Set viewport to prevent scaling
+      orig = viewportMeta.getAttribute('content');
       viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0');
     }
-    
+
     document.addEventListener('keydown', handleKeyDown);
-    // Prevent scrolling when lightbox is open
     document.body.style.overflow = 'hidden';
-    
+
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      // Restore scrolling when lightbox is closed
       document.body.style.overflow = 'auto';
-      
-      // Restore original viewport meta tag
-      if (viewportMeta && originalViewport) {
-        viewportMeta.setAttribute('content', originalViewport);
+      if (viewportMeta && orig) {
+        viewportMeta.setAttribute('content', orig);
       }
     };
-  }, [open, onClose, canGoNext, canGoPrev, originalViewport, isKeyboardNavigating]);
+  }, [open]);
 
   // Sync to currentIndex without forcing a reload on mount
   useEffect(() => {

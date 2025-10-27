@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { ImageCard } from './ImageCard';
-import { Heart, Loader2, Home, Sparkles, Share2 } from 'lucide-react';
+import { Loader2, Home, Sparkles, Share2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { openAuthModal } from './CompletelyIsolatedAuth';
 import { useLikes } from '../hooks/useLikes';
@@ -519,15 +519,17 @@ export function SharePage() {
           IMAGINARIES
         </div>
         <nav className="flex items-center gap-4">
-          <Button
-            variant="default"
-            size="sm"
-            className="gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-            onClick={handleImagineClick}
-          >
-            <Sparkles className="w-4 h-4" />
-            Imagine
-          </Button>
+          {isAuthenticated && (
+            <Button
+              variant="default"
+              size="sm"
+              className="gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+              onClick={handleImagineClick}
+            >
+              <Sparkles className="w-4 h-4" />
+              Imagine
+            </Button>
+          )}
         </nav>
       </header>
 
@@ -538,18 +540,15 @@ export function SharePage() {
               <h1 className="text-white text-2xl font-semibold">
                 Make to Order
               </h1>
-              <div className="flex items-center gap-2">
-                <div className="h-10 w-10 flex items-center justify-center">
-                  <Heart
-                    className={`w-5 h-5 transition-colors duration-200 ${
-                      isLiked ? 'fill-primary text-primary' : 'text-white/70'
-                    }`}
-                  />
-                  {likesCount > 0 && (
-                    <span className="text-white/70 ml-1">{likesCount}</span>
-                  )}
-                </div>
-              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleShare}
+                className="h-10 w-10"
+                title="Share this design"
+              >
+                <Share2 className="w-5 h-5" />
+              </Button>
             </div>
           </div>
           
@@ -562,15 +561,7 @@ export function SharePage() {
               isPublicGallery={true}
               onReusePrompt={() => navigate('/')}
             />
-            <div className="mt-6 flex items-center justify-between">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleShare}
-                className="h-10 w-10"
-              >
-                <Share2 className="w-5 h-5" />
-              </Button>
+            <div className="mt-6 flex items-center justify-center">
               <Button
                 variant="default"
                 size="lg"

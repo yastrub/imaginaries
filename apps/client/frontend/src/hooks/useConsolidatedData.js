@@ -76,15 +76,11 @@ export function useConsolidatedData() {
   // Use a stable key that doesn't change with auth state
   // We'll handle auth-specific data in the transform function
   
-  // Add a timestamp to prevent excessive refetching due to auth state changes
-  const now = Date.now();
-  const stableTimestamp = Math.floor(now / 30000) * 30000; // Changes every 30 seconds
-  
   // Use separate query keys for public images and user history
   // This ensures we can access both datasets independently
   // CRITICAL FIX: Include the actual view parameter in the query key to ensure proper caching
-  const publicImagesQueryKey = ['publicImages', view, page, stableTimestamp];
-  const userHistoryQueryKey = ['userHistory', page, stableTimestamp];
+  const publicImagesQueryKey = ['publicImages', view, page];
+  const userHistoryQueryKey = ['userHistory', page];
   
   // CRITICAL: Determine which data to show based on the current route
   const shouldShowHistory = isImagineRoute;
@@ -94,8 +90,7 @@ export function useConsolidatedData() {
     publicImagesQueryKey,
     userHistoryQueryKey,
     showHistory,
-    shouldShowHistory,
-    timestamp: stableTimestamp
+    shouldShowHistory
   });
   
   // Use React Query's useQuery hook to fetch data

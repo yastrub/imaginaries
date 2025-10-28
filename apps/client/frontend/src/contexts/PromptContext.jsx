@@ -83,6 +83,18 @@ export function PromptProvider({ children }) {
   const closePresetsModal = useCallback(() => {
     setIsPresetsModalOpen(false);
   }, []);
+
+  // Auto-select the first jewelry type on initial load if none is selected
+  React.useEffect(() => {
+    if (!selectedJewelryType && jewelryTypes && jewelryTypes.length > 0) {
+      const first = jewelryTypes[0];
+      setSelectedJewelryType(first.id);
+      setSelectedLabel(first.label);
+      setPrompt(first.label);
+    }
+    // run once on mount; guards prevent re-run side effects
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   // Get final prompt (combining prompt and presets)
   const getFinalPrompt = useCallback(() => {

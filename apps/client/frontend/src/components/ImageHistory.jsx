@@ -267,7 +267,7 @@ export function ImageHistory({
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)] custom-scrollbar">
           {/* Always render both skeletons and images, but control visibility with CSS */}
           {/* Skeleton loading state */}
-          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${showSkeletons ? 'block' : 'hidden'}`}>
+          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${showSkeletons ? 'block' : 'hidden'}`} style={{ contain: 'layout paint' }}>
             {Array.from({ length: SKELETON_COUNT }).map((_, index) => (
               <ImageCardSkeleton key={`skeleton-${index}`} />
             ))}
@@ -282,7 +282,7 @@ export function ImageHistory({
           </div>
           
           {/* Loaded images */}
-          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${showImages ? 'block' : 'hidden'}`}>
+          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${showImages ? 'block' : 'hidden'}`} style={{ contain: 'layout paint' }}>
             {images.map((image) => (
               <div 
                 key={image.id}

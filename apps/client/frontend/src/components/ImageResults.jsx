@@ -5,7 +5,7 @@ import { ImageCard } from './ImageCard';
 import { triggerConfetti, CONFETTI_EVENTS } from './GlobalConfetti';
 
 // EMERGENCY FIX: Completely simplified component to break render loops
-export function ImageResults({
+export const ImageResults = React.memo(function ImageResults({
   images,
   publicImages,
   isLoading,
@@ -108,10 +108,16 @@ export function ImageResults({
     }
   }, [onToggleLike]);
 
+  // Helper to compute a stable key when id is missing
+  const getImageKey = (img, index) => {
+    if (img && (img.id !== undefined && img.id !== null)) return img.id;
+    return img?.url || img?.image_url || img?.created_at || img?.createdAt || `idx-${index}`;
+  };
+
   return (
     <>
       {/* Debug indicators removed */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ contain: 'layout paint' }}>
         {/* Show skeleton loader while loading */}
         {isLoading && (
           <>
@@ -131,51 +137,44 @@ export function ImageResults({
           </>
         )}
         
-        {/* Show loading card when generating a new image */}
-        {isGenerating && !isLoading && (
-          <div 
-            className="w-full aspect-square"
-            style={{
-              position: 'relative',
-              gridColumn: 'span 1',
-              gridRow: 'span 1'
-            }}
-          >
-            <div className="w-full h-full bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl animate-pulse flex items-center justify-center">
-              <div className="text-white text-center p-4">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white mx-auto mb-2"></div>
-                <p className="text-sm font-medium">Creating your masterpiece...</p>
-              </div>
-            </div>
-          </div>
-        )}
-        
         {/* Show images when loaded */}
         {!isLoading && (
           <>
-            {displayImages.length > 0 ? (
-              displayImages.map((image, index) => (
-                <div 
-                  key={`image-${image?.id || index}`}
-                  className="w-full aspect-square relative"
-                >
-                  <ImageCard
-                    key={`card-${image?.id || index}`}
-                    image={image}
-                    isAuthenticated={isAuthenticated}
-                    onQuoteRequest={handleQuoteRequest}
-                    onDownload={handleDownload}
-                    downloadingImageId={downloadingImageId}
-                    onReusePrompt={onReusePrompt}
-                    onToggleLike={handleToggleLike}
-                    isLiked={likedImages?.has(image?.id) || false}
-                    likesCount={likeCounts?.[image?.id] || image?.like_count || 0}
-                    allImages={isAuthenticated ? images : publicImages}
-                    currentIndex={index}
-                  />
-                </div>
-              ))
-            ) : (
+            {(() => {
+              const pendingList = isGenerating ? [{ id: 'pending:gen' }] : [];
+              const combined = [...pendingList, ...displayImages];
+              return combined.length > 0 ? (
+                combined.map((image, index) => (
+                  <div 
+                    key={getImageKey(image, index)}
+                    className="w-full aspect-square relative"
+                  >
+                  {String(image?.id || '').startsWith('pending:') ? (
+                    <div className="w-full h-full bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl animate-pulse flex items-center justify-center">
+                      <div className="text-white text-center p-4">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white mx-auto mb-2"></div>
+                        <p className="text-sm font-medium">Creating your masterpiece...</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <ImageCard
+                      key={getImageKey(image, index)}
+                      image={image}
+                      isAuthenticated={isAuthenticated}
+                      onQuoteRequest={handleQuoteRequest}
+                      onDownload={handleDownload}
+                      downloadingImageId={downloadingImageId}
+                      onReusePrompt={onReusePrompt}
+                      onToggleLike={handleToggleLike}
+                      isLiked={likedImages?.has(image?.id) || false}
+                      likesCount={likeCounts?.[image?.id] || image?.like_count || 0}
+                      allImages={isAuthenticated ? images : publicImages}
+                      currentIndex={index}
+                    />
+                  )}
+                  </div>
+                ))
+              ) : (
               // Show message when authenticated user has no images
               isAuthenticated && (
                 <div className="col-span-2 py-8 text-center">
@@ -183,7 +182,7 @@ export function ImageResults({
                   <p className="text-zinc-500 text-sm mt-2">Create your first image to see it here!</p>
                 </div>
               )
-            )}
+            })()}
           </>
         )}
       </div>
@@ -200,4 +199,4 @@ export function ImageResults({
       )}
     </>
   );
-}
+});

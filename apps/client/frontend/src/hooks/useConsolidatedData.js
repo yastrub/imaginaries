@@ -305,6 +305,27 @@ export function useConsolidatedData() {
     shouldShowHistory: shouldShowHistory
   });
   
+  // Stabilize array references for userImages and publicImages so downstream memoization works reliably
+  const calcSig = (arr) => {
+    if (!Array.isArray(arr) || arr.length === 0) return 'len:0';
+    try {
+      const ids = arr.map((i) => (i?.id ?? i?.url ?? i?.created_at ?? i?.createdAt ?? 'x')).join(',');
+      return `len:${arr.length}|ids:${ids}`;
+    } catch {
+      return `len:${arr?.length || 0}`;
+    }
+  };
+  const stableUserRef = useRef({ sig: calcSig(data.userImages), arr: data.userImages });
+  const stablePublicRef = useRef({ sig: calcSig(data.publicImages), arr: data.publicImages });
+  const newUserSig = calcSig(data.userImages);
+  const newPublicSig = calcSig(data.publicImages);
+  if (stableUserRef.current.sig !== newUserSig) {
+    stableUserRef.current = { sig: newUserSig, arr: data.userImages };
+  }
+  if (stablePublicRef.current.sig !== newPublicSig) {
+    stablePublicRef.current = { sig: newPublicSig, arr: data.publicImages };
+  }
+
   // Function to switch view
   const switchView = useCallback((newView) => {
     if (newView !== view) {
@@ -525,11 +546,11 @@ export function useConsolidatedData() {
     isLoading,
     error,
     
-    // User images data
-    userImages: data.userImages,
+    // User images data (stable reference)
+    userImages: stableUserRef.current.arr,
     
-    // Public gallery data
-    publicImages: data.publicImages,
+    // Public gallery data (stable reference)
+    publicImages: stablePublicRef.current.arr,
     view,
     switchView,
     toggleHistoryView,

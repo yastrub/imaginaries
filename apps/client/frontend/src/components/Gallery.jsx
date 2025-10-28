@@ -399,7 +399,7 @@ export function Gallery({
   //
   // This fixes the "Minified React error #306" when clicking Gallery
   const renderImageGrid = React.useMemo(() => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" style={{ contain: 'layout paint' }}>
       {visibleImages.map((image) => (
         <ImageCard
           key={image.id}
@@ -480,7 +480,7 @@ export function Gallery({
       </div>
 
       {isLoading || isTabLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" style={{ contain: 'layout paint' }}>
           {Array.from({ length: SKELETON_COUNT }).map((_, index) => (
             <ImageCardSkeleton key={`skeleton-${index}`} />
           ))}

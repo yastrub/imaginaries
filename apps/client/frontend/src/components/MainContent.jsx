@@ -78,6 +78,18 @@ export const MainContent = React.memo(function MainContent({
   // Use the prompt context for state management
   const { isPresetsModalOpen, closePresetsModal } = usePromptContext();
   const overlayStyle = useViewportOverlay();
+  const userImagesRef = React.useRef({ arr: userImages || [], key: (userImages || []).map(i => i?.id).join(',') + `|${userImages?.length || 0}` });
+  const publicImagesRef = React.useRef({ arr: publicImages || [], key: (publicImages || []).map(i => i?.id).join(',') + `|${publicImages?.length || 0}` });
+  const userKey = (userImages || []).map(i => i?.id).join(',') + `|${userImages?.length || 0}`;
+  const publicKey = (publicImages || []).map(i => i?.id).join(',') + `|${publicImages?.length || 0}`;
+  if (userImagesRef.current.key !== userKey) {
+    userImagesRef.current = { arr: userImages || [], key: userKey };
+  }
+  if (publicImagesRef.current.key !== publicKey) {
+    publicImagesRef.current = { arr: publicImages || [], key: publicKey };
+  }
+  const stableUserImages = userImagesRef.current.arr;
+  const stablePublicImages = publicImagesRef.current.arr;
   return (
     <>
       {/* Gradient overlay */}
@@ -127,8 +139,8 @@ export const MainContent = React.memo(function MainContent({
 
           <div className="mt-8">
             <ImageResults
-              images={userImages}
-              publicImages={publicImages}
+              images={stableUserImages}
+              publicImages={stablePublicImages}
               isLoading={isDataLoading}
               isGenerating={isGenerating}
               isAuthenticated={isAuthenticated}

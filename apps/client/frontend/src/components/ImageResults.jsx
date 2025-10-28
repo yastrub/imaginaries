@@ -113,6 +113,12 @@ export const ImageResults = React.memo(function ImageResults({
     if (img && (img.id !== undefined && img.id !== null)) return img.id;
     return img?.url || img?.image_url || img?.created_at || img?.createdAt || `idx-${index}`;
   };
+  
+  // Build combined list with optional pending placeholder as a real item
+  const combinedImages = React.useMemo(() => {
+    const pending = isGenerating ? [{ id: 'pending:gen' }] : [];
+    return [...pending, ...displayImages];
+  }, [isGenerating, displayImages]);
 
   return (
     <>
@@ -140,15 +146,12 @@ export const ImageResults = React.memo(function ImageResults({
         {/* Show images when loaded */}
         {!isLoading && (
           <>
-            {(() => {
-              const pendingList = isGenerating ? [{ id: 'pending:gen' }] : [];
-              const combined = [...pendingList, ...displayImages];
-              return combined.length > 0 ? (
-                combined.map((image, index) => (
-                  <div 
-                    key={getImageKey(image, index)}
-                    className="w-full aspect-square relative"
-                  >
+            {combinedImages.length > 0 ? (
+              combinedImages.map((image, index) => (
+                <div 
+                  key={getImageKey(image, index)}
+                  className="w-full aspect-square relative"
+                >
                   {String(image?.id || '').startsWith('pending:') ? (
                     <div className="w-full h-full bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl animate-pulse flex items-center justify-center">
                       <div className="text-white text-center p-4">
@@ -172,9 +175,9 @@ export const ImageResults = React.memo(function ImageResults({
                       currentIndex={index}
                     />
                   )}
-                  </div>
-                ))
-              ) : (
+                </div>
+              ))
+            ) : (
               // Show message when authenticated user has no images
               isAuthenticated && (
                 <div className="col-span-2 py-8 text-center">
@@ -182,7 +185,7 @@ export const ImageResults = React.memo(function ImageResults({
                   <p className="text-zinc-500 text-sm mt-2">Create your first image to see it here!</p>
                 </div>
               )
-            })()}
+            )}
           </>
         )}
       </div>

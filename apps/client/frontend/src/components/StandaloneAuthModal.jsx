@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, memo } from 'react';
+import { useViewportOverlay } from '../hooks/useViewportOverlay';
 import ReactDOM from 'react-dom';
 import { X, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -149,6 +150,7 @@ const StandaloneAuth = memo(function StandaloneAuth({ onClose, toast }) {
 export const StandaloneAuthModal = memo(({ isOpen, onClose }) => {
   const { toast } = { toast: () => {} }; // Dummy toast function if not provided
   const [modalRoot, setModalRoot] = useState(null);
+  const overlayStyle = useViewportOverlay();
 
   useEffect(() => {
     // Create a div for the modal portal
@@ -171,7 +173,7 @@ export const StandaloneAuthModal = memo(({ isOpen, onClose }) => {
   if (!isOpen || !modalRoot) return null;
 
   return ReactDOM.createPortal(
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100]">
+    <div className="fixed bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100]" style={overlayStyle}>
       <StandaloneAuth onClose={onClose} toast={toast} />
     </div>,
     modalRoot

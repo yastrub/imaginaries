@@ -6,6 +6,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { useToast } from './ui/use-toast';
+import { useViewportOverlay } from '../hooks/useViewportOverlay';
 
 function BugReportModalComponent({ isOpen, onClose }) {
   const { toast } = useToast();
@@ -15,6 +16,7 @@ function BugReportModalComponent({ isOpen, onClose }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const overlayStyle = useViewportOverlay();
 
   // If the modal is not open, don't render anything
   if (!isOpen) return null;
@@ -113,7 +115,7 @@ function BugReportModalComponent({ isOpen, onClose }) {
   }, [reportType, description, file, toast, onClose]);
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1000] p-4" onClick={(e) => {
+    <div className="fixed bg-black/80 backdrop-blur-sm z-[1000] p-4" style={overlayStyle} onClick={(e) => {
       // Close modal when clicking on backdrop
       if (e.target === e.currentTarget) onClose();
     }}>

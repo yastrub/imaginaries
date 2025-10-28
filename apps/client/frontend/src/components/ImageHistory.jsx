@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { useViewportOverlay } from '../hooks/useViewportOverlay';
 import { X, Clock, Trash2, Loader2 } from 'lucide-react';
 import { QuoteModal } from './QuoteModal';
 import { Button } from './ui/button';
@@ -37,6 +38,7 @@ export function ImageHistory({
   loadNextPage,
   hasMore
 }) {
+  const overlayStyle = useViewportOverlay();
   const [isDeletingHistory, setIsDeletingHistory] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [visibleItems, setVisibleItems] = useState(ITEMS_PER_PAGE);
@@ -146,7 +148,7 @@ export function ImageHistory({
 
   // Render the delete confirmation modal content - not defining a new component
   const renderDeleteConfirmModal = React.useMemo(() => (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60]">
+    <div className="fixed bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60]" style={overlayStyle}>
       <div className="bg-zinc-900 rounded-xl p-6 max-w-md mx-4 w-full">
         <h3 className="text-xl font-semibold text-white mb-4">Delete All Images</h3>
         <div className="space-y-4 mb-6">
@@ -189,7 +191,7 @@ export function ImageHistory({
         </div>
       </div>
     </div>
-  ), [isDeletingHistory, handleClearHistory, setShowDeleteConfirm]);
+  ), [overlayStyle, isDeletingHistory, handleClearHistory, setShowDeleteConfirm]);
 
   // Track if images have been loaded at least once
   const [imagesEverLoaded, setImagesEverLoaded] = useState(false);
@@ -232,7 +234,7 @@ export function ImageHistory({
   const showImages = imagesEverLoaded || (!isLoading && images.length > 0);
   
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+    <div className="fixed bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4" style={overlayStyle}>
       <div className="bg-zinc-900 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-xl">
         <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-2">

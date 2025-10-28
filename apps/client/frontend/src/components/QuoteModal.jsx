@@ -7,6 +7,7 @@ import { useToast } from './ui/use-toast';
 import { triggerConfetti, CONFETTI_EVENTS } from './GlobalConfetti';
 import { showQrModal } from '../lib/qr';
 import { openAuthModal } from './CompletelyIsolatedAuth';
+import { useViewportOverlay } from '../hooks/useViewportOverlay';
 
 export function QuoteModal({ image, onClose, fromSharePage = false }) {
   const { user, isAuthenticated, isEmailConfirmed } = useReduxAuth();
@@ -17,6 +18,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
   const [isEstimating, setIsEstimating] = useState(false);
   const [estimatedCost, setEstimatedCost] = useState(null); // expected CSV: a,b,c,d
   const [parsedPrices, setParsedPrices] = useState(null); // [n1, n2, n3, n4]
+  const overlayStyle = useViewportOverlay();
   const [selectedIdx, setSelectedIdx] = useState(null);
   const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
   const OPTION_LABELS = [
@@ -231,7 +233,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-[100] p-4">
+    <div className="fixed flex items-center justify-center z-[100] p-4" style={overlayStyle}>
       {/* Semi-transparent backdrop */}
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose}></div>
       

@@ -9,19 +9,63 @@ export function showQrModal({ url, title = 'Scan to open', subtitle = '', hint =
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${px}x${px}&data=${encoded}&margin=24&ecc=H`;
 
     if (qrOverlay) {
+      try { qrOverlay._cleanup && qrOverlay._cleanup(); } catch {}
       try { qrOverlay.remove(); } catch {}
       qrOverlay = null;
     }
 
     const overlay = document.createElement('div');
     overlay.style.position = 'fixed';
-    overlay.style.inset = '0';
     overlay.style.zIndex = '100000';
     overlay.style.background = 'rgba(0,0,0,0.85)';
     overlay.style.backdropFilter = 'blur(4px)';
     overlay.style.display = 'flex';
     overlay.style.alignItems = 'center';
     overlay.style.justifyContent = 'center';
+
+    // Follow the visual viewport (Android address bar hide/show)
+    const applyViewportRect = () => {
+      try {
+        const vv = window.visualViewport;
+        if (vv) {
+          overlay.style.top = (vv.offsetTop || 0) + 'px';
+          overlay.style.left = (vv.offsetLeft || 0) + 'px';
+          overlay.style.width = (vv.width || window.innerWidth) + 'px';
+          overlay.style.height = (vv.height || window.innerHeight) + 'px';
+        } else {
+          overlay.style.top = '0px';
+          overlay.style.left = '0px';
+          overlay.style.width = '100vw';
+          overlay.style.height = '100vh';
+        }
+      } catch {}
+    };
+    applyViewportRect();
+
+    // Attach listeners while overlay is open
+    const vv = window.visualViewport;
+    const onVVResize = () => applyViewportRect();
+    const onVVScroll = () => applyViewportRect();
+    const onWinResize = () => applyViewportRect();
+    const onOrientation = () => applyViewportRect();
+    if (vv) {
+      vv.addEventListener('resize', onVVResize);
+      vv.addEventListener('scroll', onVVScroll);
+    }
+    window.addEventListener('resize', onWinResize);
+    window.addEventListener('orientationchange', onOrientation);
+
+    // Cleanup function to remove listeners on close
+    overlay._cleanup = () => {
+      try {
+        if (vv) {
+          vv.removeEventListener('resize', onVVResize);
+          vv.removeEventListener('scroll', onVVScroll);
+        }
+        window.removeEventListener('resize', onWinResize);
+        window.removeEventListener('orientationchange', onOrientation);
+      } catch {}
+    };
 
     const panel = document.createElement('div');
     panel.style.background = '#0b0b0f';
@@ -51,7 +95,7 @@ export function showQrModal({ url, title = 'Scan to open', subtitle = '', hint =
     close.style.borderRadius = '10px';
     close.style.height = '36px';
     close.style.padding = '0 14px';
-    close.onclick = () => { try { overlay.remove(); } catch {}; qrOverlay = null; };
+    close.onclick = () => { try { overlay._cleanup && overlay._cleanup(); } catch {} try { overlay.remove(); } catch {}; qrOverlay = null; };
 
     head.appendChild(h);
     head.appendChild(close);
@@ -122,7 +166,7 @@ export function showQrModal({ url, title = 'Scan to open', subtitle = '', hint =
     panel.appendChild(wrap);
 
     overlay.appendChild(panel);
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) { try { overlay.remove(); } catch {}; qrOverlay = null; } });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) { try { overlay._cleanup && overlay._cleanup(); } catch {} try { overlay.remove(); } catch {}; qrOverlay = null; } });
 
     document.body.appendChild(overlay);
     qrOverlay = overlay;

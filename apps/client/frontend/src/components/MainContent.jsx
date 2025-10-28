@@ -1,4 +1,5 @@
 import React from 'react';
+import { useViewportOverlay } from '../hooks/useViewportOverlay';
 import { GenerateForm } from './GenerateForm';
 import { ImageResults } from './ImageResults';
 import { ErrorMessage } from './ErrorMessage';
@@ -76,6 +77,7 @@ export const MainContent = React.memo(function MainContent({
 
   // Use the prompt context for state management
   const { isPresetsModalOpen, closePresetsModal } = usePromptContext();
+  const overlayStyle = useViewportOverlay();
   return (
     <>
       {/* Gradient overlay */}
@@ -106,7 +108,7 @@ export const MainContent = React.memo(function MainContent({
 
           {/* Presets Modal with higher z-index - only rendered when isPresetsModalOpen is true */}
           {isPresetsModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style={{pointerEvents: 'auto'}}>
+            <div className="fixed bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" style={{ pointerEvents: 'auto', ...overlayStyle }}>
               <div className="bg-zinc-900 rounded-xl w-full max-w-lg mx-4 overflow-hidden shadow-xl transform transition-all">
                 <div className="relative max-h-[80vh] overflow-y-auto p-4">
                   <button 

@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Provider } from 'react-redux';
 import { store } from '../store';
 import { TermsOfUseModal } from './TermsOfUseModal';
+import { useViewportOverlay } from '../hooks/useViewportOverlay';
 
 /**
  * A completely isolated auth component that manages its own state
@@ -39,6 +40,7 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
   // Auth - use Redux directly instead of the old context
   const { login, register, logout, isAuthenticated, user, isEmailConfirmed, checkAuthState, setUser, resendConfirmation } = useReduxAuth();
   const { toast } = useToast();
+  const overlayStyle = useViewportOverlay();
   
   // Create portal element
   useEffect(() => {
@@ -336,7 +338,7 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
   
   // Render the modal in the portal
   return ReactDOM.createPortal(
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100]">
+    <div className="fixed bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100]" style={overlayStyle}>
       <div className="w-full max-w-md mx-auto p-6 bg-zinc-900 rounded-xl shadow-xl relative">
         {!showEmailConfirmation && (
           <Button

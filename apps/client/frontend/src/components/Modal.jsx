@@ -1,10 +1,12 @@
 import React from 'react';
+import { useViewportOverlay } from '../hooks/useViewportOverlay';
 
 export function Modal({ isOpen = true, onClose, children, title, className }) {
+  const overlayStyle = useViewportOverlay();
   if (isOpen === false) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+    <div className="fixed bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" style={overlayStyle}>
       <div className={`bg-zinc-900 rounded-xl w-full mx-4 overflow-hidden shadow-xl transform transition-all ${className || 'max-w-lg'}`}>
         <div className="relative max-h-[85vh] flex flex-col overflow-hidden">
           <div className="sticky top-0 z-10 bg-zinc-900/95">

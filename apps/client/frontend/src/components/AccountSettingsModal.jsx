@@ -4,6 +4,7 @@ import { X, Settings, Mail, Lock, Receipt, User as UserIcon, ExternalLink, Loade
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { useToast } from './ui/use-toast';
 import { Button } from './ui/button';
+import { useViewportOverlay } from '../hooks/useViewportOverlay';
 
 export default function AccountSettingsModal({ open, onClose }) {
   const { toast } = useToast();
@@ -11,6 +12,7 @@ export default function AccountSettingsModal({ open, onClose }) {
   const [me, setMe] = useState(null); // { user: { id, email, email_confirmed, subscription_plan, role_id, role_name } }
   const [sub, setSub] = useState(null); // { subscription_plan, subscription_updated_at, plan_details }
   const [isMobile, setIsMobile] = useState(false);
+  const overlayStyle = useViewportOverlay();
 
   // Local form state
   const [firstName, setFirstName] = useState('');
@@ -200,7 +202,7 @@ export default function AccountSettingsModal({ open, onClose }) {
   };
 
   const modalNode = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed z-[100] flex items-center justify-center p-4" style={overlayStyle}>
       <div className="absolute inset-0 bg-black/70" onClick={close} />
       <div className="relative w-full max-w-4xl mx-auto rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden h-full max-h-[45vh] min-h-[20vh] flex flex-col">
         {/* Header */}

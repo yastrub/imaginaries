@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useViewportOverlay } from '../hooks/useViewportOverlay';
 import { useReduxAuth } from '../hooks/useReduxAuth';
 import { useToast } from './ui/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -10,6 +11,7 @@ export function EmailConfirmation() {
   const navigate = useNavigate();
   const [isResending, setIsResending] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const overlayStyle = useViewportOverlay();
 
   // Get user from Redux auth
   const { user } = useReduxAuth();
@@ -84,7 +86,7 @@ export function EmailConfirmation() {
 
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100]">
+    <div className="fixed bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100]" style={overlayStyle}>
       <div className="w-full max-w-md mx-auto p-6 bg-zinc-900 rounded-xl shadow-xl">
         <h2 className="text-2xl font-bold text-white mb-4">
           Email Confirmation Required

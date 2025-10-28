@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { createPortal } from 'react-dom';
+import { useViewportOverlay } from '../hooks/useViewportOverlay';
 import { showQrModal } from '../lib/qr';
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, EyeOff, Heart, DollarSign, Share2, Download, Repeat } from 'lucide-react';
 // Note: Avoid using global toast here to prevent app-level rerenders that can reload grids
@@ -21,6 +22,7 @@ export function ImageLightbox({
   open = true,
   isPublicGallery = false // New prop to identify if this is in the public gallery
 }) {
+  const overlayStyle = useViewportOverlay();
   const [loaded, setLoaded] = useState(false);
   const [showControls, setShowControls] = useState(true); // Start with controls hidden
   // Delay showing spinner to avoid quick flash on cached images
@@ -551,7 +553,8 @@ export function ImageLightbox({
   // This ensures it's not constrained by any parent containers
   return createPortal(
     <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+      className="fixed z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+      style={overlayStyle}
       onClick={handleBackdropClick}
       onTouchStart={(e) => {
         // Prevent pinch zoom on the entire lightbox container
@@ -564,13 +567,6 @@ export function ImageLightbox({
         if (e.touches && e.touches.length > 1) {
           e.preventDefault();
         }
-      }}
-      style={{
-        position: 'fixed',  // Ensure fixed positioning
-        top: 0,            // Explicitly set positioning
-        left: 0,
-        right: 0,
-        bottom: 0
       }}
     >
       {notice && (

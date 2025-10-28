@@ -1,4 +1,5 @@
 import React, { memo } from 'react';
+import { useViewportOverlay } from '../hooks/useViewportOverlay';
 import { Auth } from './Auth';
 import { useToast } from './ui/use-toast';
 
@@ -8,11 +9,12 @@ import { useToast } from './ui/use-toast';
  */
 const IsolatedAuthModalComponent = ({ isOpen, onClose }) => {
   const { toast } = useToast();
+  const overlayStyle = useViewportOverlay();
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100]">
+    <div className="fixed bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100]" style={overlayStyle}>
       <Auth 
         onClose={onClose} 
         toast={toast}

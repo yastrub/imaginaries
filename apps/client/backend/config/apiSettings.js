@@ -135,7 +135,7 @@ export const settings = {
           aspect_ratio: '1:1',
           limit_generations: true
         },
-        system_prompt: "create a jewelry piece. a pendant. inspired by this picture (try to catch patterns, colors, style, etc). the piece should be a perfect match to the picture. only use 18k gold (white / yellow / rose) and precious stones (if needed) for jewelry materials. if no jewelry found in the image, do not try to replicate the shape - only patterns, colors, overall style. User might provide additional information in the prompt, use it if needed, also user might provide desired jewelry sketch image (drawn by hand, so try to catch what is drawn). generate a professional jewerly photo, white plain background."
+        system_prompt: "generate a jewelry piece. inspired by provided picture (try to catch patterns, colors, style, etc). the piece should be a perfect match to the picture, try to get and understand the main subject of the picture. only use 18k gold (white / yellow / rose) and precious stones (if needed) for jewelry materials. if no jewelry found in the image, do not try to replicate the shape - only patterns, colors, overall style. User might provide additional information in the prompt, use it if needed, also user might provide desired jewelry sketch image (drawn by hand, so try to catch what is drawn). generate a professional jewerly photo, white plain background."
       }
     }
   }

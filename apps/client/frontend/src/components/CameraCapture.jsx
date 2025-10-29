@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { X, Camera, SwitchCamera } from 'lucide-react';
 
 export function CameraCapture({ onCapture, onCancel }) {
@@ -11,6 +12,7 @@ export function CameraCapture({ onCapture, onCancel }) {
   const [isFlash, setIsFlash] = useState(false);
   const [facing, setFacing] = useState('user'); // 'user' (front) | 'environment' (back)
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
+  const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
 
   // Load saved prefs
   useEffect(() => {
@@ -152,7 +154,7 @@ export function CameraCapture({ onCapture, onCancel }) {
             )}
           </div>
           <div className="w-full flex gap-3 mt-2 items-center">
-            {hasMultipleCameras && (
+            {hasMultipleCameras && !isTerminalApp && (
               <button
                 type="button"
                 onClick={() => setFacing(f => f === 'user' ? 'environment' : 'user')}

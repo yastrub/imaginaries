@@ -6,7 +6,7 @@ import { DrawingBoard } from './DrawingBoard';
 import { openAuthModal } from './CompletelyIsolatedAuth';
 import { usePromptContext } from '../contexts/PromptContext';
 import { useSelector } from 'react-redux';
-import { allowPrivateImages, allowCamera } from '../config/plans';
+import { allowPrivateImages } from '../config/plans';
 import { CameraCapture } from './CameraCapture';
 
 export const GenerateForm = React.memo(function GenerateForm({ 
@@ -22,13 +22,24 @@ export const GenerateForm = React.memo(function GenerateForm({
   const [drawingState, setDrawingState] = useState(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [cameraThumbnail, setCameraThumbnail] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
   // Always initialize as false (public/eye ON)
   const [isPrivate, setIsPrivate] = useState(false);
   
   // Get user subscription plan from Redux store
   const user = useSelector(state => state.auth.user);
   const canUsePrivateImages = user?.subscription_plan ? allowPrivateImages(user.subscription_plan) : false;
-  const canUseCamera = user?.subscription_plan ? allowCamera(user.subscription_plan) : false;
+  // UI: camera availability is mobile-only; server enforces plan gating
+  useEffect(() => {
+    try {
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
+      const isMob = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+      const coarse = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(pointer:coarse)').matches : false;
+      setIsMobile(!!(isMob || coarse));
+    } catch {
+      setIsMobile(false);
+    }
+  }, []);
   
   // Ensure privacy is always set to public (eye ON) initially and after any auth changes
   useEffect(() => {
@@ -86,10 +97,6 @@ export const GenerateForm = React.memo(function GenerateForm({
   const handleCameraClick = () => {
     if (!isAuthenticated) {
       openAuthModal();
-      return;
-    }
-    if (!canUseCamera) {
-      // Simple UX: disable when not allowed; could show upgrade tooltip/modal
       return;
     }
     setIsCameraOpen(true);
@@ -207,15 +214,16 @@ export const GenerateForm = React.memo(function GenerateForm({
                     >
                       <Pencil className="w-5 h-5" />
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleCameraClick}
-                      className={`p-2 transition-colors ${canUseCamera ? 'text-zinc-400 hover:text-white' : 'text-zinc-700 cursor-not-allowed'}`}
-                      title={canUseCamera ? 'Take a photo' : 'Available on higher plans'}
-                      disabled={!canUseCamera}
-                    >
-                      <Camera className="w-5 h-5" />
-                    </button>
+                    {isMobile && (
+                      <button
+                        type="button"
+                        onClick={handleCameraClick}
+                        className={`p-2 transition-colors text-zinc-400 hover:text-white`}
+                        title={'Take a photo'}
+                      >
+                        <Camera className="w-5 h-5" />
+                      </button>
+                    )}
                     {isAuthenticated && canUsePrivateImages && (
                       <button
                         type="button"

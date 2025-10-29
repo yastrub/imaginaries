@@ -16,7 +16,7 @@ export function CameraCapture({ onCapture, onCancel }) {
     async function start() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 1200 }, height: { ideal: 1600 }, aspectRatio: 3/4 },
+          video: { facingMode: 'user', aspectRatio: 3/4 },
           audio: false
         });
         if (!active) return;
@@ -124,7 +124,7 @@ export function CameraCapture({ onCapture, onCancel }) {
             <div className="text-red-400 text-sm w-full">{error}</div>
           )}
           <div className="w-full aspect-[3/4] bg-black rounded-lg overflow-hidden relative flex items-center justify-center">
-            <video ref={videoRef} playsInline muted className="h-full" style={{ transform: 'scaleX(-1)' }} />
+            <video ref={videoRef} playsInline muted className="w-full h-full object-cover" style={{ transform: 'scaleX(-1)' }} />
             {isCounting && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                 <div className="flex items-center justify-center w-28 h-28 rounded-full bg-white/10 border border-white/30 shadow-xl">

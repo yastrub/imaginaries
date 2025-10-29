@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { getPlanConfig } from '@/config/plans';
 
 export function useSubscription(userId) {
   const [plan, setPlan] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [meta, setMeta] = useState({ effective_limit: 0, monthly_generation_count: 0, next_reset_at: null });
 
   useEffect(() => {
     if (!userId) {
@@ -14,7 +14,7 @@ export function useSubscription(userId) {
 
     const fetchSubscription = async () => {
       try {
-        const response = await fetch(`/api/users/${userId}`, {
+        const response = await fetch(`/api/users/me`, {
           credentials: 'include'
         });
 
@@ -23,8 +23,13 @@ export function useSubscription(userId) {
         }
 
         const data = await response.json();
-        const planConfig = getPlanConfig(data.subscription_plan);
-        setPlan(planConfig);
+        // Use DB-backed plan_details directly
+        setPlan(data.plan_details || null);
+        setMeta({
+          effective_limit: data.effective_limit ?? 0,
+          monthly_generation_count: data.monthly_generation_count ?? 0,
+          next_reset_at: data.next_reset_at ?? null,
+        });
       } catch (err) {
         console.error('Error fetching subscription:', err);
         setError(err.message);
@@ -36,5 +41,5 @@ export function useSubscription(userId) {
     fetchSubscription();
   }, [userId]);
 
-  return { plan, isLoading, error };
+  return { plan, isLoading, error, meta };
 }

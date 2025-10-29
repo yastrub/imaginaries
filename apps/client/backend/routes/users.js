@@ -5,15 +5,10 @@ import { getPlanConfig } from '../config/plans.js';
 
 const router = express.Router();
 
-// Get user subscription info
-router.get('/:userId', auth, async (req, res) => {
+// Internal handler using JWT user ID only
+async function getSubscriptionForCurrentUser(req, res) {
   try {
-    const { userId } = req.params;
-
-    // Verify user is requesting their own data
-    if (req.user.id !== userId) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
+    const userId = req.user.id;
 
     const result = await query(
       'SELECT subscription_plan, subscription_updated_at FROM users WHERE id = $1',
@@ -25,18 +20,20 @@ router.get('/:userId', auth, async (req, res) => {
     }
 
     const user = result.rows[0];
-    const planConfig = getPlanConfig(user.subscription_plan);
 
-    let max_generations_per_month = 0;
-    let max_free_generations = 0;
+    // Pull plan flags and limits from DB
+    let planRow = null;
     try {
-      const limitRes = await query(
-        'SELECT max_generations_per_month, max_free_generations FROM plans WHERE key = $1',
+      const planRes = await query(
+        `SELECT key, name, show_watermark, allow_private_images, allow_camera, max_generations_per_month, max_free_generations
+         FROM plans WHERE key = $1`,
         [user.subscription_plan]
       );
-      max_generations_per_month = parseInt(limitRes.rows?.[0]?.max_generations_per_month ?? 0, 10) || 0;
-      max_free_generations = parseInt(limitRes.rows?.[0]?.max_free_generations ?? 0, 10) || 0;
+      planRow = planRes.rows?.[0] || null;
     } catch {}
+
+    const max_generations_per_month = parseInt(planRow?.max_generations_per_month ?? 0, 10) || 0;
+    const max_free_generations = parseInt(planRow?.max_free_generations ?? 0, 10) || 0;
 
     const isFree = (user.subscription_plan || 'free') === 'free';
     if (isFree && (max_free_generations || 0) <= 0) {
@@ -57,7 +54,14 @@ router.get('/:userId', auth, async (req, res) => {
     res.json({
       subscription_plan: user.subscription_plan,
       subscription_updated_at: user.subscription_updated_at,
-      plan_details: planConfig,
+      // Prefer DB-backed plan details. Fallback to static if missing.
+      plan_details: {
+        key: user.subscription_plan,
+        name: planRow?.name || getPlanConfig(user.subscription_plan)?.name || user.subscription_plan,
+        requiresWatermark: !!(planRow?.show_watermark ?? getPlanConfig(user.subscription_plan)?.requiresWatermark),
+        allowPrivateImages: !!(planRow?.allow_private_images ?? getPlanConfig(user.subscription_plan)?.allowPrivateImages),
+        allowCamera: !!(planRow?.allow_camera ?? false),
+      },
       max_generations_per_month,
       max_free_generations,
       effective_limit,
@@ -68,6 +72,16 @@ router.get('/:userId', auth, async (req, res) => {
     console.error('Error fetching user subscription:', error);
     res.status(500).json({ error: 'Failed to fetch subscription info' });
   }
+}
+
+// SECURE: always use JWT, ignore URL param
+router.get('/:userId', auth, async (req, res) => {
+  return getSubscriptionForCurrentUser(req, res);
+});
+
+// Preferred explicit route
+router.get('/me', auth, async (req, res) => {
+  return getSubscriptionForCurrentUser(req, res);
 });
 
 export { router as usersRouter };

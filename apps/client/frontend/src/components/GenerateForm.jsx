@@ -6,7 +6,7 @@ import { DrawingBoard } from './DrawingBoard';
 import { openAuthModal } from './CompletelyIsolatedAuth';
 import { usePromptContext } from '../contexts/PromptContext';
 import { useSelector } from 'react-redux';
-import { allowPrivateImages } from '../config/plans';
+import { useSubscription } from '../hooks/useSubscription';
 import { CameraCapture } from './CameraCapture';
 
 export const GenerateForm = React.memo(function GenerateForm({ 
@@ -28,7 +28,10 @@ export const GenerateForm = React.memo(function GenerateForm({
   
   // Get user subscription plan from Redux store
   const user = useSelector(state => state.auth.user);
-  const canUsePrivateImages = user?.subscription_plan ? allowPrivateImages(user.subscription_plan) : false;
+  const { plan: planDetails } = useSubscription(user?.id);
+  const canUsePrivateImages = !!planDetails?.allowPrivateImages;
+  const canUseCamera = !!planDetails?.allowCamera;
+  const shouldShowCamera = isMobile && (isAuthenticated ? canUseCamera : true);
   // UI: camera availability is mobile-only; server enforces plan gating
   useEffect(() => {
     try {
@@ -214,7 +217,7 @@ export const GenerateForm = React.memo(function GenerateForm({
                     >
                       <Pencil className="w-5 h-5" />
                     </button>
-                    {isMobile && (
+                    {shouldShowCamera && (
                       <button
                         type="button"
                         onClick={handleCameraClick}

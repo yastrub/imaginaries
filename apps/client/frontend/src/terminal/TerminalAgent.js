@@ -418,8 +418,9 @@ function setupFullscreenOnGesture(enabled) {
   const handler = async () => {
     try {
       const el = document.documentElement;
-      if (!document.fullscreenElement && el.requestFullscreen) {
-        await el.requestFullscreen({ navigationUI: 'hide' });
+      const canFs = el && typeof el.requestFullscreen === 'function';
+      if (!document.fullscreenElement && canFs) {
+        await el.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
       }
     } catch {}
     window.removeEventListener('pointerdown', handler, { capture: true });
@@ -480,6 +481,7 @@ export function startTerminalAgent({ appVersion = 'web' } = {}) {
     applyViewportPolicies({ disablePinchZoom: true, overscrollBehavior: 'none' });
     requestWakeLock(true);
     setupWakeLockReacquire(true);
+    // Default: enable fullscreen on first gesture for terminal app
     setupFullscreenOnGesture(true);
   }
 

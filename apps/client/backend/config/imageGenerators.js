@@ -28,6 +28,55 @@ async function generateWithOpenAI(prompt) {
     throw new Error('OpenAI generator is disabled');
   }
 
+  const config = settings.imageGeneration.providers.openai;
+
+  const apiUrl = config.api_url;
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  // Step 1: Send request to OpenAI API
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt: enhancePrompt(prompt),
+      ...config.params,
+    }),
+  });
+
+  const responseText = await response.text();
+  console.log('OpenAI Response:', responseText);
+
+  if (!response.ok) {
+    let error;
+    try {
+      error = JSON.parse(responseText);
+    } catch (e) {
+      throw new Error(`OpenAI API error: Invalid JSON - ${responseText}`);
+    }
+    throw new Error(`OpenAI API error: ${error.error?.message || 'Unknown error'}`);
+  }
+
+  let result;
+  try {
+    result = JSON.parse(responseText);
+  } catch (e) {
+    throw new Error(`OpenAI: Failed to parse response - ${responseText}`);
+  }
+
+  // Step 2: Extract the first image URL
+  const image = result.data?.[0];
+  if (!image?.url) {
+    throw new Error('OpenAI: No image URL in response');
+  }
+
+  console.log('OpenAI Result:', result);
+
+  return image.url;
+}
+
 // Fal.ai Gemini Edit (image editing with image_urls)
 async function generateWithFalGeminiEdit(prompt, imageUrls = []) {
   if (!settings.imageGeneration.enabledProviders.fal) {
@@ -106,54 +155,7 @@ async function generateWithFalGeminiEdit(prompt, imageUrls = []) {
   if (!image?.url) throw new Error('Fal Gemini: no image url');
   return image.url;
 }
-  const config = settings.imageGeneration.providers.openai;
-
-  const apiUrl = config.api_url;
-  const apiKey = process.env.OPENAI_API_KEY;
-
-  // Step 1: Send request to OpenAI API
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      prompt: enhancePrompt(prompt),
-      ...config.params,
-    }),
-  });
-
-  const responseText = await response.text();
-  console.log('OpenAI Response:', responseText);
-
-  if (!response.ok) {
-    let error;
-    try {
-      error = JSON.parse(responseText);
-    } catch (e) {
-      throw new Error(`OpenAI API error: Invalid JSON - ${responseText}`);
-    }
-    throw new Error(`OpenAI API error: ${error.error?.message || 'Unknown error'}`);
-  }
-
-  let result;
-  try {
-    result = JSON.parse(responseText);
-  } catch (e) {
-    throw new Error(`OpenAI: Failed to parse response - ${responseText}`);
-  }
-
-  // Step 2: Extract the first image URL
-  const image = result.data?.[0];
-  if (!image?.url) {
-    throw new Error('OpenAI: No image URL in response');
-  }
-
-  console.log('OpenAI Result:', result);
-
-  return image.url;
-}
+ 
 
 // Replicate Generator using fetch
 async function generateWithReplicate(prompt) {

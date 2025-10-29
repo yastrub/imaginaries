@@ -407,9 +407,23 @@ create_backup() {
         sudo -u "$REAL_USER" cp -r "$APP_DIR" "$backup_path/"
     fi
     
-    # Backup docker images
-    sudo -u "$REAL_USER" docker save -o "$backup_path/frontend.tar" "imaginaries-frontend:prod" 2>/dev/null
-    sudo -u "$REAL_USER" docker save -o "$backup_path/backend.tar" "imaginaries-backend:prod" 2>/dev/null
+    # Backup docker images (only if present)
+    if docker image inspect "imaginaries-frontend:prod" >/dev/null 2>&1; then
+        print_action "Saving Docker image imaginaries-frontend:prod to backup..."
+        if ! docker save "imaginaries-frontend:prod" | sudo -u "$REAL_USER" tee "$backup_path/frontend.tar" >/dev/null; then
+            print_warning "Failed to save frontend image (continuing)"
+        fi
+    else
+        print_info "Docker image imaginaries-frontend:prod not found; skipping image backup"
+    fi
+    if docker image inspect "imaginaries-backend:prod" >/dev/null 2>&1; then
+        print_action "Saving Docker image imaginaries-backend:prod to backup..."
+        if ! docker save "imaginaries-backend:prod" | sudo -u "$REAL_USER" tee "$backup_path/backend.tar" >/dev/null; then
+            print_warning "Failed to save backend image (continuing)"
+        fi
+    else
+        print_info "Docker image imaginaries-backend:prod not found; skipping image backup"
+    fi
     
     # Set proper ownership
     sudo chown -R "$REAL_USER:$REAL_USER" "$backup_path"

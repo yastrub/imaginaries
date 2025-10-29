@@ -23,6 +23,15 @@ export function CameraCapture({ onCapture, onCancel }) {
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          // Attempt to minimize camera zoom if supported
+          try {
+            const track = stream.getVideoTracks && stream.getVideoTracks()[0];
+            const caps = track && track.getCapabilities ? track.getCapabilities() : null;
+            if (caps && caps.zoom) {
+              const minZoom = typeof caps.zoom.min === 'number' ? caps.zoom.min : (Array.isArray(caps.zoom) ? Math.min(...caps.zoom) : 1);
+              await track.applyConstraints({ advanced: [{ zoom: minZoom }] });
+            }
+          } catch {}
           await videoRef.current.play();
           setIsReady(true);
         }
@@ -54,31 +63,20 @@ export function CameraCapture({ onCapture, onCancel }) {
     const vh = video.videoHeight;
     if (!vw || !vh) return;
 
-    // Cover compute (object-fit: cover) to fill 3:4
-    const targetRatio = targetW / targetH; // 0.75
-    const srcRatio = vw / vh;
-    let sw, sh, sx, sy;
-    if (srcRatio > targetRatio) {
-      // Wider than target, crop width
-      sh = vh;
-      sw = Math.round(vh * targetRatio);
-      sx = Math.round((vw - sw) / 2);
-      sy = 0;
-    } else {
-      // Taller than target, crop height
-      sw = vw;
-      sh = Math.round(vw / targetRatio);
-      sx = 0;
-      sy = Math.round((vh - sh) / 2);
-    }
+    // Contain compute (object-fit: contain) to show as wide as possible (minimal cropping)
+    const scale = Math.min(targetW / vw, targetH / vh);
+    const dw = Math.round(vw * scale);
+    const dh = Math.round(vh * scale);
+    const dx = Math.round((targetW - dw) / 2);
+    const dy = Math.round((targetH - dh) / 2);
 
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, targetW, targetH);
-    // Mirror horizontally in the output
+    // Mirror horizontally in the output and draw contained
     ctx.save();
     ctx.translate(targetW, 0);
     ctx.scale(-1, 1);
-    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, targetW, targetH);
+    ctx.drawImage(video, 0, 0, vw, vh, dx, dy, dw, dh);
     ctx.restore();
 
     const dataUrl = canvas.toDataURL('image/png');
@@ -124,7 +122,7 @@ export function CameraCapture({ onCapture, onCancel }) {
             <div className="text-red-400 text-sm w-full">{error}</div>
           )}
           <div className="w-full aspect-[3/4] bg-black rounded-lg overflow-hidden relative flex items-center justify-center">
-            <video ref={videoRef} playsInline muted className="w-full h-full object-cover" style={{ transform: 'scaleX(-1)' }} />
+            <video ref={videoRef} playsInline muted className="w-full h-full object-contain" style={{ transform: 'scaleX(-1)' }} />
             {isCounting && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                 <div className="flex items-center justify-center w-28 h-28 rounded-full bg-white/10 border border-white/30 shadow-xl">

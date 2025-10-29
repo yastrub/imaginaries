@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button } from './ui/button';
-import { X, Camera, RotateCw, RefreshCw } from 'lucide-react';
+import { X, Camera, RotateCw, SwitchCamera } from 'lucide-react';
 
 export function CameraCapture({ onCapture, onCancel }) {
   const videoRef = useRef(null);
@@ -164,7 +163,7 @@ export function CameraCapture({ onCapture, onCancel }) {
               aria-label="Switch camera"
               title="Switch camera"
             >
-              <RefreshCw className="w-4 h-4" />
+              <SwitchCamera className="w-4 h-4" />
             </button>
             <button
               type="button"

@@ -402,9 +402,19 @@ create_backup() {
         sudo -u "$REAL_USER" mkdir -p "$backup_path"
     fi
     
-    # Backup code
+    # Backup source code quickly as tar.gz, excluding heavy build artifacts
     if [ -d "$APP_DIR" ]; then
-        sudo -u "$REAL_USER" cp -r "$APP_DIR" "$backup_path/"
+        print_action "Archiving source (excluding node_modules/.next/dist/build) ..."
+        if ! sudo -u "$REAL_USER" tar \
+            --exclude='**/node_modules' \
+            --exclude='**/.next' \
+            --exclude='**/dist' \
+            --exclude='**/build' \
+            -czf "$backup_path/client-src.tgz" -C "$GIT_DIR" "apps/client" 2>/dev/null; then
+            print_warning "Failed to archive source (continuing)"
+        else
+            print_success "Source archived to $backup_path/client-src.tgz"
+        fi
     fi
     
     # Backup docker images (only if present)

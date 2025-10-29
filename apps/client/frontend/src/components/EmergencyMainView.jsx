@@ -48,10 +48,12 @@ export function EmergencyMainView({
           <textarea 
             className="w-full bg-zinc-900 border border-zinc-700 rounded-lg p-4 text-white resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
             rows={4}
-            placeholder="Describe your jewelry idea..."
+            placeholder=""
             value={prompt}
             onChange={(e) => handlePromptChange(e.target.value)}
             ref={promptInputRef}
+            name="prompt"
+            data-qa="prompt-textarea"
           />
           
           <div className="mt-4 flex justify-end">

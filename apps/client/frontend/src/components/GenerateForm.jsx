@@ -205,7 +205,9 @@ export const GenerateForm = React.memo(function GenerateForm({
                   ref={promptInputRef}
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Describe your jewelry here..."
+                  placeholder=""
+                  name="prompt"
+                  data-qa="prompt-textarea"
                   required
                 />
                 <div className="absolute right-4 top-0 h-[4rem] flex items-center">

@@ -5,16 +5,8 @@ export function fixPromptInDOM(promptText) {
   console.log('PromptFixer: Attempting to set prompt text directly in DOM:', promptText);
   
   try {
-    // Try to find the textarea by its placeholder
-    const textareas = document.querySelectorAll('textarea');
-    let promptTextarea = null;
-    
-    for (const textarea of textareas) {
-      if (textarea.placeholder && textarea.placeholder.includes('Describe your jewelry')) {
-        promptTextarea = textarea;
-        break;
-      }
-    }
+    // Try to find the textarea via stable selectors
+    const promptTextarea = document.querySelector('textarea[data-qa="prompt-textarea"], textarea[name="prompt"]');
     
     if (promptTextarea) {
       // Set the value directly

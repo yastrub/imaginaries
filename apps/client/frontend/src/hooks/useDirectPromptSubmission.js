@@ -14,17 +14,33 @@ export function useDirectPromptSubmission() {
   
   // Set up a listener to track prompt changes directly from the DOM
   useEffect(() => {
+    const isPromptTextarea = (el) => {
+      if (!el || el.tagName !== 'TEXTAREA') return false;
+      const qa = el.getAttribute('data-qa');
+      const name = el.getAttribute('name');
+      return qa === 'prompt-textarea' || name === 'prompt';
+    };
+
+    // Seed latest value from the DOM once on mount
+    try {
+      const el = document.querySelector('textarea[data-qa="prompt-textarea"], textarea[name="prompt"]');
+      if (el) {
+        latestPromptRef.current = el.value || '';
+      }
+    } catch {}
+
     // Function to update our reference when the textarea changes
     const handleTextareaInput = (event) => {
-      if (event.target.placeholder && event.target.placeholder.includes('Describe your jewelry')) {
-        latestPromptRef.current = event.target.value;
+      const t = event && event.target;
+      if (isPromptTextarea(t)) {
+        latestPromptRef.current = t.value;
         console.log('Direct prompt tracking updated:', latestPromptRef.current);
       }
     };
-    
+
     // Add a global input event listener to catch all textarea changes
     document.addEventListener('input', handleTextareaInput);
-    
+
     return () => {
       document.removeEventListener('input', handleTextareaInput);
     };

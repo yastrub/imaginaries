@@ -133,54 +133,200 @@ cleanup_containers() {
 
 # Build and deploy backend
 deploy_backend() {
-    print_header "Deploying Backend"
-    
+    print_header "Deploying Backend (blue/green)"
+
     cd ${APP_DIR}/backend || print_error "Backend directory not found"
     print_debug "Current directory: $(pwd)"
-    
+
     print_action "Building backend production image..."
     if ! docker build -t imaginaries-backend:prod .; then
         print_error "Failed to build backend image"
     fi
-    
-    print_action "Starting backend container..."
+
+    local app="imaginaries-backend"
+    local primary_port="${BACKEND_PORT:?BACKEND_PORT must be set}"
+    local temp_name="${app}-new"
+    local temp_port=$((primary_port+1))
+
+    # remove stale temp if exists
+    local temp_ids
+    temp_ids="$(docker ps -aq --filter "name=^${temp_name}$" || true)"
+    if [[ -n "${temp_ids}" ]]; then
+        print_action "Removing stale temp container ${temp_name}..."
+        docker rm -f ${temp_ids} >/dev/null 2>&1 || true
+    fi
+
+    print_action "Starting temporary backend container ${temp_name} on port ${temp_port} for health-check..."
     if ! docker run -d \
-        --name imaginaries-backend \
-        -p ${BACKEND_PORT}:3000 \
+        --name "${temp_name}" \
+        -p ${temp_port}:3000 \
         --restart unless-stopped \
         imaginaries-backend:prod; then
-        print_error "Failed to start backend container"
+        print_error "Failed to start temporary backend container"
+        return 1
     fi
-    
+
+    # helpers
+    wait_for_port() {
+      local host="$1"; local port="$2"; local attempts=0; local max_attempts=120; local delay=1
+      print_action "Waiting for TCP ${host}:${port} to accept connections ..."
+      while (( attempts < max_attempts )); do
+        if (echo > "/dev/tcp/${host}/${port}") >/dev/null 2>&1; then
+          print_success "Port ${port} is accepting connections"
+          return 0
+        fi
+        attempts=$((attempts+1)); sleep ${delay}
+      done
+      print_warning "Timed out waiting for port ${port}"
+      return 1
+    }
+    _http_code() {
+      local url="$1"
+      curl -s -o /dev/null -w '%{http_code}' -L --connect-timeout 2 --max-time 3 "$url" || echo 000
+    }
+    health_check_backend_temp() {
+      local temp_port="$1"; local url="http://127.0.0.1:${temp_port}/api/health"; local attempts=0; local max_attempts=90; local delay=2
+      print_action "Health-checking backend at ${url} ..."
+      sleep 5
+      while (( attempts < max_attempts )); do
+        local code="$(_http_code "${url}")"
+        if [[ "${code}" =~ ^(200|30[12478])$ ]]; then
+          print_success "Backend temp is healthy (HTTP ${code})"
+          return 0
+        fi
+        attempts=$((attempts+1)); (( attempts % 10 == 0 )) && print_info "Waiting for readiness... attempt ${attempts}/${max_attempts} (last ${code})"; sleep ${delay}
+      done
+      print_error "Backend temp failed health-check"
+      docker logs --tail=200 "${temp_name}" || true
+      return 1
+    }
+
+    wait_for_port 127.0.0.1 "${temp_port}" || true
+    health_check_backend_temp "${temp_port}" || { print_error "Keeping existing backend. Aborting swap."; return 1; }
+
+    # swap
+    print_action "Swapping traffic to new backend on port ${primary_port}..."
+    local old_ids
+    old_ids="$(docker ps -aq --filter "name=^${app}$" || true)"
+    if [[ -n "${old_ids}" ]]; then
+        print_action "Stopping/removing existing backend ${app}..."
+        docker rm -f ${old_ids} >/dev/null 2>&1 || true
+    fi
+
+    print_action "Starting primary backend container ${app} ..."
+    if ! docker run -d \
+        --name "${app}" \
+        -p ${primary_port}:3000 \
+        --restart unless-stopped \
+        imaginaries-backend:prod; then
+        print_error "Failed to start backend on primary port. Temp still running on ${temp_port}."
+        return 1
+    fi
+
+    print_action "Cleaning up temporary backend ${temp_name}..."
+    docker rm -f "${temp_name}" >/dev/null 2>&1 || true
+
     cd ${SCRIPT_DIR}
-    
-    print_success "Backend deployed successfully"
+    print_success "Backend deployed successfully (blue/green)"
 }
 
 # Build and deploy frontend
 deploy_frontend() {
-    print_header "Deploying Frontend"
+    print_header "Deploying Frontend (blue/green)"
 
     cd ${APP_DIR}/frontend || print_error "Frontend directory not found"
     print_debug "Current directory: $(pwd)"
-    
+
     print_action "Building frontend production image..."
     if ! docker build -t imaginaries-frontend:prod .; then
         print_error "Failed to build frontend image"
     fi
-    
-    print_action "Starting frontend container..."
-    if ! docker run -d \
-        --name imaginaries-frontend \
-        -p ${FRONTEND_PORT}:80 \
-        --restart unless-stopped \
-        imaginaries-frontend:prod; then
-        print_error "Failed to start frontend container"
+
+    local app="imaginaries-frontend"
+    local primary_port="${FRONTEND_PORT:?FRONTEND_PORT must be set}"
+    local temp_name="${app}-new"
+    local temp_port=$((primary_port+1))
+
+    # remove stale temp if exists
+    local temp_ids
+    temp_ids="$(docker ps -aq --filter "name=^${temp_name}$" || true)"
+    if [[ -n "${temp_ids}" ]]; then
+        print_action "Removing stale temp container ${temp_name}..."
+        docker rm -f ${temp_ids} >/dev/null 2>&1 || true
     fi
 
+    print_action "Starting temporary frontend container ${temp_name} on port ${temp_port}..."
+    if ! docker run -d \
+        --name "${temp_name}" \
+        -p ${temp_port}:80 \
+        --restart unless-stopped \
+        imaginaries-frontend:prod; then
+        print_error "Failed to start temporary frontend container"
+        return 1
+    fi
+
+    # helpers
+    wait_for_port() {
+      local host="$1"; local port="$2"; local attempts=0; local max_attempts=120; local delay=1
+      print_action "Waiting for TCP ${host}:${port} to accept connections ..."
+      while (( attempts < max_attempts )); do
+        if (echo > "/dev/tcp/${host}/${port}") >/dev/null 2>&1; then
+          print_success "Port ${port} is accepting connections"
+          return 0
+        fi
+        attempts=$((attempts+1)); sleep ${delay}
+      done
+      print_warning "Timed out waiting for port ${port}"
+      return 1
+    }
+    _http_code() {
+      local url="$1"
+      curl -s -o /dev/null -w '%{http_code}' -L --connect-timeout 2 --max-time 3 "$url" || echo 000
+    }
+    health_check_frontend_temp() {
+      local temp_port="$1"; local url="http://127.0.0.1:${temp_port}/"; local attempts=0; local max_attempts=60; local delay=2
+      print_action "Health-checking frontend at ${url} ..."
+      sleep 2
+      while (( attempts < max_attempts )); do
+        local code="$(_http_code "${url}")"
+        if [[ "${code}" =~ ^(200|30[12478])$ ]]; then
+          print_success "Frontend temp is healthy (HTTP ${code})"
+          return 0
+        fi
+        attempts=$((attempts+1)); (( attempts % 10 == 0 )) && print_info "Waiting for readiness... attempt ${attempts}/${max_attempts} (last ${code})"; sleep ${delay}
+      done
+      print_error "Frontend temp failed health-check"
+      docker logs --tail=100 "${temp_name}" || true
+      return 1
+    }
+
+    wait_for_port 127.0.0.1 "${temp_port}" || true
+    health_check_frontend_temp "${temp_port}" || { print_error "Keeping existing frontend. Aborting swap."; return 1; }
+
+    # swap
+    print_action "Swapping traffic to new frontend on port ${primary_port}..."
+    local old_ids
+    old_ids="$(docker ps -aq --filter "name=^${app}$" || true)"
+    if [[ -n "${old_ids}" ]]; then
+        print_action "Stopping/removing existing frontend ${app}..."
+        docker rm -f ${old_ids} >/dev/null 2>&1 || true
+    fi
+
+    print_action "Starting primary frontend container ${app} ..."
+    if ! docker run -d \
+        --name "${app}" \
+        -p ${primary_port}:80 \
+        --restart unless-stopped \
+        imaginaries-frontend:prod; then
+        print_error "Failed to start frontend on primary port. Temp still running on ${temp_port}."
+        return 1
+    fi
+
+    print_action "Cleaning up temporary frontend ${temp_name}..."
+    docker rm -f "${temp_name}" >/dev/null 2>&1 || true
+
     cd ${SCRIPT_DIR}
-    
-    print_success "Frontend deployed successfully"
+    print_success "Frontend deployed successfully (blue/green)"
 }
 
 # Verify services are running
@@ -642,9 +788,6 @@ main() {
     
     # Clean up old backups
     cleanup_old_backups
-    
-    # Clean up existing containers
-    cleanup_containers
     
     # Deploy
     deploy_backend

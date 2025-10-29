@@ -10,7 +10,7 @@ export function CameraCapture({ onCapture, onCancel }) {
   const [countdown, setCountdown] = useState(0);
   const [isCounting, setIsCounting] = useState(false);
   const [isFlash, setIsFlash] = useState(false);
-  const [rotateFixDeg, setRotateFixDeg] = useState(0); // 0 or -90
+  const [rotation, setRotation] = useState(0); // 0, 90, -90
 
   useEffect(() => {
     let active = true;
@@ -35,18 +35,11 @@ export function CameraCapture({ onCapture, onCancel }) {
           } catch {}
           await videoRef.current.play();
           setIsReady(true);
-          // Decide rotation fix: only if feed is landscape but screen is portrait
+          // If feed is landscape, default to 90° rotate to enforce portrait
           try {
             const v = videoRef.current;
-            const vw = v.videoWidth, vh = v.videoHeight;
-            const scrAngle = (window.screen && window.screen.orientation && typeof window.screen.orientation.angle === 'number')
-              ? window.screen.orientation.angle
-              : (typeof window.orientation === 'number' ? window.orientation : 0);
-            const isScreenPortrait = scrAngle === 0 || scrAngle === 180;
-            if (vw && vh && vw > vh && isScreenPortrait) {
-              setRotateFixDeg(-90);
-            } else {
-              setRotateFixDeg(0);
+            if (v && v.videoWidth && v.videoHeight && v.videoWidth > v.videoHeight) {
+              setRotation(90);
             }
           } catch {}
         }
@@ -63,31 +56,17 @@ export function CameraCapture({ onCapture, onCancel }) {
     };
   }, []);
 
-  // Re-evaluate rotation on orientation changes and metadata load
+  // Update rotation default when metadata available
   useEffect(() => {
-    const handle = () => {
+    const handler = () => {
       const v = videoRef.current;
-      if (!v) return;
-      const vw = v.videoWidth, vh = v.videoHeight;
-      const scrAngle = (window.screen && window.screen.orientation && typeof window.screen.orientation.angle === 'number')
-        ? window.screen.orientation.angle
-        : (typeof window.orientation === 'number' ? window.orientation : 0);
-      const isScreenPortrait = scrAngle === 0 || scrAngle === 180;
-      if (vw && vh && vw > vh && isScreenPortrait) {
-        setRotateFixDeg(-90);
-      } else {
-        setRotateFixDeg(0);
+      if (v && v.videoWidth && v.videoHeight) {
+        if (v.videoWidth > v.videoHeight) setRotation(90);
       }
     };
     const v = videoRef.current;
-    if (v) v.addEventListener('loadedmetadata', handle);
-    window.addEventListener('orientationchange', handle);
-    window.addEventListener('resize', handle);
-    return () => {
-      if (v) v.removeEventListener('loadedmetadata', handle);
-      window.removeEventListener('orientationchange', handle);
-      window.removeEventListener('resize', handle);
-    };
+    if (v) v.addEventListener('loadedmetadata', handler);
+    return () => { if (v) v.removeEventListener('loadedmetadata', handler); };
   }, []);
 
   const performCapture = async () => {
@@ -105,40 +84,44 @@ export function CameraCapture({ onCapture, onCancel }) {
     const vh = video.videoHeight;
     if (!vw || !vh) return;
 
-    // Contain compute (object-fit: contain) to show as wide as possible
-    let dw, dh, dx, dy;
-    if (rotateFixDeg === -90) {
-      const srcRotW = vh; // effective width after rotation
-      const srcRotH = vw; // effective height after rotation
-      const scaleR = Math.min(targetW / srcRotW, targetH / srcRotH);
-      dw = Math.round(srcRotW * scaleR);
-      dh = Math.round(srcRotH * scaleR);
-      dx = Math.round((targetW - dw) / 2);
-      dy = Math.round((targetH - dh) / 2);
-    } else {
-      const scale = Math.min(targetW / vw, targetH / vh);
-      dw = Math.round(vw * scale);
-      dh = Math.round(vh * scale);
-      dx = Math.round((targetW - dw) / 2);
-      dy = Math.round((targetH - dh) / 2);
-    }
-
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, targetW, targetH);
-    // Draw with selfie mirror; apply -90 rotation correction when needed
-    ctx.save();
-    if (rotateFixDeg === -90) {
-      // Move origin to center of target and rotate CCW 90, then mirror
-      ctx.translate(targetW / 2, targetH / 2);
-      ctx.rotate(-Math.PI / 2);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, -dw / 2, -dh / 2, dw, dh);
-    } else {
+
+    if (rotation === 0) {
+      // Cover-crop to 3:4 without rotation
+      const targetRatio = targetW / targetH; // 0.75
+      const srcRatio = vw / vh;
+      let sx, sy, sw, sh;
+      if (srcRatio > targetRatio) {
+        sh = vh;
+        sw = Math.round(vh * targetRatio);
+        sx = Math.round((vw - sw) / 2);
+        sy = 0;
+      } else {
+        sw = vw;
+        sh = Math.round(vw / targetRatio);
+        sx = 0;
+        sy = Math.round((vh - sh) / 2);
+      }
+      ctx.save();
       ctx.translate(targetW, 0);
       ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, vw, vh, dx, dy, dw, dh);
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, targetW, targetH);
+      ctx.restore();
+    } else {
+      // Rotate by ±90° and scale to cover portrait canvas
+      const srcRotW = vh; // effective width after rotation
+      const srcRotH = vw; // effective height after rotation
+      const scale = Math.max(targetW / srcRotW, targetH / srcRotH);
+      const dw = Math.round(srcRotW * scale);
+      const dh = Math.round(srcRotH * scale);
+      ctx.save();
+      ctx.translate(targetW / 2, targetH / 2);
+      ctx.rotate((rotation * Math.PI) / 180);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, -dw / 2, -dh / 2, dw, dh);
+      ctx.restore();
     }
-    ctx.restore();
 
     const dataUrl = canvas.toDataURL('image/png');
     onCapture?.(dataUrl);
@@ -187,8 +170,8 @@ export function CameraCapture({ onCapture, onCancel }) {
               ref={videoRef}
               playsInline
               muted
-              className="w-full h-full object-contain"
-              style={{ transform: rotateFixDeg === -90 ? 'rotate(-90deg) scaleX(-1)' : 'scaleX(-1)', transformOrigin: 'center center' }}
+              className="w-full h-full object-cover"
+              style={{ transform: `rotate(${rotation}deg) scaleX(-1)`, transformOrigin: 'center center' }}
             />
             {isCounting && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/30">
@@ -205,6 +188,9 @@ export function CameraCapture({ onCapture, onCancel }) {
             )}
           </div>
           <div className="w-full flex gap-2">
+            <Button variant="ghost" onClick={() => setRotation(r => (r === 0 ? 90 : (r === 90 ? -90 : 0)))} disabled={!isReady || isCounting} className="px-3">
+              <RotateCw className="w-4 h-4" />
+            </Button>
             <Button variant="secondary" onClick={onCancel} className="flex-1">Cancel</Button>
             <Button onClick={handleCapture} disabled={!isReady || isCounting} className="flex-1 gap-2">
               <Camera className="w-4 h-4" /> Capture

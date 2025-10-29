@@ -123,6 +123,19 @@ export const settings = {
           output_format: "png",
           aspect_ratio: "1:1"
         }
+      },
+      fal_gemini_edit: {
+        api_url: 'https://queue.fal.run',
+        model: 'fal-ai/gemini-25-flash-image',
+        version: 'edit',
+        params: {
+          sync_mode: false,
+          num_images: 1,
+          output_format: 'jpeg',
+          aspect_ratio: '9:16',
+          limit_generations: true
+        },
+        system_prompt: "create a jewelry piece. a pendant. inspired by this picture (try to catch patterns, colors, style, etc). the piece should be a perfect match to the picture. only use 18k gold (white / yellow / rose) and precious stones (if needed) for jewelry materials. if no jewelry found in the image, do not try to replicate the shape - only patterns, colors, overall style. User might provide additional information in the prompt, use it if needed, also user might provide desired jewelry sketch image (drawn by hand, so try to catch what is drawn). generate a professional jewerly photo, white plain background."
       }
     }
   }

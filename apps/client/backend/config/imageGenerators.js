@@ -11,7 +11,8 @@ export const GENERATORS = {
   OPENAI_DALLE: 'openai_dalle',
   OPENAI_IMAGE_EDIT: 'openai_image_edit',
   REPLICATE: 'replicate',
-  FAL: 'fal'
+  FAL: 'fal',
+  FAL_GEMINI_EDIT: 'fal_gemini_edit'
 };
 
 // Get default generator from settings
@@ -27,6 +28,84 @@ async function generateWithOpenAI(prompt) {
     throw new Error('OpenAI generator is disabled');
   }
 
+// Fal.ai Gemini Edit (image editing with image_urls)
+async function generateWithFalGeminiEdit(prompt, imageUrls = []) {
+  if (!settings.imageGeneration.enabledProviders.fal) {
+    throw new Error('Fal.ai generator is disabled');
+  }
+
+  const config = settings.imageGeneration.providers.fal_gemini_edit;
+  const falApiBase = `${config.api_url}/${config.model}`;
+  const falApiUrlFull = `${falApiBase}/${config.version}`;
+  const falKey = process.env.FAL_KEY;
+
+  const systemPrompt = config.system_prompt || '';
+  const enhancedPrompt = enhancePrompt(prompt);
+  const fullPrompt = systemPrompt ? `${systemPrompt}\n\nUser request: ${enhancedPrompt}` : enhancedPrompt;
+
+  const body = {
+    prompt: fullPrompt,
+    image_urls: imageUrls,
+    num_images: config.params?.num_images ?? 1,
+    output_format: config.params?.output_format ?? 'jpeg',
+    sync_mode: false,
+    limit_generations: true,
+    aspect_ratio: config.params?.aspect_ratio ?? undefined
+  };
+
+  // Step 1: enqueue
+  const initialResponse = await fetch(falApiUrlFull, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Key ${falKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  const initialText = await initialResponse.text();
+  if (!initialResponse.ok) {
+    let error;
+    try { error = JSON.parse(initialText); } catch {}
+    throw new Error(`Fal Gemini enqueue error: ${error?.detail || initialText}`);
+  }
+  let initialResult;
+  try { initialResult = JSON.parse(initialText); } catch (e) {
+    throw new Error(`Fal Gemini enqueue parse error: ${initialText}`);
+  }
+  const requestId = initialResult.request_id;
+  if (!requestId) throw new Error('Fal Gemini: missing request_id');
+
+  // Step 2: poll status
+  const statusUrl = `${falApiBase}/requests/${requestId}/status`;
+  const maxAttempts = 20;
+  const interval = 6; // seconds
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const statusResp = await fetch(statusUrl, { headers: { 'Authorization': `Key ${falKey}` } });
+    const statusText = await statusResp.text();
+    if (!statusResp.ok) {
+      throw new Error(`Fal Gemini status error: ${statusText}`);
+    }
+    let statusJson; try { statusJson = JSON.parse(statusText); } catch { throw new Error('Fal Gemini status parse error'); }
+    if (statusJson.status === 'COMPLETED') break;
+    if (statusJson.status === 'failed' || statusJson.status === 'error') {
+      throw new Error(`Fal Gemini failed: ${statusJson.status}`);
+    }
+    await new Promise(r => setTimeout(r, interval * 1000));
+  }
+
+  // Step 3: fetch result
+  const resultUrl = `${falApiBase}/requests/${requestId}`;
+  const resultResp = await fetch(resultUrl, { headers: { 'Authorization': `Key ${falKey}` } });
+  const resultText = await resultResp.text();
+  if (!resultResp.ok) {
+    throw new Error(`Fal Gemini result error: ${resultText}`);
+  }
+  let result; try { result = JSON.parse(resultText); } catch { throw new Error('Fal Gemini result parse error'); }
+  const image = result.images?.[0];
+  if (!image?.url) throw new Error('Fal Gemini: no image url');
+  return image.url;
+}
   const config = settings.imageGeneration.providers.openai;
 
   const apiUrl = config.api_url;
@@ -367,6 +446,11 @@ export async function generateImage(prompt, generator = DEFAULT_GENERATOR, optio
         return await generateWithReplicate(prompt);
       case GENERATORS.FAL:
         return await generateWithFal(prompt);
+      case GENERATORS.FAL_GEMINI_EDIT:
+        if (!options.imageUrls || options.imageUrls.length === 0) {
+          throw new Error('Fal Gemini Edit requires imageUrls');
+        }
+        return await generateWithFalGeminiEdit(prompt, options.imageUrls);
       default:
         throw new Error(`Unknown generator: ${generator}`);
     }

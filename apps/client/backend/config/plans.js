@@ -12,6 +12,7 @@ export const planConfigs = {
     maxGenerationsPerDay: 5,
     requiresWatermark: true,
     allowPrivateImages: false,
+    allowCamera: false,
     price: 0,
   },
   [PLANS.PRO]: {
@@ -19,6 +20,7 @@ export const planConfigs = {
     maxGenerationsPerDay: 100,
     requiresWatermark: true,
     allowPrivateImages: true,
+    allowCamera: true,
     price: 9.99,
   },
   [PLANS.BUSINESS]: {
@@ -26,6 +28,7 @@ export const planConfigs = {
     maxGenerationsPerDay: 200,
     requiresWatermark: false,
     allowPrivateImages: true,
+    allowCamera: true,
     price: 29.99,
   }
 };
@@ -45,4 +48,8 @@ export function requiresWatermark(planId) {
 
 export function allowPrivateImages(planId) {
   return getPlanConfig(planId).allowPrivateImages;
+}
+
+export function allowCamera(planId) {
+  return getPlanConfig(planId).allowCamera === true;
 }

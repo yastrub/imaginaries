@@ -423,7 +423,7 @@ function AppContent() {
     console.log('FINAL SUBMISSION PROMPT:', submissionPrompt);
     
     // Extract drawing data and privacy setting if provided
-    const { drawingPng, drawingSvg, isPrivate = true } = drawingData || {};
+    const { drawingPng, drawingSvg, isPrivate = true, cameraPng = null } = drawingData || {};
     
     // Ensure we have a valid prompt
     if (!submissionPrompt || submissionPrompt.trim() === '') {
@@ -441,6 +441,7 @@ function AppContent() {
       prompt: submissionPrompt, 
       userId: user?.id, 
       hasDrawing: !!(drawingPng && drawingSvg),
+      hasCamera: !!cameraPng,
       isPrivate,
       promptLength: submissionPrompt.length,
       hasPresets: submissionPrompt !== prompt // Check if we're using presets
@@ -455,7 +456,7 @@ function AppContent() {
     clearPromptCompletely();
     
     // Then make the API call to generate the image
-    generateImage(promptForImage, user?.id, drawingPng, drawingSvg, isPrivate)
+    generateImage(promptForImage, user?.id, drawingPng, drawingSvg, isPrivate, cameraPng)
       .then((imageData) => {
         console.log('Image generated successfully:', imageData);
         

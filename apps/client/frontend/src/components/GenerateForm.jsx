@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Settings2, Pencil, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, Settings2, Pencil, Eye, EyeOff, Camera } from 'lucide-react';
 import { AutoResizeTextarea } from './AutoResizeTextarea';
 import { DrawingBoard } from './DrawingBoard';
 // Import the openAuthModal function
 import { openAuthModal } from './CompletelyIsolatedAuth';
 import { usePromptContext } from '../contexts/PromptContext';
 import { useSelector } from 'react-redux';
-import { allowPrivateImages } from '../config/plans';
+import { allowPrivateImages, allowCamera } from '../config/plans';
+import { CameraCapture } from './CameraCapture';
 
 export const GenerateForm = React.memo(function GenerateForm({ 
   onSubmit, 
@@ -19,12 +20,15 @@ export const GenerateForm = React.memo(function GenerateForm({
   const [drawingThumbnail, setDrawingThumbnail] = useState(null);
   const [drawingSvgData, setDrawingSvgData] = useState(null);
   const [drawingState, setDrawingState] = useState(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraThumbnail, setCameraThumbnail] = useState(null);
   // Always initialize as false (public/eye ON)
   const [isPrivate, setIsPrivate] = useState(false);
   
   // Get user subscription plan from Redux store
   const user = useSelector(state => state.auth.user);
   const canUsePrivateImages = user?.subscription_plan ? allowPrivateImages(user.subscription_plan) : false;
+  const canUseCamera = user?.subscription_plan ? allowCamera(user.subscription_plan) : false;
   
   // Ensure privacy is always set to public (eye ON) initially and after any auth changes
   useEffect(() => {
@@ -79,6 +83,23 @@ export const GenerateForm = React.memo(function GenerateForm({
     setIsDrawing(false);
   };
 
+  const handleCameraClick = () => {
+    if (!isAuthenticated) {
+      openAuthModal();
+      return;
+    }
+    if (!canUseCamera) {
+      // Simple UX: disable when not allowed; could show upgrade tooltip/modal
+      return;
+    }
+    setIsCameraOpen(true);
+  };
+
+  const handleCameraCaptured = (dataUrl) => {
+    setCameraThumbnail(dataUrl);
+    setIsCameraOpen(false);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
@@ -87,11 +108,12 @@ export const GenerateForm = React.memo(function GenerateForm({
       return;
     }
 
-    // Pass drawing data (both PNG and SVG) to the submit handler
+    // Pass drawing data (both PNG and SVG) and camera photo to the submit handler
     onSubmit(e, {
       drawingPng: drawingThumbnail,
       drawingSvg: drawingSvgData,
-      isPrivate: isPrivate
+      isPrivate: isPrivate,
+      cameraPng: cameraThumbnail
     });
   };
 
@@ -121,35 +143,51 @@ export const GenerateForm = React.memo(function GenerateForm({
         <form onSubmit={handleSubmit} className="w-full">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="input-wrapper flex">
-              {drawingThumbnail && (
-                <div className="relative flex-shrink-0 w-[4rem] h-[4rem] bg-zinc-800 border-r border-zinc-700">
-                  <button
-                    type="button"
-                    onClick={handleDrawingClick}
-                    className="w-full h-full"
-                  >
-                    <img 
-                      src={drawingThumbnail} 
-                      alt="Drawing" 
-                      className="h-full w-full object-contain"
-                    />
-                  </button>
-                  {/* X button to remove drawing */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDrawingThumbnail(null);
-                      setDrawingSvgData(null);
-                      setDrawingState(null);
-                    }}
-                    className="absolute top-0 right-0 w-5 h-5 flex items-center justify-center bg-zinc-900/80 hover:bg-red-600 rounded-bl text-zinc-400 hover:text-white transition-colors"
-                    title="Remove drawing"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18 6 6 18" />
-                      <path d="m6 6 12 12" />
-                    </svg>
-                  </button>
+              {(drawingThumbnail || cameraThumbnail) && (
+                <div className="flex items-center gap-[1px] bg-zinc-700/40">
+                  {cameraThumbnail && (
+                    <div className="relative flex-shrink-0 w-[4rem] h-[4rem] bg-zinc-800 border-r border-zinc-700">
+                      <img src={cameraThumbnail} alt="Camera" className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setCameraThumbnail(null)}
+                        className="absolute top-0 right-0 w-5 h-5 flex items-center justify-center bg-zinc-900/80 hover:bg-red-600 rounded-bl text-zinc-400 hover:text-white transition-colors"
+                        title="Remove photo"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                      </button>
+                    </div>
+                  )}
+                  {drawingThumbnail && (
+                    <div className="relative flex-shrink-0 w-[4rem] h-[4rem] bg-zinc-800 border-r border-zinc-700">
+                      <button
+                        type="button"
+                        onClick={handleDrawingClick}
+                        className="w-full h-full"
+                      >
+                        <img 
+                          src={drawingThumbnail} 
+                          alt="Drawing" 
+                          className="h-full w-full object-contain"
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDrawingThumbnail(null);
+                          setDrawingSvgData(null);
+                          setDrawingState(null);
+                        }}
+                        className="absolute top-0 right-0 w-5 h-5 flex items-center justify-center bg-zinc-900/80 hover:bg-red-600 rounded-bl text-zinc-400 hover:text-white transition-colors"
+                        title="Remove drawing"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 6 6 18" />
+                          <path d="m6 6 12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
               <div className="flex-grow relative">
@@ -168,6 +206,15 @@ export const GenerateForm = React.memo(function GenerateForm({
                       className="p-2 text-zinc-400 hover:text-white transition-colors"
                     >
                       <Pencil className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCameraClick}
+                      className={`p-2 transition-colors ${canUseCamera ? 'text-zinc-400 hover:text-white' : 'text-zinc-700 cursor-not-allowed'}`}
+                      title={canUseCamera ? 'Take a photo' : 'Available on higher plans'}
+                      disabled={!canUseCamera}
+                    >
+                      <Camera className="w-5 h-5" />
                     </button>
                     {isAuthenticated && canUsePrivateImages && (
                       <button
@@ -211,6 +258,12 @@ export const GenerateForm = React.memo(function GenerateForm({
             </button>
           </div>
         </form>
+      )}
+      {isCameraOpen && (
+        <CameraCapture
+          onCapture={handleCameraCaptured}
+          onCancel={() => setIsCameraOpen(false)}
+        />
       )}
     </div>
   );

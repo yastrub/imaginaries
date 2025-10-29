@@ -9,7 +9,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { generateImage, GENERATORS, DEFAULT_GENERATOR } from '../config/imageGenerators.js';
 import { checkGenerationLimits } from '../middleware/subscriptionLimits.js';
-import { allowPrivateImages, getPlanConfig } from '../config/plans.js';
+import { allowPrivateImages, getPlanConfig, allowCamera } from '../config/plans.js';
 import { generateLimiter } from '../middleware/rateLimiter.js';
 import { requiresWatermark } from '../config/plans.js';
 import { auth } from '../middleware/auth.js';
@@ -429,10 +429,11 @@ router.put('/:imageId/privacy', auth, async (req, res) => {
 router.post('/', auth, generateLimiter, checkGenerationLimits, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { prompt, model = DEFAULT_GENERATOR, size = '1024x1024', quality = 'hd', drawingPng, drawingSvg, is_private = true } = req.body;
+    const { prompt, model = DEFAULT_GENERATOR, size = '1024x1024', quality = 'hd', drawingPng, drawingSvg, cameraPng, is_private = true } = req.body;
     
-    // Check if we have sketch data
+    // Check if we have sketch or camera data
     const hasSketch = drawingPng && drawingSvg;
+    const hasCamera = !!cameraPng;
     
     let finalPrompt = prompt;
     let imageUrl;
@@ -441,7 +442,34 @@ router.post('/', auth, generateLimiter, checkGenerationLimits, async (req, res) 
     // This can be controlled by a query parameter or environment variable
     const useDirectSketchProcessing = req.query.directSketch === 'true' || process.env.USE_DIRECT_SKETCH === 'true';
     
-    if (hasSketch) {
+    // If camera is provided, prefer Gemini edit path; include sketch as second image if present
+    if (hasCamera) {
+      // Gate by plan (DB-driven)
+      const planKeyRes = await query('SELECT subscription_plan FROM users WHERE id = $1', [userId]);
+      const planKey = planKeyRes.rows?.[0]?.subscription_plan || 'free';
+      const allowCamRes = await query('SELECT allow_camera FROM plans WHERE key = $1', [planKey]);
+      const allowCam = !!allowCamRes.rows?.[0]?.allow_camera;
+      if (!allowCam) {
+        return res.status(403).json({ error: 'Camera feature is not available on your plan' });
+      }
+
+      // Upload camera image to obtain a public URL
+      const uploadedCam = await uploadSketch(cameraPng, null, userId);
+      const camUrl = uploadedCam?.image_url;
+      if (!camUrl) {
+        return res.status(500).json({ error: 'Failed to upload camera image' });
+      }
+
+      const imageUrls = [camUrl];
+      if (hasSketch && drawingPng) {
+        // Upload sketch as well to obtain URL
+        const uploadedSketch = await uploadSketch(drawingPng, drawingSvg || null, userId);
+        if (uploadedSketch?.image_url) imageUrls.push(uploadedSketch.image_url);
+      }
+
+      // Use FAL Gemini Edit with system prompt configured server-side
+      imageUrl = await generateImage(prompt, GENERATORS.FAL_GEMINI_EDIT, { imageUrls });
+    } else if (hasSketch) {
       console.log('[Server] Processing sketch before image generation');
       
       // Extract base64 data from the data URL if needed
@@ -480,7 +508,7 @@ router.post('/', auth, generateLimiter, checkGenerationLimits, async (req, res) 
         imageUrl = await generateImage(finalPrompt, model, size, quality);
       }
     } else {
-      // No sketch data, generate image normally with the provided prompt
+      // No sketch/camera data, generate image normally with the provided prompt
       imageUrl = await generateImage(finalPrompt, model, size, quality);
     }
 
@@ -501,7 +529,8 @@ router.post('/', auth, generateLimiter, checkGenerationLimits, async (req, res) 
       size, 
       quality,
       // Flag if the image was generated from a sketch
-      ...(hasSketch && { fromSketch: true })
+      ...(hasSketch && { fromSketch: true }),
+      ...(hasCamera && { fromCamera: true })
     };
     
     // Check if user's plan allows private images

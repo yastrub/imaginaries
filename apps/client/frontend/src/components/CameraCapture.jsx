@@ -10,6 +10,7 @@ export function CameraCapture({ onCapture, onCancel }) {
   const [countdown, setCountdown] = useState(0);
   const [isCounting, setIsCounting] = useState(false);
   const [isFlash, setIsFlash] = useState(false);
+  const [needsRotate, setNeedsRotate] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -34,6 +35,13 @@ export function CameraCapture({ onCapture, onCancel }) {
           } catch {}
           await videoRef.current.play();
           setIsReady(true);
+          // Initial orientation check
+          try {
+            const v = videoRef.current;
+            if (v && v.videoWidth && v.videoHeight) {
+              setNeedsRotate(v.videoWidth > v.videoHeight);
+            }
+          } catch {}
         }
       } catch (e) {
         setError(e?.message || 'Failed to access camera');
@@ -45,6 +53,26 @@ export function CameraCapture({ onCapture, onCancel }) {
       try {
         streamRef.current?.getTracks()?.forEach(t => t.stop());
       } catch {}
+    };
+  }, []);
+
+  // Keep orientation in portrait if feed is landscape
+  useEffect(() => {
+    const v = videoRef.current;
+    const update = () => {
+      if (!v) return;
+      const vw = v.videoWidth;
+      const vh = v.videoHeight;
+      if (vw && vh) setNeedsRotate(vw > vh);
+    };
+    if (v) v.addEventListener('loadedmetadata', update);
+    const onResize = () => update();
+    window.addEventListener('orientationchange', onResize);
+    window.addEventListener('resize', onResize);
+    return () => {
+      if (v) v.removeEventListener('loadedmetadata', update);
+      window.removeEventListener('orientationchange', onResize);
+      window.removeEventListener('resize', onResize);
     };
   }, []);
 
@@ -63,20 +91,41 @@ export function CameraCapture({ onCapture, onCancel }) {
     const vh = video.videoHeight;
     if (!vw || !vh) return;
 
-    // Contain compute (object-fit: contain) to show as wide as possible (minimal cropping)
-    const scale = Math.min(targetW / vw, targetH / vh);
-    const dw = Math.round(vw * scale);
-    const dh = Math.round(vh * scale);
-    const dx = Math.round((targetW - dw) / 2);
-    const dy = Math.round((targetH - dh) / 2);
+    const rotated = needsRotate || (vw > vh);
+    let dw, dh, dx, dy;
+    if (!rotated) {
+      // Contain compute (object-fit: contain) to show as wide as possible (minimal cropping)
+      const scale = Math.min(targetW / vw, targetH / vh);
+      dw = Math.round(vw * scale);
+      dh = Math.round(vh * scale);
+      dx = Math.round((targetW - dw) / 2);
+      dy = Math.round((targetH - dh) / 2);
+    } else {
+      // When feed is landscape, rotate 90deg to keep portrait output
+      const srcRotW = vh; // effective width after rotation
+      const srcRotH = vw; // effective height after rotation
+      const scaleR = Math.min(targetW / srcRotW, targetH / srcRotH);
+      dw = Math.round(srcRotW * scaleR);
+      dh = Math.round(srcRotH * scaleR);
+      dx = Math.round((targetW - dw) / 2);
+      dy = Math.round((targetH - dh) / 2);
+    }
 
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, targetW, targetH);
-    // Mirror horizontally in the output and draw contained
+    // Draw with selfie mirror; rotate if needed to enforce portrait
     ctx.save();
-    ctx.translate(targetW, 0);
-    ctx.scale(-1, 1);
-    ctx.drawImage(video, 0, 0, vw, vh, dx, dy, dw, dh);
+    if (!rotated) {
+      ctx.translate(targetW, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, vw, vh, dx, dy, dw, dh);
+    } else {
+      // Place origin at center of destination rect, rotate, mirror, then draw scaled
+      ctx.translate(dx + dw / 2, dy + dh / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, -dw / 2, -dh / 2, dw, dh);
+    }
     ctx.restore();
 
     const dataUrl = canvas.toDataURL('image/png');
@@ -122,7 +171,13 @@ export function CameraCapture({ onCapture, onCancel }) {
             <div className="text-red-400 text-sm w-full">{error}</div>
           )}
           <div className="w-full aspect-[3/4] bg-black rounded-lg overflow-hidden relative flex items-center justify-center">
-            <video ref={videoRef} playsInline muted className="w-full h-full object-contain" style={{ transform: 'scaleX(-1)' }} />
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              className="w-full h-full object-contain"
+              style={{ transform: needsRotate ? 'rotate(90deg) scaleX(-1)' : 'scaleX(-1)' }}
+            />
             {isCounting && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                 <div className="flex items-center justify-center w-28 h-28 rounded-full bg-white/10 border border-white/30 shadow-xl">

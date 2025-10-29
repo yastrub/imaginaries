@@ -10,7 +10,7 @@ export function CameraCapture({ onCapture, onCancel }) {
   const [countdown, setCountdown] = useState(0);
   const [isCounting, setIsCounting] = useState(false);
   const [isFlash, setIsFlash] = useState(false);
-  const [needsRotate, setNeedsRotate] = useState(false);
+  const [rotateFixDeg, setRotateFixDeg] = useState(0); // 0 or -90
 
   useEffect(() => {
     let active = true;
@@ -35,11 +35,18 @@ export function CameraCapture({ onCapture, onCancel }) {
           } catch {}
           await videoRef.current.play();
           setIsReady(true);
-          // Initial orientation check
+          // Decide rotation fix: only if feed is landscape but screen is portrait
           try {
             const v = videoRef.current;
-            if (v && v.videoWidth && v.videoHeight) {
-              setNeedsRotate(v.videoWidth > v.videoHeight);
+            const vw = v.videoWidth, vh = v.videoHeight;
+            const scrAngle = (window.screen && window.screen.orientation && typeof window.screen.orientation.angle === 'number')
+              ? window.screen.orientation.angle
+              : (typeof window.orientation === 'number' ? window.orientation : 0);
+            const isScreenPortrait = scrAngle === 0 || scrAngle === 180;
+            if (vw && vh && vw > vh && isScreenPortrait) {
+              setRotateFixDeg(-90);
+            } else {
+              setRotateFixDeg(0);
             }
           } catch {}
         }
@@ -56,23 +63,30 @@ export function CameraCapture({ onCapture, onCancel }) {
     };
   }, []);
 
-  // Keep orientation in portrait if feed is landscape
+  // Re-evaluate rotation on orientation changes and metadata load
   useEffect(() => {
-    const v = videoRef.current;
-    const update = () => {
+    const handle = () => {
+      const v = videoRef.current;
       if (!v) return;
-      const vw = v.videoWidth;
-      const vh = v.videoHeight;
-      if (vw && vh) setNeedsRotate(vw > vh);
+      const vw = v.videoWidth, vh = v.videoHeight;
+      const scrAngle = (window.screen && window.screen.orientation && typeof window.screen.orientation.angle === 'number')
+        ? window.screen.orientation.angle
+        : (typeof window.orientation === 'number' ? window.orientation : 0);
+      const isScreenPortrait = scrAngle === 0 || scrAngle === 180;
+      if (vw && vh && vw > vh && isScreenPortrait) {
+        setRotateFixDeg(-90);
+      } else {
+        setRotateFixDeg(0);
+      }
     };
-    if (v) v.addEventListener('loadedmetadata', update);
-    const onResize = () => update();
-    window.addEventListener('orientationchange', onResize);
-    window.addEventListener('resize', onResize);
+    const v = videoRef.current;
+    if (v) v.addEventListener('loadedmetadata', handle);
+    window.addEventListener('orientationchange', handle);
+    window.addEventListener('resize', handle);
     return () => {
-      if (v) v.removeEventListener('loadedmetadata', update);
-      window.removeEventListener('orientationchange', onResize);
-      window.removeEventListener('resize', onResize);
+      if (v) v.removeEventListener('loadedmetadata', handle);
+      window.removeEventListener('orientationchange', handle);
+      window.removeEventListener('resize', handle);
     };
   }, []);
 
@@ -91,17 +105,9 @@ export function CameraCapture({ onCapture, onCancel }) {
     const vh = video.videoHeight;
     if (!vw || !vh) return;
 
-    const rotated = needsRotate || (vw > vh);
+    // Contain compute (object-fit: contain) to show as wide as possible
     let dw, dh, dx, dy;
-    if (!rotated) {
-      // Contain compute (object-fit: contain) to show as wide as possible (minimal cropping)
-      const scale = Math.min(targetW / vw, targetH / vh);
-      dw = Math.round(vw * scale);
-      dh = Math.round(vh * scale);
-      dx = Math.round((targetW - dw) / 2);
-      dy = Math.round((targetH - dh) / 2);
-    } else {
-      // When feed is landscape, rotate 90deg to keep portrait output
+    if (rotateFixDeg === -90) {
       const srcRotW = vh; // effective width after rotation
       const srcRotH = vw; // effective height after rotation
       const scaleR = Math.min(targetW / srcRotW, targetH / srcRotH);
@@ -109,22 +115,28 @@ export function CameraCapture({ onCapture, onCancel }) {
       dh = Math.round(srcRotH * scaleR);
       dx = Math.round((targetW - dw) / 2);
       dy = Math.round((targetH - dh) / 2);
+    } else {
+      const scale = Math.min(targetW / vw, targetH / vh);
+      dw = Math.round(vw * scale);
+      dh = Math.round(vh * scale);
+      dx = Math.round((targetW - dw) / 2);
+      dy = Math.round((targetH - dh) / 2);
     }
 
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, targetW, targetH);
-    // Draw with selfie mirror; rotate if needed to enforce portrait
+    // Draw with selfie mirror; apply -90 rotation correction when needed
     ctx.save();
-    if (!rotated) {
+    if (rotateFixDeg === -90) {
+      // Move origin to center of target and rotate CCW 90, then mirror
+      ctx.translate(targetW / 2, targetH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, -dw / 2, -dh / 2, dw, dh);
+    } else {
       ctx.translate(targetW, 0);
       ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0, vw, vh, dx, dy, dw, dh);
-    } else {
-      // Place origin at center of destination rect, rotate, mirror, then draw scaled
-      ctx.translate(dx + dw / 2, dy + dh / 2);
-      ctx.rotate(Math.PI / 2);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, -dw / 2, -dh / 2, dw, dh);
     }
     ctx.restore();
 
@@ -176,7 +188,7 @@ export function CameraCapture({ onCapture, onCancel }) {
               playsInline
               muted
               className="w-full h-full object-contain"
-              style={{ transform: needsRotate ? 'rotate(90deg) scaleX(-1)' : 'scaleX(-1)' }}
+              style={{ transform: rotateFixDeg === -90 ? 'rotate(-90deg) scaleX(-1)' : 'scaleX(-1)', transformOrigin: 'center center' }}
             />
             {isCounting && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/30">

@@ -632,7 +632,7 @@ run_git_operations() {
     # Force reset the working directory to match the remote repository
     print_action "Resetting working directory to match remote..."
     
-    # Capture old HEAD before any operations
+    # Capture old HEAD before any operations (already captured above, refresh to be safe)
     local old_head
     old_head=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git rev-parse HEAD 2>/dev/null || echo 'none'")
     print_action "Current HEAD: $old_head"
@@ -668,17 +668,17 @@ run_git_operations() {
     
     print_success "Working directory reset to match remote repository"
 
+    # Capture HEAD after reset/clean
+    local new_head
+    new_head=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git rev-parse HEAD")
+    print_info "New HEAD: $new_head"
+
     # Show last commit message only if HEAD changed
     if [ "$old_head" != "$new_head" ]; then
         local last_commit
         last_commit=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git log -1 --pretty=%s")
         print_info "Last Commit: $last_commit"
     fi
-
-   # Capture HEAD after pull
-    local new_head
-    new_head=$(sudo -u "$REAL_USER" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" bash -c "cd ${GIT_DIR} && git rev-parse HEAD")
-    print_info "New HEAD: $new_head"
 
     print_success "Git operations completed successfully"
 

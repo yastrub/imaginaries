@@ -9,9 +9,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { generateImage, GENERATORS, DEFAULT_GENERATOR } from '../config/imageGenerators.js';
 import { checkGenerationLimits } from '../middleware/subscriptionLimits.js';
-import { allowPrivateImages, getPlanConfig, allowCamera } from '../config/plans.js';
 import { generateLimiter } from '../middleware/rateLimiter.js';
-import { requiresWatermark } from '../config/plans.js';
 import { auth } from '../middleware/auth.js';
 import { uploadImage, addWatermark, deleteImage, uploadSketch } from '../config/cloudinary.js';
 import { settings } from '../config/apiSettings.js';
@@ -533,18 +531,19 @@ router.post('/', auth, generateLimiter, checkGenerationLimits, async (req, res) 
       ...(hasCamera && { fromCamera: true })
     };
     
-    // Check if user's plan allows private images
-    // Get user's subscription plan from database
-    const userResult = await query('SELECT subscription_plan FROM users WHERE id = $1', [userId]);
-    const userPlan = userResult.rows[0]?.subscription_plan;
-    
-    // Determine if the image should be private based on user's plan and request
+    // Determine if the image should be private based on DB plan flag and request
     let isPrivate = false;
-    if (is_private && userPlan && allowPrivateImages(userPlan)) {
-      isPrivate = true;
-      console.log(`[Server] Setting image as private for user ${userId} with plan ${userPlan}`);
-    } else if (is_private) {
-      console.log(`[Server] User ${userId} requested private image but plan ${userPlan} doesn't allow it`);
+    if (is_private) {
+      const planKeyRes2 = await query('SELECT subscription_plan FROM users WHERE id = $1', [userId]);
+      const planKey2 = planKeyRes2.rows?.[0]?.subscription_plan || 'free';
+      const allowPrivRes = await query('SELECT allow_private_images FROM plans WHERE key = $1', [planKey2]);
+      const allowPriv = !!allowPrivRes.rows?.[0]?.allow_private_images;
+      if (allowPriv) {
+        isPrivate = true;
+        console.log(`[Server] Setting image as private for user ${userId} with plan ${planKey2}`);
+      } else {
+        console.log(`[Server] User ${userId} requested private image but plan ${planKey2} doesn't allow it`);
+      }
     }
     
     const result = await query(
@@ -633,8 +632,12 @@ router.post('/download/:imageId', auth, async (req, res) => {
       [userId]
     );
 
-    const userPlan = userResult.rows[0]?.subscription_plan;
-    const needsWatermark = requiresWatermark(userPlan);
+    const userPlan = userResult.rows[0]?.subscription_plan || 'free';
+    let needsWatermark = true;
+    try {
+      const wmRes = await query('SELECT show_watermark FROM plans WHERE key = $1', [userPlan]);
+      needsWatermark = !!wmRes.rows?.[0]?.show_watermark;
+    } catch {}
 
     // No need to verify ownership for downloads
     console.log('[Server] Processing download request for image');

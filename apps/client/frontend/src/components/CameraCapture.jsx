@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Camera, RotateCw, SwitchCamera } from 'lucide-react';
+import { X, Camera, SwitchCamera } from 'lucide-react';
 
 export function CameraCapture({ onCapture, onCancel }) {
   const videoRef = useRef(null);
@@ -9,16 +9,14 @@ export function CameraCapture({ onCapture, onCancel }) {
   const [countdown, setCountdown] = useState(0);
   const [isCounting, setIsCounting] = useState(false);
   const [isFlash, setIsFlash] = useState(false);
-  const [rotation, setRotation] = useState(0); // 0,90,180,270 (clockwise)
   const [facing, setFacing] = useState('user'); // 'user' (front) | 'environment' (back)
+  const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
 
   // Load saved prefs
   useEffect(() => {
     try {
       const savedFacing = localStorage.getItem('cameraFacing');
       if (savedFacing === 'user' || savedFacing === 'environment') setFacing(savedFacing);
-      const savedRot = parseInt(localStorage.getItem('cameraRotation') || '0', 10);
-      if ([0,90,180,270].includes(savedRot)) setRotation(savedRot);
     } catch {}
   }, []);
 
@@ -26,13 +24,17 @@ export function CameraCapture({ onCapture, onCancel }) {
   useEffect(() => {
     try { localStorage.setItem('cameraFacing', facing); } catch {}
   }, [facing]);
-  useEffect(() => {
-    try { localStorage.setItem('cameraRotation', String(rotation)); } catch {}
-  }, [rotation]);
 
-  // Start/Restart stream based on facing
+  // Start/Restart stream based on facing, and detect available cameras
   useEffect(() => {
     let cancelled = false;
+    const updateCameras = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoInputs = devices.filter(d => d.kind === 'videoinput');
+        setHasMultipleCameras(videoInputs.length > 1);
+      } catch {}
+    };
     async function start() {
       try {
         // Stop old stream
@@ -47,16 +49,22 @@ export function CameraCapture({ onCapture, onCancel }) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
           setIsReady(true);
+          // After permissions granted, device enumeration will work reliably
+          updateCameras();
         }
       } catch (e) {
         setError(e?.message || 'Failed to access camera');
       }
     }
     start();
-    return () => { cancelled = true; };
+    navigator.mediaDevices?.addEventListener?.('devicechange', updateCameras);
+    return () => {
+      cancelled = true;
+      navigator.mediaDevices?.removeEventListener?.('devicechange', updateCameras);
+    };
   }, [facing]);
 
-  // No automatic rotation; user controls rotation manually
+  // No rotation control; rely on natural orientation
 
   const performCapture = async () => {
     if (!videoRef.current) return;
@@ -68,26 +76,15 @@ export function CameraCapture({ onCapture, onCancel }) {
     const vh = video.videoHeight;
     if (!vw || !vh) return;
 
-    // Set canvas to natural camera aspect (rotated if needed)
-    const rot = ((rotation % 360) + 360) % 360; // normalize
-    const rotated = rot === 90 || rot === 270;
-    canvas.width = rotated ? vh : vw;
-    canvas.height = rotated ? vw : vh;
-
+    // Natural camera aspect, no rotation
+    canvas.width = vw;
+    canvas.height = vh;
     ctx.save();
-    // Move origin to center
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    // Apply rotation (clockwise)
-    ctx.rotate((rot * Math.PI) / 180);
-    // Apply selfie mirror only for front camera
-    if (facing === 'user') ctx.scale(-1, 1);
-    // Draw full frame without cropping
-    if (!rotated) {
-      ctx.drawImage(video, -vw / 2, -vh / 2, vw, vh);
-    } else {
-      // After 90/270 rotation, width/height swap
-      ctx.drawImage(video, -vh / 2, -vw / 2, vh, vw);
+    if (facing === 'user') {
+      ctx.translate(vw, 0);
+      ctx.scale(-1, 1);
     }
+    ctx.drawImage(video, 0, 0, vw, vh);
     ctx.restore();
 
     const dataUrl = canvas.toDataURL('image/png');
@@ -138,7 +135,7 @@ export function CameraCapture({ onCapture, onCancel }) {
               playsInline
               muted
               className="w-full h-auto object-contain"
-              style={{ transform: `${facing==='user' ? 'scaleX(-1) ' : ''}rotate(${rotation}deg)`, transformOrigin: 'center center' }}
+              style={{ transform: facing==='user' ? 'scaleX(-1)' : 'none', transformOrigin: 'center center' }}
             />
             {isCounting && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/30">
@@ -155,26 +152,18 @@ export function CameraCapture({ onCapture, onCancel }) {
             )}
           </div>
           <div className="w-full flex gap-3 mt-2 items-center">
-            <button
-              type="button"
-              onClick={() => setFacing(f => f === 'user' ? 'environment' : 'user')}
-              disabled={!isReady || isCounting}
-              className="px-3 py-2 rounded-md bg-zinc-800 text-white hover:bg-zinc-700 disabled:opacity-50 flex items-center gap-2"
-              aria-label="Switch camera"
-              title="Switch camera"
-            >
-              <SwitchCamera className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setRotation(r => (r + 90) % 360)}
-              disabled={!isReady || isCounting}
-              className="px-3 py-2 rounded-md bg-zinc-800 text-white hover:bg-zinc-700 disabled:opacity-50 flex items-center gap-2"
-              aria-label="Rotate"
-              title="Rotate"
-            >
-              <RotateCw className="w-4 h-4" />
-            </button>
+            {hasMultipleCameras && (
+              <button
+                type="button"
+                onClick={() => setFacing(f => f === 'user' ? 'environment' : 'user')}
+                disabled={!isReady || isCounting}
+                className="px-3 py-2 rounded-md bg-zinc-800 text-white hover:bg-zinc-700 disabled:opacity-50 flex items-center gap-2"
+                aria-label="Switch camera"
+                title="Switch camera"
+              >
+                <SwitchCamera className="w-4 h-4" />
+              </button>
+            )}
             <button
               type="button"
               onClick={handleCapture}

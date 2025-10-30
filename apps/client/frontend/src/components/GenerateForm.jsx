@@ -121,9 +121,17 @@ export const GenerateForm = React.memo(function GenerateForm({
   const maskedFirstWord = useMemo(() => {
     const txt = typeof prompt === 'string' ? prompt.trim() : '';
     if (!txt) return '';
-    const m = txt.match(/^([^\s]+[,:.]?)/);
-    const head = m ? m[1] : txt.split(/\s+/)[0];
-    return head ? `${head}...` : '';
+    const tokenMatch = txt.match(/^(\S+)/);
+    const rawFirst = tokenMatch ? tokenMatch[1] : '';
+    const first = rawFirst.replace(/[,:.]+$/, '');
+    // Remainder after the first token
+    const remainder = txt.slice(rawFirst.length);
+    // Remove any leading punctuation and whitespace from remainder
+    const restAfterPunct = remainder.replace(/^[,:.\s]+/, '');
+    if (restAfterPunct.length > 0) {
+      return first ? `${first}...` : '';
+    }
+    return first;
   }, [prompt]);
 
   const showIcons = !isTyping;
@@ -250,6 +258,7 @@ export const GenerateForm = React.memo(function GenerateForm({
                   data-qa="prompt-textarea"
                   required
                   className={showMask ? 'text-transparent caret-white' : undefined}
+                  fixedHeightPx={showMask ? 64 : null}
                 />
                 {showMask && (
                   <div className="pointer-events-none absolute inset-0 px-6 py-4 pr-24 text-foreground text-xl leading-relaxed whitespace-pre-wrap break-words select-none">

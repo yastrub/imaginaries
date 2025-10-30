@@ -11,7 +11,7 @@ const JEWELRY_TYPES = [
   { id: 'bracelet', label: 'Bracelet' },
   { id: 'earrings', label: 'Earrings' },
   { id: 'pendant', label: 'Pendant' },
-  { id: 'watch', label: 'Watch' }
+  { id: 'brooch', label: 'Brooch' }
 ];
 
 // Create the provider component

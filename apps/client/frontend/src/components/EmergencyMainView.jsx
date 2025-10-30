@@ -35,7 +35,7 @@ export function EmergencyMainView({
         <div className="bg-zinc-800/50 backdrop-blur-sm rounded-xl p-6 mb-8">
           <h2 className="text-xl font-medium text-white mb-4">Generate Jewelry</h2>
           <div className="flex gap-2 flex-wrap mb-4">
-            {['Ring', 'Necklace', 'Earrings', 'Bracelet', 'Pendant'].map(type => (
+            {['Ring', 'Necklace', 'Earrings', 'Bracelet', 'Pendant', 'Brooch'].map(type => (
               <button 
                 key={type}
                 className="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1 rounded-full text-sm"

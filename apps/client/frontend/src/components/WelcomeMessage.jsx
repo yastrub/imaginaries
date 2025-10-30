@@ -88,14 +88,21 @@ const WelcomeMessageComponent = () => {
     <>
       <style>{styleContent}</style>
 
-      <h1 className="text-[4.0rem] leading-[1] font-extralight text-center mb-6 tracking-normal">
-        <span className="anim-text-flow">
-          {charElements}
-        </span>
-      </h1>
-      <p className="text-1xl text-zinc-500 text-center mb-8">
-        Create your dream jewelry using the prompt below:
-      </p>
+      <div
+        role="presentation"
+        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      >
+        <h1 className="text-[4.0rem] leading-[1] font-extralight text-center mb-6 tracking-normal select-none">
+          <span className="anim-text-flow">
+            {charElements}
+          </span>
+        </h1>
+        <p className="text-1xl text-zinc-500 text-center mb-8 select-none">
+          Create your dream jewelry using the prompt below:
+        </p>
+      </div>
     </>
   );
 };

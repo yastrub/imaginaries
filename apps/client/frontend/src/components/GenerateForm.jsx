@@ -257,8 +257,13 @@ export const GenerateForm = React.memo(function GenerateForm({
                   name="prompt"
                   data-qa="prompt-textarea"
                   required
-                  className={showMask ? 'text-transparent caret-white' : undefined}
+                  className={showMask ? 'text-transparent caret-white opacity-0' : undefined}
                   fixedHeightPx={showMask ? 64 : null}
+                  spellCheck={!showMask}
+                  autoCorrect={showMask ? 'off' : 'on'}
+                  autoCapitalize={showMask ? 'none' : undefined}
+                  data-gramm={showMask ? 'false' : undefined}
+                  data-enable-grammarly={showMask ? 'false' : undefined}
                 />
                 {showMask && (
                   <div className="pointer-events-none absolute inset-0 px-6 py-4 pr-24 text-foreground text-xl leading-relaxed whitespace-pre-wrap break-words select-none">

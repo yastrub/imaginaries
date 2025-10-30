@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Sparkles, Settings2, Pencil, Eye, EyeOff, Camera } from 'lucide-react';
 import { AutoResizeTextarea } from './AutoResizeTextarea';
 import { DrawingBoard } from './DrawingBoard';
@@ -25,6 +25,8 @@ export const GenerateForm = React.memo(function GenerateForm({
   const [isMobile, setIsMobile] = useState(false);
   // Always initialize as false (public/eye ON)
   const [isPrivate, setIsPrivate] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimerRef = useRef(null);
   
   // Get user subscription plan from Redux store
   const user = useSelector(state => state.auth.user);
@@ -64,7 +66,7 @@ export const GenerateForm = React.memo(function GenerateForm({
       console.log('GenerateForm: Received prompt-reused event:', event.detail.prompt);
       setPrompt(event.detail.prompt);
     };
-    
+
     // Function to check for the global prompt variable
     const checkGlobalPrompt = () => {
       if (window.__lastReusedPrompt) {
@@ -90,6 +92,42 @@ export const GenerateForm = React.memo(function GenerateForm({
       clearTimeout(timeoutId);
     };
   }, [setPrompt]);
+
+  const handlePromptInputChange = (e) => {
+    const v = e.target.value;
+    setPrompt(v);
+    setIsTyping(true);
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      setIsTyping(false);
+    }, 700);
+  };
+
+  const onPromptFocus = () => {
+    setIsTyping(true);
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+  };
+
+  const onPromptBlur = () => {
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      setIsTyping(false);
+    }, 150);
+  };
+
+  const maskedFirstWord = useMemo(() => {
+    const txt = typeof prompt === 'string' ? prompt.trim() : '';
+    if (!txt) return '';
+    const m = txt.match(/^([^\s]+[,:.]?)/);
+    const head = m ? m[1] : txt.split(/\s+/)[0];
+    return head ? `${head}...` : '';
+  }, [prompt]);
+
+  const showIcons = !isTyping;
+  const showMask = !isTyping && !!prompt;
 
   const handleDrawingComplete = (dataUrl, svgData) => {
     setDrawingThumbnail(dataUrl);
@@ -204,14 +242,23 @@ export const GenerateForm = React.memo(function GenerateForm({
                 <AutoResizeTextarea
                   ref={promptInputRef}
                   value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
+                  onChange={handlePromptInputChange}
+                  onFocus={onPromptFocus}
+                  onBlur={onPromptBlur}
                   placeholder=""
                   name="prompt"
                   data-qa="prompt-textarea"
                   required
+                  className={showMask ? 'text-transparent caret-white' : undefined}
                 />
+                {showMask && (
+                  <div className="pointer-events-none absolute inset-0 px-6 py-4 pr-24 text-foreground text-xl leading-relaxed whitespace-pre-wrap break-words select-none">
+                    {maskedFirstWord}
+                  </div>
+                )}
                 <div className="absolute right-4 top-0 h-[4rem] flex items-center">
-                  <div className="flex items-center gap-1 bg-zinc-800/50 p-1 rounded-lg">
+                  <div className={`flex items-center gap-1 bg-zinc-800/50 p-1 rounded-lg transition-opacity ${showIcons ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                  >
                     <button
                       type="button"
                       onClick={handleDrawingClick}

@@ -38,21 +38,12 @@ export function PromptProvider({ children }) {
   // Memoized jewelry types
   const jewelryTypes = useMemo(() => JEWELRY_TYPES, []);
   
-  // Handle prompt change with auto type selection and first-line break
+  // Handle prompt change with auto type selection (no formatting changes)
   const handlePromptChange = useCallback((newPrompt) => {
-    let txt = typeof newPrompt === 'string' ? newPrompt : '';
-    if (txt && !txt.includes('\n')) {
-      const m = txt.match(/^\s*([^\s,.:]+(?:[,.:]?))/);
-      if (m) {
-        const consumed = m[0].length;
-        const first = m[1].trim();
-        const rest = txt.slice(consumed).replace(/^\s+/, '');
-        txt = first + (rest ? `\n${rest}` : '\n');
-      }
-    }
-    const firstLine = (txt.split('\n')[0] || '').trim();
-    const firstWord = firstLine.replace(/[,:.]+$/, '');
-    const match = jewelryTypes.find(t => t.label.toLowerCase() === firstWord.toLowerCase());
+    const txt = typeof newPrompt === 'string' ? newPrompt : '';
+    // Determine the first token (strip trailing punctuation , . :)
+    const firstToken = (txt.split(/\s+/)[0] || '').replace(/[,:.]+$/, '');
+    const match = jewelryTypes.find(t => t.label.toLowerCase() === firstToken.toLowerCase());
     if (match) {
       if (selectedJewelryType !== match.id) {
         setSelectedJewelryType(match.id);

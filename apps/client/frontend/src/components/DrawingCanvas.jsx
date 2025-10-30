@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 import { getStroke } from 'perfect-freehand';
 import { Undo2, Redo2, X } from 'lucide-react';
 import { Button } from './ui/button';
+import { useSelector } from 'react-redux';
 
 function getSvgPathFromStroke(points) {
   if (!points.length) return '';
@@ -47,6 +48,7 @@ export const DrawingCanvas = forwardRef(({
   const pendingPointsRef = useRef([]);
   const rafIdRef = useRef(null);
   const baseCanvasRef = useRef(null);
+  const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
 
   // Update paths when savedPaths changes
   useEffect(() => {
@@ -246,8 +248,10 @@ export const DrawingCanvas = forwardRef(({
 
   const getPointerPosition = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (width / rect.width);
-    const y = (e.clientY - rect.top) * (height / rect.height);
+    let x = (e.clientX - rect.left) * (width / rect.width);
+    let y = (e.clientY - rect.top) * (height / rect.height);
+    if (x < 0) x = 0; else if (x > width) x = width;
+    if (y < 0) y = 0; else if (y > height) y = height;
     return [x, y];
   };
 
@@ -282,25 +286,48 @@ export const DrawingCanvas = forwardRef(({
     setIsDrawing(true);
     const point = getPointerPosition(e.nativeEvent || e);
     const native = e.nativeEvent || e;
-    const pressure = typeof native.pressure === 'number' && native.pressure > 0 ? native.pressure : null;
+    const raw = typeof native.pressure === 'number' ? native.pressure : NaN;
+    const pressure = Number.isFinite(raw) ? Math.max(raw, 0.2) : 0.35;
     lastPoint.current = point;
     lastTime.current = Date.now();
     velocities.current = [];
     if (rafIdRef.current) { try { cancelAnimationFrame(rafIdRef.current); } catch {} ; rafIdRef.current = null; }
     pendingPointsRef.current = [];
-    setCurrentPath([pressure != null ? [...point, pressure] : point]);
+    setCurrentPath([[...point, pressure]]);
   };
 
   const handlePointerMove = (e) => {
     if (!isDrawing) return;
     e.preventDefault();
     const native = e.nativeEvent || e;
-    const events = typeof native.getCoalescedEvents === 'function' ? native.getCoalescedEvents() : [native];
+    const events = (typeof native.getCoalescedEvents === 'function') ? native.getCoalescedEvents() : [native];
     const additions = [];
     for (const ev of events) {
       const point = getPointerPosition(ev);
-      const pressure = typeof ev.pressure === 'number' && ev.pressure > 0 ? ev.pressure : null;
-      additions.push(pressure != null ? [...point, pressure] : point);
+      const raw = typeof ev.pressure === 'number' ? ev.pressure : NaN;
+      const pressure = Number.isFinite(raw) ? Math.max(raw, 0.2) : 0.35;
+      const lp = lastPoint.current;
+      if (lp) {
+        const dx = point[0] - lp[0];
+        const dy = point[1] - lp[1];
+        const adx = Math.abs(dx);
+        const ady = Math.abs(dy);
+        if (adx < 0.05 && ady < 0.05) {
+          continue;
+        }
+        const dist = Math.hypot(dx, dy);
+        if (dist > 1.2) {
+          const steps = Math.min(24, Math.floor(dist / 1.2));
+          for (let s = 1; s < steps; s++) {
+            const t = s / steps;
+            const ix = lp[0] + dx * t;
+            const iy = lp[1] + dy * t;
+            additions.push([ix, iy, pressure]);
+          }
+        }
+      }
+      lastPoint.current = point;
+      additions.push([...point, pressure]);
     }
     if (additions.length) {
       pendingPointsRef.current.push(...additions);
@@ -400,7 +427,7 @@ export const DrawingCanvas = forwardRef(({
     <div className="relative">
       <div 
         className="absolute top-2 left-2 flex items-center gap-0.5 bg-zinc-900/90 rounded-lg backdrop-blur-sm shadow-lg overflow-hidden"
-        style={{ zIndex: 50, pointerEvents: isDrawing ? 'none' : 'auto' }}
+        style={{ zIndex: 50, pointerEvents: 'none' }}
       >
         <Button
           variant="ghost"
@@ -408,6 +435,7 @@ export const DrawingCanvas = forwardRef(({
           onClick={handleUndo}
           disabled={paths.length === 0}
           className="h-8 w-8 rounded-none bg-transparent hover:bg-zinc-700/50"
+          style={{ pointerEvents: 'auto' }}
         >
           <Undo2 className="h-4 w-4" />
         </Button>
@@ -417,6 +445,7 @@ export const DrawingCanvas = forwardRef(({
           onClick={handleRedo}
           disabled={undoStack.length === 0}
           className="h-8 w-8 rounded-none bg-transparent hover:bg-zinc-700/50"
+          style={{ pointerEvents: 'auto' }}
         >
           <Redo2 className="h-4 w-4" />
         </Button>
@@ -426,6 +455,7 @@ export const DrawingCanvas = forwardRef(({
           onClick={handleClear}
           disabled={paths.length === 0}
           className="h-8 w-8 rounded-none bg-transparent hover:bg-zinc-700/50"
+          style={{ pointerEvents: 'auto' }}
         >
           <X className="h-4 w-4" />
         </Button>
@@ -441,6 +471,7 @@ export const DrawingCanvas = forwardRef(({
         onPointerCancel={handlePointerUp}
         style={{ 
           touchAction: 'none',
+          overscrollBehavior: 'none',
           width: '100%',
           height: 'auto',
           maxWidth: `${width}px`,

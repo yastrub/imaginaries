@@ -23,12 +23,14 @@ export function PromptProvider({ children }) {
   if (typeof window !== 'undefined') {
     window.PROMPT_CONTEXT_REF = contextRef;
   }
+  // Initialize from the first jewelry type to avoid post-mount race
+  const FIRST = JEWELRY_TYPES[0] || { id: '', label: '' };
   // State for prompt
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState(FIRST.label);
   
   // State for jewelry type
-  const [selectedJewelryType, setSelectedJewelryType] = useState('');
-  const [selectedLabel, setSelectedLabel] = useState('');
+  const [selectedJewelryType, setSelectedJewelryType] = useState(FIRST.id);
+  const [selectedLabel, setSelectedLabel] = useState(FIRST.label);
   
   // State for presets
   const [selectedPresets, setSelectedPresets] = useState([]);
@@ -99,17 +101,7 @@ export function PromptProvider({ children }) {
     setIsPresetsModalOpen(false);
   }, []);
 
-  // Auto-select the first jewelry type on initial load if none is selected
-  React.useEffect(() => {
-    if (!selectedJewelryType && jewelryTypes && jewelryTypes.length > 0) {
-      const first = jewelryTypes[0];
-      setSelectedJewelryType(first.id);
-      setSelectedLabel(first.label);
-      setPrompt(first.label);
-    }
-    // run once on mount; guards prevent re-run side effects
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  
   
   // Get final prompt (combining prompt and presets)
   const getFinalPrompt = useCallback(() => {

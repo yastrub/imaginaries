@@ -159,6 +159,37 @@ export function DrawingBoard({
     };
   }, [isFullscreen, usingNativeFullscreen]);
 
+  // Defensive: on terminal app, ensure container doesn't retain viewport-height in non-fullscreen after gestures
+  useEffect(() => {
+    const el = canvasContainerRef.current;
+    if (!el) return;
+    const isTerminal = () => {
+      try { return document.documentElement.classList.contains('terminal-app') || localStorage.getItem('terminal_app') === '1'; } catch { return false; }
+    };
+    const resetSize = () => {
+      if (!isFullscreen && isTerminal()) {
+        try {
+          el.style.height = 'auto';
+          el.style.minHeight = '0px';
+          el.style.backgroundColor = 'transparent';
+        } catch {}
+      }
+    };
+    // Run once and wire listeners
+    resetSize();
+    const opts = { passive: true };
+    el.addEventListener('touchend', resetSize, opts);
+    el.addEventListener('pointerup', resetSize, opts);
+    window.addEventListener('orientationchange', resetSize);
+    window.addEventListener('resize', resetSize);
+    return () => {
+      el.removeEventListener('touchend', resetSize);
+      el.removeEventListener('pointerup', resetSize);
+      window.removeEventListener('orientationchange', resetSize);
+      window.removeEventListener('resize', resetSize);
+    };
+  }, [isFullscreen]);
+
   // Allow closing with Escape key
   useEffect(() => {
     if (!isFullscreen || usingNativeFullscreen) return;
@@ -185,6 +216,34 @@ export function DrawingBoard({
       document.removeEventListener('webkitfullscreenchange', onFsChange);
     };
   }, []);
+
+  // Extra guard: on mobile/terminal, gestures can exit native FS without events. Verify and correct state.
+  useEffect(() => {
+    const verify = () => {
+      const native = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      if (!native && usingNativeFullscreen) {
+        setUsingNativeFullscreen(false);
+        setIsFullscreen(false);
+      }
+    };
+    const opts = { passive: true };
+    window.addEventListener('resize', verify, opts);
+    window.addEventListener('orientationchange', verify);
+    document.addEventListener('visibilitychange', verify);
+    window.addEventListener('focus', verify);
+    window.addEventListener('blur', verify);
+    window.addEventListener('touchend', verify, opts);
+    window.addEventListener('pointerup', verify, opts);
+    return () => {
+      window.removeEventListener('resize', verify);
+      window.removeEventListener('orientationchange', verify);
+      document.removeEventListener('visibilitychange', verify);
+      window.removeEventListener('focus', verify);
+      window.removeEventListener('blur', verify);
+      window.removeEventListener('touchend', verify);
+      window.removeEventListener('pointerup', verify);
+    };
+  }, [usingNativeFullscreen]);
 
   // Save drawing state when it changes
   useEffect(() => {
@@ -265,9 +324,15 @@ export function DrawingBoard({
       <div 
         ref={canvasContainerRef} 
         className={`relative w-full flex justify-center ${
-          isFullscreen ? 'bg-black items-center' : ''
-        } ${isFullscreen && !usingNativeFullscreen ? 'fixed inset-0 z-[9999]' : ''}`}
-        style={{ maxWidth: isFullscreen ? 'none' : '512px', width: isFullscreen ? '100vw' : '100%', height: isFullscreen ? '100dvh' : 'auto' }}
+          isFullscreen && !usingNativeFullscreen ? 'fixed inset-0 z-[9999] bg-black items-center' : ''
+        }`}
+        style={{
+          maxWidth: isFullscreen && !usingNativeFullscreen ? 'none' : '512px',
+          width: isFullscreen && !usingNativeFullscreen ? '100vw' : '100%',
+          height: isFullscreen && !usingNativeFullscreen ? '100dvh' : 'auto',
+          minHeight: 0,
+          overscrollBehavior: 'contain'
+        }}
       >
         <DrawingCanvas
           ref={canvasRef}

@@ -90,9 +90,8 @@ const WelcomeMessageComponent = () => {
 
       <div
         role="presentation"
-        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-        onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onMouseDown={(e) => { e.stopPropagation(); }}
+        onClick={(e) => { e.stopPropagation(); }}
       >
         <h1 className="text-[4.0rem] leading-[1] font-extralight text-center mb-6 tracking-normal select-none">
           <span className="anim-text-flow">

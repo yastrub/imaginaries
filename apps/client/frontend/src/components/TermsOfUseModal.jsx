@@ -164,6 +164,21 @@ export function TermsOfUseModal({ onClose }) {
               Content on the Platform (including generated outputs) is provided for general information and creative exploration only and does not
               constitute professional, legal, financial, or design advice. You should obtain professional guidance where appropriate.
             </p>
+            
+            <h3>19. Ownership and Use of Generated Images</h3>
+            <p>
+              All images created or generated through the Platform, including on any connected terminal devices, are owned exclusively by
+              IMAGINARIES. You receive no ownership rights in such images and may reproduce, distribute, or otherwise use them outside the Platform without our prior written permission.
+            </p>
+            <p>
+              You may publicly share official Platform-generated share links to drive traffic to the Platform or to the specific piece you created.
+              You may not capture, scrape, or re-host the underlying images (or their derivatives) outside the Platform.
+            </p>
+            <p>
+              We may, at our sole discretion, offer a percentage-based revenue share or creator rewards if your content generates revenue.
+              Any such payments are discretionary, may be modified or discontinued at any time, and are not guaranteed or owed unless and until
+              expressly confirmed by us in writing.
+            </p>
 
             <p className="mt-8 text-sm text-zinc-500">
               Last updated: April 21, 2025

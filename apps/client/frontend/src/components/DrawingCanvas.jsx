@@ -161,9 +161,9 @@ export const DrawingCanvas = forwardRef(({
 
     return {
       size: scaledSize,
-      thinning: 0.5,
-      smoothing: 0.5,
-      streamline: 0.5,
+      thinning: 0.3,
+      smoothing: 0.4,
+      streamline: 0.15,
       easing: (t) => t,
       start: {
         taper: Math.min(12 * scaleFactor, scaledSize),
@@ -233,8 +233,9 @@ export const DrawingCanvas = forwardRef(({
 
   const handlePointerDown = (e) => {
     e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
     setIsDrawing(true);
-    const point = getPointerPosition(e);
+    const point = getPointerPosition(e.nativeEvent || e);
     lastPoint.current = point;
     lastTime.current = Date.now();
     velocities.current = [];
@@ -244,14 +245,23 @@ export const DrawingCanvas = forwardRef(({
   const handlePointerMove = (e) => {
     if (!isDrawing) return;
     e.preventDefault();
-    const point = getPointerPosition(e);
-    const velocity = calculateVelocity(point);
-    setCurrentPath(prev => [...prev, [...point, velocity]]);
+    const native = e.nativeEvent || e;
+    const events = typeof native.getCoalescedEvents === 'function' ? native.getCoalescedEvents() : [native];
+    const additions = [];
+    for (const ev of events) {
+      const point = getPointerPosition(ev);
+      const velocity = calculateVelocity(point);
+      additions.push([...point, velocity]);
+    }
+    if (additions.length) {
+      setCurrentPath(prev => [...prev, ...additions]);
+    }
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e) => {
     if (!isDrawing) return;
     setIsDrawing(false);
+    try { e && e.currentTarget && e.currentTarget.releasePointerCapture && e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
     lastPoint.current = null;
     
     if (currentPath.length > 0) {
@@ -384,6 +394,7 @@ export const DrawingCanvas = forwardRef(({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         onPointerOut={handlePointerUp}
         style={{ 
           touchAction: 'none',

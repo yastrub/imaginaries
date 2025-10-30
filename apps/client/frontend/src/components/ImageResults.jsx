@@ -171,8 +171,8 @@ export const ImageResults = React.memo(function ImageResults({
                       onToggleLike={handleToggleLike}
                       isLiked={likedImages?.has(image?.id) || false}
                       likesCount={likeCounts?.[image?.id] || image?.like_count || 0}
-                      allImages={isAuthenticated ? images : publicImages}
-                      currentIndex={index}
+                      allImages={displayImages}
+                      currentIndex={displayImages.findIndex((img) => getImageKey(img, 0) === getImageKey(image, 0))}
                     />
                   )}
                 </div>

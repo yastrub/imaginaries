@@ -25,6 +25,7 @@ export function DrawingBoard({
   const [canvasSize, setCanvasSize] = useState(512);
   const canvasRef = useRef(null);
   const canvasContainerRef = useRef(null);
+  const prevOverflowRef = useRef('');
 
   // Update canvas size when fullscreen changes or window resizes
   useEffect(() => {
@@ -77,29 +78,41 @@ export function DrawingBoard({
   };
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      canvasContainerRef.current?.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
-    }
+    setIsFullscreen(prev => !prev);
   };
 
   const adjustBrushSize = (delta) => {
     setBrushSize(prev => Math.min(Math.max(1, prev + delta), 32));
   };
 
+  // Lock body scroll when in-app fullscreen is active and restore on exit
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    if (isFullscreen) {
+      try {
+        prevOverflowRef.current = document.body.style.overflow || '';
+        document.body.style.overflow = 'hidden';
+      } catch {}
+    } else {
+      try {
+        document.body.style.overflow = prevOverflowRef.current || '';
+      } catch {}
+    }
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      try { document.body.style.overflow = prevOverflowRef.current || ''; } catch {}
     };
-  }, []);
+  }, [isFullscreen]);
+
+  // Allow closing with Escape key
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsFullscreen(false);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isFullscreen]);
 
   // Save drawing state when it changes
   useEffect(() => {

@@ -451,9 +451,7 @@ function AppContent() {
     // First, store the prompt for later use with the image
     const promptForImage = submissionPrompt;
     
-    // Clear the prompt completely (like the Clear button in Presets Modal)
-    // This is done BEFORE the API call to ensure UI responsiveness
-    clearPromptCompletely();
+    
     
     // Then make the API call to generate the image
     generateImage(promptForImage, user?.id, drawingPng, drawingSvg, isPrivate, cameraPng)

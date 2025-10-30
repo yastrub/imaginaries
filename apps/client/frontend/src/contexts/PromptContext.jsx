@@ -38,10 +38,34 @@ export function PromptProvider({ children }) {
   // Memoized jewelry types
   const jewelryTypes = useMemo(() => JEWELRY_TYPES, []);
   
-  // Handle prompt change
+  // Handle prompt change with auto type selection and first-line break
   const handlePromptChange = useCallback((newPrompt) => {
-    setPrompt(newPrompt);
-  }, []);
+    let txt = typeof newPrompt === 'string' ? newPrompt : '';
+    if (txt && !txt.includes('\n')) {
+      const m = txt.match(/^\s*([^\s,.:]+(?:[,.:]?))/);
+      if (m) {
+        const consumed = m[0].length;
+        const first = m[1].trim();
+        const rest = txt.slice(consumed).replace(/^\s+/, '');
+        txt = first + (rest ? `\n${rest}` : '\n');
+      }
+    }
+    const firstLine = (txt.split('\n')[0] || '').trim();
+    const firstWord = firstLine.replace(/[,:.]+$/, '');
+    const match = jewelryTypes.find(t => t.label.toLowerCase() === firstWord.toLowerCase());
+    if (match) {
+      if (selectedJewelryType !== match.id) {
+        setSelectedJewelryType(match.id);
+        setSelectedLabel(match.label);
+      }
+    } else {
+      if (selectedJewelryType) {
+        setSelectedJewelryType('');
+        setSelectedLabel('');
+      }
+    }
+    setPrompt(txt);
+  }, [jewelryTypes, selectedJewelryType]);
   
   // Handle jewelry type selection
   const selectJewelryType = useCallback((type, label) => {

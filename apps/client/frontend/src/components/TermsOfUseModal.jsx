@@ -1,11 +1,12 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { useViewportOverlay } from '../hooks/useViewportOverlay';
 import { X } from 'lucide-react';
 import { Button } from './ui/button';
 
 export function TermsOfUseModal({ onClose }) {
   const overlayStyle = useViewportOverlay();
-  return (
+  return ReactDOM.createPortal(
     <div className="fixed bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 overflow-y-auto" style={overlayStyle}>
       <div className="bg-zinc-900 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-xl relative">
         <div className="p-6 border-b border-zinc-800 flex items-center justify-between sticky top-0 bg-zinc-900 z-10">
@@ -176,6 +177,7 @@ export function TermsOfUseModal({ onClose }) {
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -315,7 +315,7 @@ export const GenerateForm = React.memo(function GenerateForm({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full sm:w-auto primary-button h-16 self-start flex items-center"
+              className="w-full sm:w-auto primary-button h-18 self-start flex items-center"
               id="generateBtn"
             >
               {isLoading ? (

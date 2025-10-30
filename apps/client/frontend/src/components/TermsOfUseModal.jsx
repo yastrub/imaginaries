@@ -9,7 +9,7 @@ export function TermsOfUseModal({ onClose }) {
     <div className="fixed bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 overflow-y-auto" style={overlayStyle}>
       <div className="bg-zinc-900 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-xl relative">
         <div className="p-6 border-b border-zinc-800 flex items-center justify-between sticky top-0 bg-zinc-900 z-10">
-          <h2 className="text-xl font-semibold text-white">Terms of Use</h2>
+          <h2 className="text-xl font-semibold text-white">Terms of Service</h2>
           <Button
             variant="ghost"
             size="icon"
@@ -130,10 +130,42 @@ export function TermsOfUseModal({ onClose }) {
               If you have any questions about these Terms, please contact us at info@imaginaries.app.
             </p>
             
+            <h3>14. AI-Generated Content</h3>
+            <p>
+              The Platform uses AI and automated systems to generate content (including images and descriptions). Outputs may be inaccurate, incomplete,
+              non-unique, or unsuitable for your intended purpose. You are solely responsible for reviewing and validating any generated content before use.
+              We make no warranties regarding the accuracy, originality, or suitability of AI-generated content.
+            </p>
+
+            <h3>15. Bespoke Production and Estimates</h3>
+            <p>
+              Jewelry pieces are bespoke and produced to order. Any timelines, specifications, or cost ranges shown in the Platform are estimates and may
+              vary based on materials, craftsmanship, and feasibility constraints. We will make commercially reasonable efforts to deliver within the
+              selected budget and options. If we determine we cannot deliver the piece, we may cancel the order from our side and provide a full refund
+              if no production work has started.
+            </p>
+
+            <h3>16. Payments and Refunds</h3>
+            <p>
+              By placing an order, you acknowledge and agree to our Refund Policy. For bespoke production, refunds are generally not issued. If you cancel
+              within 48 hours of placing an order, we will refund the amount minus 500 AED as a non-refundable CAD/design service charge. No refunds are
+              provided after production work has commenced.
+            </p>
+
+            <h3>17. Third-Party Services</h3>
+            <p>
+              The Platform may rely on third-party providers (e.g., AI model vendors, hosting, payments). We are not responsible for outages, limitations,
+              or actions of third parties. Your use of such services may be subject to those providers’ terms and policies.
+            </p>
+
+            <h3>18. No Professional Advice</h3>
+            <p>
+              Content on the Platform (including generated outputs) is provided for general information and creative exploration only and does not
+              constitute professional, legal, financial, or design advice. You should obtain professional guidance where appropriate.
+            </p>
+
             <p className="mt-8 text-sm text-zinc-500">
               Last updated: April 21, 2025
-            </p>
-            <p className="mt-8 text-sm text-zinc-500">
             </p>
           </div>
         </div>

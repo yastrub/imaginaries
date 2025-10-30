@@ -24,6 +24,9 @@ let PENDING_HTML_SINCE = 0;
 let PENDING_SIG_TARGET = null;
 let PENDING_SIG_SINCE = 0;
 const MIN_UPDATE_DELAY_MS = 60 * 1000;
+let unpairedTimerId = null;
+let loopTimerId = null;
+let loopInFlight = false;
 
 function isTerminalApp() {
   try {
@@ -534,7 +537,11 @@ export function startTerminalAgent({ appVersion = 'web' } = {}) {
       } catch {}
     };
     // Start update monitor even while unpaired, so app can refresh
-    setInterval(() => { checkServerVersion(); checkForSelfUpdate(); }, 60 * 1000);
+    if (unpairedTimerId) {
+      try { clearInterval(unpairedTimerId); } catch {}
+      unpairedTimerId = null;
+    }
+    unpairedTimerId = setInterval(() => { checkServerVersion(); checkForSelfUpdate(); }, 60 * 1000);
     // Trigger an immediate check now
     checkServerVersion();
     checkForSelfUpdate();
@@ -547,7 +554,20 @@ export function startTerminalAgent({ appVersion = 'web' } = {}) {
 }
 
 function startLoops(tid, appVersion) {
-  // Periodic tasks
+  // Clear any unpaired timer when entering paired loops
+  if (unpairedTimerId) {
+    try { clearInterval(unpairedTimerId); } catch {}
+    unpairedTimerId = null;
+  }
+
+  // Cancel any existing scheduled loop
+  if (loopTimerId) {
+    try { clearTimeout(loopTimerId); } catch {}
+    loopTimerId = null;
+  }
+  loopInFlight = false;
+
+  // Periodic tasks (serialized)
   const loop = async () => {
     // First, detect server version so heartbeat reports the latest numeric build id
     await checkServerVersion(tid);
@@ -564,6 +584,15 @@ function startLoops(tid, appVersion) {
     // Check for self-update (server version is primary)
     await checkForSelfUpdate();
   };
-  loop();
-  setInterval(loop, 60 * 1000);
+  const schedule = () => {
+    loopTimerId = setTimeout(async () => {
+      if (loopInFlight) { schedule(); return; }
+      loopInFlight = true;
+      try { await loop(); } finally { loopInFlight = false; }
+      schedule();
+    }, 60 * 1000);
+  };
+  // Run once immediately, then schedule serialized repeats
+  (async () => { if (!loopInFlight) { loopInFlight = true; try { await loop(); } finally { loopInFlight = false; } } })();
+  schedule();
 }

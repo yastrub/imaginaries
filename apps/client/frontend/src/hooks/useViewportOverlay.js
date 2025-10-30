@@ -3,29 +3,47 @@ import { useEffect, useState } from 'react';
 export function useViewportOverlay() {
   const [rect, setRect] = useState(null);
   useEffect(() => {
-    const update = () => {
-      const vv = typeof window !== 'undefined' ? window.visualViewport : null;
-      if (vv) {
-        setRect({ top: vv.offsetTop || 0, left: vv.offsetLeft || 0, width: vv.width || window.innerWidth, height: vv.height || window.innerHeight });
-      } else {
-        setRect({ top: 0, left: 0, width: window.innerWidth, height: window.innerHeight });
-      }
+    let rafId = null;
+    const commit = (next) => {
+      setRect((prev) => {
+        if (!prev) return next;
+        if (
+          prev.top === next.top &&
+          prev.left === next.left &&
+          prev.width === next.width &&
+          prev.height === next.height
+        ) return prev;
+        return next;
+      });
     };
-    update();
+    const schedule = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+        if (vv) {
+          commit({ top: vv.offsetTop || 0, left: vv.offsetLeft || 0, width: vv.width || window.innerWidth, height: vv.height || window.innerHeight });
+        } else {
+          commit({ top: 0, left: 0, width: window.innerWidth, height: window.innerHeight });
+        }
+      });
+    };
+    schedule();
     const vv = typeof window !== 'undefined' ? window.visualViewport : null;
     if (vv) {
-      vv.addEventListener('resize', update);
-      vv.addEventListener('scroll', update);
+      vv.addEventListener('resize', schedule);
+      vv.addEventListener('scroll', schedule);
     }
-    window.addEventListener('resize', update);
-    window.addEventListener('orientationchange', update);
+    window.addEventListener('resize', schedule);
+    window.addEventListener('orientationchange', schedule);
     return () => {
+      if (rafId) cancelAnimationFrame(rafId);
       if (vv) {
-        vv.removeEventListener('resize', update);
-        vv.removeEventListener('scroll', update);
+        vv.removeEventListener('resize', schedule);
+        vv.removeEventListener('scroll', schedule);
       }
-      window.removeEventListener('resize', update);
-      window.removeEventListener('orientationchange', update);
+      window.removeEventListener('resize', schedule);
+      window.removeEventListener('orientationchange', schedule);
     };
   }, []);
   if (!rect) return { position: 'fixed', inset: 0 };

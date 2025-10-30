@@ -11,6 +11,8 @@ import { useToast } from './ui/use-toast';
 import { QuoteModal } from './QuoteModal';
 import { useConsolidatedData } from '../hooks/useConsolidatedData';
 import { getVersionString } from '../config/app';
+import { TermsOfUseModal } from './TermsOfUseModal';
+import { RefundPolicyModal } from './RefundPolicyModal';
 
 // ███████╗████████╗ █████╗ ████████╗███████╗
 // ██╔════╝╚══██╔══╝██╔══██╗╚══██╔══╝██╔════╝
@@ -77,6 +79,8 @@ export function SharePage() {
   const { user, isAuthenticated, isEmailConfirmed } = useReduxAuth();
   const { likedImages, likeCounts, toggleLike, fetchLikes } = useLikes();
   const { toast } = useToast();
+  const [openTerms, setOpenTerms] = useState(false);
+  const [openRefund, setOpenRefund] = useState(false);
 
   // If no imageId is provided, redirect to home
   if (!imageId) {
@@ -578,7 +582,19 @@ export function SharePage() {
 
       {/* Footer */}
       <footer className="p-4 text-center text-zinc-600 text-xs">
-        © IMAGINARIES - OCTADIAM FZCO
+        <div className="flex flex-col items-center gap-2">
+          <div>© IMAGINARIES - OCTADIAM FZCO</div>
+          <div className="flex items-center gap-4">
+            <button className="hover:text-zinc-300 underline underline-offset-4" onClick={() => setOpenTerms(true)}>
+              Terms of Service
+            </button>
+            <button className="hover:text-zinc-300 underline underline-offset-4" onClick={() => setOpenRefund(true)}>
+              Refund Policy
+            </button>
+          </div>
+        </div>
+        {openTerms && <TermsOfUseModal onClose={() => setOpenTerms(false)} />}
+        {openRefund && <RefundPolicyModal onClose={() => setOpenRefund(false)} />}
       </footer>
 
       {/* Auth modal is now handled by CompletelyIsolatedAuth component */}

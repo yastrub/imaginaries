@@ -92,7 +92,7 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
     
     // Check if terms are accepted for signup
     if (isSignUp && !acceptedTerms) {
-      setError('You must accept the Terms of Use to create an account');
+      setError('You must accept the Terms of Service to create an account');
       shakeForm();
       setLoading(false);
       return;
@@ -646,7 +646,7 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
                         }}
                         className="text-primary hover:underline focus:outline-none"
                       >
-                        Terms of Use
+                        Terms of Service
                       </button>
                     </label>
                   </div>

@@ -133,6 +133,16 @@ export function ImageLightbox({
     canGoPrevRef.current = canGoPrev;
   }, [canGoNext, canGoPrev]);
   
+  // Clamp activeIndex when images array length changes to avoid undefined currentImage
+  useEffect(() => {
+    if (Array.isArray(images) && images.length > 0) {
+      setActiveIndex(prev => {
+        const clamped = Math.min(Math.max(0, prev), images.length - 1);
+        return Number.isFinite(clamped) ? clamped : 0;
+      });
+    }
+  }, [images.length]);
+  
   // Track the last navigation direction for keyboard navigation recovery
   const [lastNavDirection, setLastNavDirection] = useState(null);
   
@@ -389,13 +399,20 @@ export function ImageLightbox({
   
   // Update state when current image changes
   useEffect(() => {
+    // If currentImage is temporarily undefined during list updates, fall back to props
+    if (!currentImage) {
+      setIsLikedState(!!isLiked);
+      setLikesCountState(parseInt(likesCount || 0, 10));
+      return;
+    }
+
     // Check all possible sources for liked status
     // First check if the image object has is_liked property
     // Then fall back to isLiked prop
     let likedStatus = false;
     const img = currentImage;
     
-    if (img.is_liked !== undefined) {
+    if (img?.is_liked !== undefined) {
       // Convert to boolean to handle string values like 'true'/'false'
       likedStatus = img.is_liked === true || img.is_liked === 'true';
     } else if (isLiked !== undefined) {
@@ -403,7 +420,7 @@ export function ImageLightbox({
     }
     
     setIsLikedState(likedStatus);
-    setLikesCountState(parseInt(img.like_count || likesCount || 0, 10));
+    setLikesCountState(parseInt((img?.like_count ?? likesCount ?? 0), 10));
   }, [currentImage, isLiked, likesCount, activeIndex]);
 
   // Handle click on the backdrop to close
@@ -467,8 +484,10 @@ export function ImageLightbox({
         setLikesCountState(prev => prev + (isLikedState ? -1 : 1));
         
         // Also update the image object directly for consistency
-        currentImage.is_liked = newLikedState;
-        currentImage.like_count = parseInt(currentImage.like_count || 0, 10) + (isLikedState ? -1 : 1);
+        if (currentImage) {
+          currentImage.is_liked = newLikedState;
+          currentImage.like_count = parseInt(currentImage.like_count || 0, 10) + (isLikedState ? -1 : 1);
+        }
         
         console.log('Like toggled successfully:', {
           imageId: currentImage.id,
@@ -490,6 +509,7 @@ export function ImageLightbox({
   const handleReuseClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!currentImage) return;
     if (onReusePrompt) {
       onReusePrompt(currentImage.prompt);
       onClose();
@@ -514,6 +534,7 @@ export function ImageLightbox({
   const handleShare = async (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!currentImage) return;
     
     // All images are sharable with direct link, even private ones
     const shareUrl = `${window.location.origin}/share/${currentImage.id}`;
@@ -769,7 +790,7 @@ export function ImageLightbox({
               }}
             >
               {/* Privacy indicator - only shown for private images */}
-              {currentImage.is_private && (
+              {currentImage?.is_private && (
                 <button
                   className="p-2 rounded-full bg-black/30 flex items-center justify-center mr-2"
                   title="This image is private"

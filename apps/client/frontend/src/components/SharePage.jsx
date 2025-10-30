@@ -588,6 +588,7 @@ export function SharePage() {
             <button className="hover:text-zinc-300 underline underline-offset-4" onClick={() => setOpenTerms(true)}>
               Terms of Service
             </button>
+            |
             <button className="hover:text-zinc-300 underline underline-offset-4" onClick={() => setOpenRefund(true)}>
               Refund Policy
             </button>

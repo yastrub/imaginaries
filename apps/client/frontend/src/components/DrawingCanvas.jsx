@@ -44,6 +44,9 @@ export const DrawingCanvas = forwardRef(({
   const velocities = useRef([]);
   const isInitialDrawingLoaded = useRef(false);
   const currentTool = useRef(tool);
+  const pendingPointsRef = useRef([]);
+  const rafIdRef = useRef(null);
+  const baseCanvasRef = useRef(null);
 
   // Update paths when savedPaths changes
   useEffect(() => {
@@ -193,11 +196,53 @@ export const DrawingCanvas = forwardRef(({
       const img = new Image();
       img.onload = () => {
         ctx.drawImage(img, 0, 0, width, height);
+        if (!baseCanvasRef.current) baseCanvasRef.current = document.createElement('canvas');
+        const b = baseCanvasRef.current;
+        b.width = width; b.height = height;
+        const bctx = b.getContext('2d');
+        bctx.fillStyle = 'white';
+        bctx.fillRect(0, 0, width, height);
+        bctx.drawImage(img, 0, 0, width, height);
         isInitialDrawingLoaded.current = true;
       };
       img.src = initialDrawing;
     }
   }, [width, height, initialDrawing]);
+
+  useEffect(() => {
+    if (!baseCanvasRef.current) baseCanvasRef.current = document.createElement('canvas');
+    const b = baseCanvasRef.current;
+    b.width = width; b.height = height;
+  }, [width, height]);
+
+  useEffect(() => {
+    const base = baseCanvasRef.current;
+    if (!base) return;
+    const bctx = base.getContext('2d');
+    bctx.fillStyle = 'white';
+    bctx.fillRect(0, 0, width, height);
+    paths.forEach(path => {
+      if (path.points.length > 0) {
+        const scaleX = width / path.width;
+        const scaleY = height / path.height;
+        const scaledPoints = path.points.map(point => [
+          point[0] * scaleX,
+          point[1] * scaleY,
+          ...(point.slice(2) || [])
+        ]);
+        const stroke = getStroke(scaledPoints, {
+          ...path.options,
+          size: path.options.size * (width / path.width)
+        });
+        const pathData = getSvgPathFromStroke(stroke);
+        const tempPath = new Path2D(pathData);
+        bctx.globalCompositeOperation = path.tool === 'eraser' ? 'destination-out' : 'source-over';
+        bctx.fillStyle = path.tool === 'eraser' ? 'rgba(0,0,0,1)' : path.color;
+        bctx.fill(tempPath);
+      }
+    });
+    bctx.globalCompositeOperation = 'source-over';
+  }, [paths, width, height]);
 
   const getPointerPosition = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
@@ -236,10 +281,14 @@ export const DrawingCanvas = forwardRef(({
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
     setIsDrawing(true);
     const point = getPointerPosition(e.nativeEvent || e);
+    const native = e.nativeEvent || e;
+    const pressure = typeof native.pressure === 'number' && native.pressure > 0 ? native.pressure : null;
     lastPoint.current = point;
     lastTime.current = Date.now();
     velocities.current = [];
-    setCurrentPath([point]);
+    if (rafIdRef.current) { try { cancelAnimationFrame(rafIdRef.current); } catch {} ; rafIdRef.current = null; }
+    pendingPointsRef.current = [];
+    setCurrentPath([pressure != null ? [...point, pressure] : point]);
   };
 
   const handlePointerMove = (e) => {
@@ -250,11 +299,21 @@ export const DrawingCanvas = forwardRef(({
     const additions = [];
     for (const ev of events) {
       const point = getPointerPosition(ev);
-      const velocity = calculateVelocity(point);
-      additions.push([...point, velocity]);
+      const pressure = typeof ev.pressure === 'number' && ev.pressure > 0 ? ev.pressure : null;
+      additions.push(pressure != null ? [...point, pressure] : point);
     }
     if (additions.length) {
-      setCurrentPath(prev => [...prev, ...additions]);
+      pendingPointsRef.current.push(...additions);
+      if (!rafIdRef.current) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafIdRef.current = null;
+          const pts = pendingPointsRef.current;
+          if (pts.length) {
+            pendingPointsRef.current = [];
+            setCurrentPath(prev => [...prev, ...pts]);
+          }
+        });
+      }
     }
   };
 
@@ -264,9 +323,13 @@ export const DrawingCanvas = forwardRef(({
     try { e && e.currentTarget && e.currentTarget.releasePointerCapture && e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
     lastPoint.current = null;
     
-    if (currentPath.length > 0) {
+    const flushed = pendingPointsRef.current.length ? [...pendingPointsRef.current] : [];
+    pendingPointsRef.current = [];
+    if (rafIdRef.current) { try { cancelAnimationFrame(rafIdRef.current); } catch {} ; rafIdRef.current = null; }
+    const pathPoints = flushed.length ? [...currentPath, ...flushed] : currentPath;
+    if (pathPoints.length > 0) {
       const newPath = {
-        points: currentPath,
+        points: pathPoints,
         tool: currentTool.current,
         color,
         options: getOptions(),
@@ -306,35 +369,16 @@ export const DrawingCanvas = forwardRef(({
     const ctx = canvas.getContext('2d');
 
     // Clear canvas with white background
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, width, height);
+    ctx.clearRect(0, 0, width, height);
 
     // Draw all completed paths
-    paths.forEach(path => {
-      if (path.points.length > 0) {
-        const scaleX = width / path.width;
-        const scaleY = height / path.height;
-        
-        const scaledPoints = path.points.map(point => [
-          point[0] * scaleX,
-          point[1] * scaleY,
-          ...(point.slice(2) || [])
-        ]);
-
-        const stroke = getStroke(scaledPoints, {
-          ...path.options,
-          size: path.options.size * (width / path.width)
-        });
-        
-        const pathData = getSvgPathFromStroke(stroke);
-        const tempPath = new Path2D(pathData);
-
-        // Set composite operation based on tool
-        ctx.globalCompositeOperation = path.tool === 'eraser' ? 'destination-out' : 'source-over';
-        ctx.fillStyle = path.tool === 'eraser' ? 'rgba(0,0,0,1)' : path.color;
-        ctx.fill(tempPath);
-      }
-    });
+    const base = baseCanvasRef.current;
+    if (base) {
+      ctx.drawImage(base, 0, 0);
+    } else {
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, width, height);
+    }
 
     // Draw current path
     if (currentPath.length > 0) {
@@ -350,13 +394,13 @@ export const DrawingCanvas = forwardRef(({
 
     // Reset composite operation
     ctx.globalCompositeOperation = 'source-over';
-  }, [paths, currentPath, color, width, height]);
+  }, [currentPath, color, width, height, paths]);
 
   return (
     <div className="relative">
       <div 
         className="absolute top-2 left-2 flex items-center gap-0.5 bg-zinc-900/90 rounded-lg backdrop-blur-sm shadow-lg overflow-hidden"
-        style={{ zIndex: 50 }}
+        style={{ zIndex: 50, pointerEvents: isDrawing ? 'none' : 'auto' }}
       >
         <Button
           variant="ghost"
@@ -395,7 +439,6 @@ export const DrawingCanvas = forwardRef(({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        onPointerOut={handlePointerUp}
         style={{ 
           touchAction: 'none',
           width: '100%',

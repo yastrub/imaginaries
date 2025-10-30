@@ -22,6 +22,7 @@ export function DrawingBoard({
   const [brushSize, setBrushSize] = useState(savedDrawingState?.brushSize || 8);
   const [selectedColor, setSelectedColor] = useState(savedDrawingState?.color || COLORS[0].value);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [usingNativeFullscreen, setUsingNativeFullscreen] = useState(false);
   const [canvasSize, setCanvasSize] = useState(512);
   const canvasRef = useRef(null);
   const canvasContainerRef = useRef(null);
@@ -78,7 +79,62 @@ export function DrawingBoard({
   };
 
   const toggleFullscreen = () => {
-    setIsFullscreen(prev => !prev);
+    if (isFullscreen) {
+      // Exit fullscreen
+      try {
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen();
+          setUsingNativeFullscreen(false);
+        } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+          setUsingNativeFullscreen(false);
+        } else {
+          // In-app fullscreen
+          setIsFullscreen(false);
+          setUsingNativeFullscreen(false);
+        }
+      } catch {
+        setIsFullscreen(false);
+        setUsingNativeFullscreen(false);
+      }
+    } else {
+      // Enter fullscreen: try native first, fallback to in-app
+      const el = canvasContainerRef.current;
+      const fallback = () => {
+        setUsingNativeFullscreen(false);
+        setIsFullscreen(true);
+      };
+      try {
+        if (el?.requestFullscreen) {
+          el.requestFullscreen().then(() => {
+            // Confirm activation
+            const active = !!document.fullscreenElement;
+            if (active) {
+              setUsingNativeFullscreen(true);
+              setIsFullscreen(true);
+            } else {
+              fallback();
+            }
+          }).catch(fallback);
+        } else if (el?.webkitRequestFullscreen) {
+          el.webkitRequestFullscreen();
+          // Verify after a micro delay whether native fullscreen actually engaged
+          setTimeout(() => {
+            const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            if (active) {
+              setUsingNativeFullscreen(true);
+              setIsFullscreen(true);
+            } else {
+              fallback();
+            }
+          }, 50);
+        } else {
+          fallback();
+        }
+      } catch {
+        fallback();
+      }
+    }
   };
 
   const adjustBrushSize = (delta) => {
@@ -87,7 +143,8 @@ export function DrawingBoard({
 
   // Lock body scroll when in-app fullscreen is active and restore on exit
   useEffect(() => {
-    if (isFullscreen) {
+    const inAppFs = isFullscreen && !usingNativeFullscreen;
+    if (inAppFs) {
       try {
         prevOverflowRef.current = document.body.style.overflow || '';
         document.body.style.overflow = 'hidden';
@@ -100,11 +157,11 @@ export function DrawingBoard({
     return () => {
       try { document.body.style.overflow = prevOverflowRef.current || ''; } catch {}
     };
-  }, [isFullscreen]);
+  }, [isFullscreen, usingNativeFullscreen]);
 
   // Allow closing with Escape key
   useEffect(() => {
-    if (!isFullscreen) return;
+    if (!isFullscreen || usingNativeFullscreen) return;
     const onKeyDown = (e) => {
       if (e.key === 'Escape') {
         setIsFullscreen(false);
@@ -112,7 +169,22 @@ export function DrawingBoard({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [isFullscreen]);
+  }, [isFullscreen, usingNativeFullscreen]);
+
+  // Keep state in sync with native fullscreen changes
+  useEffect(() => {
+    const onFsChange = () => {
+      const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      setIsFullscreen(active);
+      if (!active) setUsingNativeFullscreen(false);
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('webkitfullscreenchange', onFsChange);
+    };
+  }, []);
 
   // Save drawing state when it changes
   useEffect(() => {
@@ -149,7 +221,9 @@ export function DrawingBoard({
           >
             <Plus className="h-4 w-4" />
           </Button>
-        </div>
+      </div>
+
+      {/* Fullscreen fallback uses same container with fixed overlay styles (no portal) */}
 
         {/* Center - Tools */}
         <div className="flex items-center gap-2 bg-zinc-800/50 p-1 rounded-lg">
@@ -187,19 +261,13 @@ export function DrawingBoard({
         </div>
       </div>
 
-      {/* Canvas container - Can go fullscreen */}
+      {/* Canvas container (normal flow or in-app fullscreen) */}
       <div 
         ref={canvasContainerRef} 
         className={`relative w-full flex justify-center ${
-          isFullscreen 
-            ? 'fixed inset-0 bg-black z-50 flex items-center justify-center' 
-            : ''
-        }`}
-        style={{
-          width: isFullscreen ? '100vw' : '100%',
-          height: isFullscreen ? '100vh' : 'auto',
-          maxWidth: '512px'
-        }}
+          isFullscreen ? 'bg-black items-center' : ''
+        } ${isFullscreen && !usingNativeFullscreen ? 'fixed inset-0 z-[9999]' : ''}`}
+        style={{ maxWidth: isFullscreen ? 'none' : '512px', width: isFullscreen ? '100vw' : '100%', height: isFullscreen ? '100dvh' : 'auto' }}
       >
         <DrawingCanvas
           ref={canvasRef}

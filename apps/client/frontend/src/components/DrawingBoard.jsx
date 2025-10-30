@@ -324,8 +324,8 @@ export function DrawingBoard({
       <div 
         ref={canvasContainerRef} 
         className={`relative w-full flex justify-center ${
-          isFullscreen && !usingNativeFullscreen ? 'fixed inset-0 z-[9999] bg-black items-center' : ''
-        }`}
+          isFullscreen ? 'items-center bg-black' : ''
+        } ${isFullscreen && !usingNativeFullscreen ? 'fixed inset-0 z-[9999]' : ''}`}
         style={{
           maxWidth: isFullscreen && !usingNativeFullscreen ? 'none' : '512px',
           width: isFullscreen && !usingNativeFullscreen ? '100vw' : '100%',

@@ -27,6 +27,7 @@ export const GenerateForm = React.memo(function GenerateForm({
   const [isPrivate, setIsPrivate] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const typingTimerRef = useRef(null);
+  const [initialPromptHeight, setInitialPromptHeight] = useState(null);
   
   // Get user subscription plan from Redux store
   const user = useSelector(state => state.auth.user);
@@ -44,6 +45,22 @@ export const GenerateForm = React.memo(function GenerateForm({
     } catch {
       setIsMobile(false);
     }
+  }, []);
+
+  // Measure initial textarea height once and lock the button to it
+  useEffect(() => {
+    const measure = () => {
+      const el = promptInputRef?.current;
+      if (el && !initialPromptHeight) {
+        try {
+          setInitialPromptHeight(el.offsetHeight);
+        } catch {}
+      }
+    };
+    // Defer to ensure DOM is ready and AutoResizeTextarea has applied height
+    const t = setTimeout(measure, 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   // Ensure privacy is always set to public (eye ON) initially and after any auth changes
@@ -315,8 +332,9 @@ export const GenerateForm = React.memo(function GenerateForm({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full sm:w-auto primary-button h-18 self-start flex items-center"
+              className="w-full sm:w-auto primary-button self-start flex items-center"
               id="generateBtn"
+              style={initialPromptHeight ? { height: `${initialPromptHeight}px` } : undefined}
             >
               {isLoading ? (
                 <div className="flex items-center justify-center gap-2">

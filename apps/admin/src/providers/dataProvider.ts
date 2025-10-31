@@ -8,10 +8,10 @@ function buildQuery(params: { filters?: CrudFilters; pagination?: { current?: nu
   let pageSize = pagination?.pageSize;
   if (typeof window !== 'undefined') {
     const url = new URLSearchParams(window.location.search);
-    const urlCurrent = parseInt(url.get('current') || url.get('page') || '', 10);
+    const urlCurrent = parseInt(url.get('current') || url.get('currentPage') || url.get('page') || '', 10);
     const urlPageSize = parseInt(url.get('pageSize') || url.get('limit') || '', 10);
-    if (current == null && Number.isFinite(urlCurrent)) current = urlCurrent;
-    if (pageSize == null && Number.isFinite(urlPageSize)) pageSize = urlPageSize;
+    if (Number.isFinite(urlCurrent)) current = urlCurrent;
+    if (Number.isFinite(urlPageSize)) pageSize = urlPageSize;
   }
   current = current ?? 1;
   pageSize = pageSize ?? 20;

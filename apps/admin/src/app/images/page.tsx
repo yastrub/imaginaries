@@ -131,7 +131,37 @@ export default function ImagesList() {
         <Button type="primary" onClick={onSearch}>Search</Button>
       </Space>
     )}>
-      <Table rowKey="id" {...tableProps}>
+      <Table
+        rowKey="id"
+        {...tableProps}
+        pagination={{
+          ...(tableProps.pagination as any),
+          itemRender: (page: number, type: any, original: any) => {
+            // Use button-like element to avoid Next.js link navigation
+            const label = original?.props?.children || original;
+            const disabled = original?.props?.disabled;
+            return (
+              <button
+                type="button"
+                disabled={disabled}
+                style={{ background: 'transparent', border: 0, padding: 0, cursor: disabled ? 'not-allowed' : 'pointer' }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const pg = (tableProps.pagination as any) || {};
+                  const next = { ...pg, current: page };
+                  const onChange = (tableProps as any).onChange;
+                  if (typeof onChange === 'function') {
+                    onChange(next, (tableProps as any).filters || {}, (tableProps as any).sorter || {});
+                  }
+                }}
+              >
+                {label}
+              </button>
+            );
+          },
+        }}
+      >
         <Table.Column<ImageRow>
           title="Preview"
           dataIndex="image_url"

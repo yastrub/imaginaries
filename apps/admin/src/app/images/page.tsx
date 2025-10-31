@@ -134,6 +134,10 @@ export default function ImagesList() {
       <Table
         rowKey="id"
         {...tableProps}
+        onChange={(pg, filters, sorter, extra) => {
+          const fn = (tableProps as any).onChange;
+          if (typeof fn === 'function') fn(pg, filters, sorter, extra);
+        }}
         pagination={{
           ...(tableProps.pagination as any),
           itemRender: (page: number, type: any, original: any) => {

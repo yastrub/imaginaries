@@ -131,30 +131,13 @@ export default function ImagesList() {
         <Button type="primary" onClick={onSearch}>Search</Button>
       </Space>
     )}>
-      <AntImage.PreviewGroup
-        preview={{
-          toolbarRender: (node, info) => (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {node}
-              <InfoCircleOutlined
-                title="Details"
-                style={{ color: token.colorPrimary, fontSize: 18, cursor: "pointer" }}
-                onClick={() => {
-                  const rows = ((tableProps.dataSource as ImageRow[] | undefined) || []);
-                  const rec = rows.find(r => {
-                    const src = buildSrc(r);
-                    return src === info.image.url;
-                  });
-                  if (rec) {
-                    openDetails(rec.id);
-                  }
-                }}
-              />
-            </div>
-          ),
-        }}
+      <Table
+        rowKey="id"
+        dataSource={tableProps.dataSource}
+        pagination={tableProps.pagination}
+        onChange={tableProps.onChange as any}
+        loading={tableProps.loading}
       >
-      <Table rowKey="id" {...tableProps}>
         <Table.Column<ImageRow>
           title="Preview"
           dataIndex="image_url"
@@ -168,7 +151,18 @@ export default function ImagesList() {
                 width={96}
                 height={96}
                 style={{ objectFit: "cover", borderRadius: 6 }}
-                preview
+                preview={{
+                  toolbarRender: (node) => (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {node}
+                      <InfoCircleOutlined
+                        title="Details"
+                        style={{ color: token.colorPrimary, fontSize: 18, cursor: 'pointer' }}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); openDetails(row.id); }}
+                      />
+                    </div>
+                  )
+                }}
               />
             ) : null;
           }}
@@ -214,7 +208,6 @@ export default function ImagesList() {
           )}
         />
       </Table>
-      </AntImage.PreviewGroup>
 
       <Drawer title={viewRecord ? `Image: ${viewRecord.id}` : 'Image'} open={viewOpen} onClose={() => setViewOpen(false)} width={510} destroyOnClose zIndex={token.zIndexPopupBase + 1000}>
         {detailsLoading || !viewRecord ? (

@@ -1,6 +1,6 @@
-import type { BaseRecord, CrudFilters, CrudSorting, HttpError, Pagination, DataProvider } from "@refinedev/core";
+import type { BaseRecord, CrudFilters, CrudSorting, HttpError, DataProvider } from "@refinedev/core";
 
-function buildQuery(params: { filters?: CrudFilters; pagination?: Pagination; sorters?: CrudSorting }) {
+function buildQuery(params: { filters?: CrudFilters; pagination?: { current?: number; pageSize?: number } | undefined; sorters?: CrudSorting }) {
   const search = new URLSearchParams();
   const { pagination, filters, sorters } = params;
   if (pagination) {
@@ -13,8 +13,10 @@ function buildQuery(params: { filters?: CrudFilters; pagination?: Pagination; so
     if (v) search.set("q", v);
   }
   if (sorters && sorters.length) {
-    const s = sorters[0];
-    search.set("sort", `${s.field}:${s.order}`);
+    const s = sorters[0] as any;
+    const order: string = (s.order || '').toString().toLowerCase();
+    const norm = order.includes('asc') ? 'asc' : order.includes('desc') ? 'desc' : 'desc';
+    search.set("sort", `${s.field}:${norm}`);
   }
   return search.toString();
 }

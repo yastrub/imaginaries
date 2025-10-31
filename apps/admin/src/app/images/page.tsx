@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { List, useTable } from "@refinedev/antd";
-import { Table, Space, Input, Button, Tag, Image as AntImage, Typography, Drawer, theme, Spin } from "antd";
+import { Table, Space, Input, Button, Tag, Image as AntImage, Typography, Drawer, theme, Spin, Switch, message } from "antd";
 import { SearchOutlined, EyeOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import ImageDetailsCard, { AdminImage } from "../../components/ImageDetailsCard";
 import AdminDate from "../../components/AdminDate";
@@ -21,6 +21,39 @@ type ImageRow = {
 
 const ASSETS_BASE = process.env.NEXT_PUBLIC_ASSETS_BASE_URL || "";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+
+function PrivacyToggleCell({ id, initial }: { id: string; initial: boolean }) {
+  const [checked, setChecked] = React.useState<boolean>(initial);
+  const [loading, setLoading] = React.useState<boolean>(false);
+  React.useEffect(() => { setChecked(initial); }, [initial]);
+  const onToggle = async (next: boolean) => {
+    setChecked(next);
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/images/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ is_private: next }),
+      });
+      if (!res.ok) throw new Error('Update failed');
+      const json = await res.json();
+      setChecked(!!json.is_private);
+      message.success(`Image set to ${json.is_private ? 'Private' : 'Public'}`);
+    } catch (e) {
+      setChecked(initial);
+      message.error('Failed to update visibility');
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <Space>
+      <Switch checked={checked} loading={loading} onChange={onToggle} size="small" />
+      {checked ? <Tag color="red">Private</Tag> : <Tag color="green">Public</Tag>}
+    </Space>
+  );
+}
 
 export default function ImagesList() {
   const [search, setSearch] = React.useState("");
@@ -152,9 +185,14 @@ export default function ImagesList() {
           )}
         />
         <Table.Column<ImageRow> dataIndex="user_email" title="User" width={160} sorter />
-        <Table.Column<ImageRow> dataIndex="is_private" title="Private" sorter render={(v: boolean)=> (
-          v ? <Tag color="red">Yes</Tag> : <Tag color="green">No</Tag>
-        )} />
+        <Table.Column<ImageRow>
+          dataIndex="is_private"
+          title="Private"
+          sorter
+          render={(v: boolean, row: ImageRow) => (
+            <PrivacyToggleCell id={row.id} initial={v} />
+          )}
+        />
         <Table.Column<ImageRow>
           dataIndex="likes_count"
           title="Likes"

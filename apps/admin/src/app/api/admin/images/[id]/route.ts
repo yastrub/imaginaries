@@ -43,3 +43,28 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: "Failed to load image details" }, { status: 500 });
   }
 }
+
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const auth = await requireAdmin(req);
+    if (!auth.authorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const id = params.id;
+    if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body.is_private !== 'boolean') {
+      return NextResponse.json({ error: "Missing or invalid 'is_private' boolean" }, { status: 400 });
+    }
+
+    const sql = `UPDATE images SET is_private = $1 WHERE id = $2 RETURNING id, is_private`;
+    const res = await query(sql, [body.is_private, id]);
+    if (!res.rows.length) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    return NextResponse.json(res.rows[0]);
+  } catch (e) {
+    console.error('Admin image update error:', e);
+    return NextResponse.json({ error: 'Failed to update image' }, { status: 500 });
+  }
+}
+

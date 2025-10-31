@@ -47,10 +47,13 @@ function PrivacyToggleCell({ id, initial }: { id: string; initial: boolean }) {
       setLoading(false);
     }
   };
+  if (checked) {
+    return <Tag color="red">Private</Tag>;
+  }
   return (
     <Space>
       <Switch checked={checked} loading={loading} onChange={onToggle} size="small" />
-      {checked ? <Tag color="red">Private</Tag> : <Tag color="green">Public</Tag>}
+      <Tag color="green">Public</Tag>
     </Space>
   );
 }

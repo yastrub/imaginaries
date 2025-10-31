@@ -64,8 +64,8 @@ export default function ImagesList() {
 
   const { tableProps, setFilters } = useTable<ImageRow>({
     resource: "images",
-    pagination: { pageSize: 20 },
-    syncWithLocation: true,
+    pagination: { pageSize: 20, mode: "server" as const },
+    syncWithLocation: false,
   });
 
   const onSearch = () => {
@@ -73,22 +73,6 @@ export default function ImagesList() {
   };
 
   // Use AdminDate component for consistent date formatting
-
-  React.useEffect(() => {
-    try {
-      const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-      const cp = parseInt(params.get('currentPage') || '', 10);
-      const ps = parseInt(params.get('pageSize') || '', 10);
-      const pg = (tableProps.pagination as any) || {};
-      const nextPg = { ...pg } as any;
-      if (Number.isFinite(cp)) nextPg.current = cp;
-      if (Number.isFinite(ps)) nextPg.pageSize = ps;
-      const onChange = (tableProps as any).onChange;
-      if (typeof onChange === 'function' && (nextPg.current !== pg.current || nextPg.pageSize !== pg.pageSize)) {
-        onChange(nextPg, (tableProps as any).filters || {}, (tableProps as any).sorter || {});
-      }
-    } catch {}
-  }, [tableProps]);
 
   const buildSrc = (row: ImageRow): string | undefined => {
     // Always prefer non-watermarked version for admin
@@ -147,41 +131,7 @@ export default function ImagesList() {
         <Button type="primary" onClick={onSearch}>Search</Button>
       </Space>
     )}>
-      <Table
-        rowKey="id"
-        {...tableProps}
-        onChange={(pg, filters, sorter, extra) => {
-          const fn = (tableProps as any).onChange;
-          if (typeof fn === 'function') fn(pg, filters, sorter, extra);
-        }}
-        pagination={{
-          ...(tableProps.pagination as any),
-          itemRender: (page: number, type: any, original: any) => {
-            // Use button-like element to avoid Next.js link navigation
-            const label = original?.props?.children || original;
-            const disabled = original?.props?.disabled;
-            return (
-              <button
-                type="button"
-                disabled={disabled}
-                style={{ background: 'transparent', border: 0, padding: 0, cursor: disabled ? 'not-allowed' : 'pointer' }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const pg = (tableProps.pagination as any) || {};
-                  const next = { ...pg, current: page };
-                  const onChange = (tableProps as any).onChange;
-                  if (typeof onChange === 'function') {
-                    onChange(next, (tableProps as any).filters || {}, (tableProps as any).sorter || {});
-                  }
-                }}
-              >
-                {label}
-              </button>
-            );
-          },
-        }}
-      >
+      <Table rowKey="id" {...tableProps}>
         <Table.Column<ImageRow>
           title="Preview"
           dataIndex="image_url"

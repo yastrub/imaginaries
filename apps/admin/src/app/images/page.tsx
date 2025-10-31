@@ -74,6 +74,22 @@ export default function ImagesList() {
 
   // Use AdminDate component for consistent date formatting
 
+  React.useEffect(() => {
+    try {
+      const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+      const cp = parseInt(params.get('currentPage') || '', 10);
+      const ps = parseInt(params.get('pageSize') || '', 10);
+      const pg = (tableProps.pagination as any) || {};
+      const nextPg = { ...pg } as any;
+      if (Number.isFinite(cp)) nextPg.current = cp;
+      if (Number.isFinite(ps)) nextPg.pageSize = ps;
+      const onChange = (tableProps as any).onChange;
+      if (typeof onChange === 'function' && (nextPg.current !== pg.current || nextPg.pageSize !== pg.pageSize)) {
+        onChange(nextPg, (tableProps as any).filters || {}, (tableProps as any).sorter || {});
+      }
+    } catch {}
+  }, [tableProps]);
+
   const buildSrc = (row: ImageRow): string | undefined => {
     // Always prefer non-watermarked version for admin
     const filename = row.image_url || row.watermarked_url || undefined;

@@ -12,8 +12,8 @@ export async function GET(req: NextRequest) {
     if (!auth.authorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const url = new URL(req.url);
-    const pageRaw = url.searchParams.get("page") || "1";
-    const limitRaw = url.searchParams.get("limit") || "20";
+    const pageRaw = url.searchParams.get("currentPage") || url.searchParams.get("page") || "1";
+    const limitRaw = url.searchParams.get("pageSize") || url.searchParams.get("limit") || "20";
     const page = parseInt(pageRaw, 10) || 1;
     const limit = Math.min(parseInt(limitRaw, 10) || 20, 100);
     const offset = (page - 1) * limit;

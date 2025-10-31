@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { List, useTable } from "@refinedev/antd";
+import { List } from "@refinedev/antd";
 import { Table, Space, Input, Button, Tag, Image as AntImage, Typography, Drawer, theme, Spin, Switch, message } from "antd";
 import { SearchOutlined, EyeOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import ImageDetailsCard, { AdminImage } from "../../components/ImageDetailsCard";
@@ -57,19 +57,50 @@ function PrivacyToggleCell({ id, initial }: { id: string; initial: boolean }) {
 
 export default function ImagesList() {
   const [search, setSearch] = React.useState("");
+  const [current, setCurrent] = React.useState<number>(1);
+  const [pageSize, setPageSize] = React.useState<number>(20);
+  const [total, setTotal] = React.useState<number>(0);
+  const [rows, setRows] = React.useState<ImageRow[]>([]);
+  const [loadingRows, setLoadingRows] = React.useState<boolean>(false);
+  const [sortField, setSortField] = React.useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = React.useState<"ascend" | "descend" | undefined>(undefined);
   const [viewOpen, setViewOpen] = React.useState(false);
   const [viewRecord, setViewRecord] = React.useState<AdminImage | null>(null);
   const [detailsLoading, setDetailsLoading] = React.useState(false);
   const { token } = theme.useToken();
 
-  const { tableProps, setFilters } = useTable<ImageRow>({
-    resource: "images",
-    pagination: { pageSize: 20, mode: "server" as const },
-    syncWithLocation: false,
-  });
+  const loadData = React.useCallback(async () => {
+    try {
+      setLoadingRows(true);
+      const params = new URLSearchParams();
+      params.set("page", String(current));
+      params.set("limit", String(pageSize));
+      if (search) params.set("q", search);
+      if (sortField && sortOrder) {
+        const norm = sortOrder === "ascend" ? "asc" : "desc";
+        params.set("sort", `${sortField}:${norm}`);
+      }
+      const res = await fetch(`${API_BASE}/api/admin/images?${params.toString()}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load images");
+      const json = await res.json();
+      setRows(json.data || []);
+      setTotal(json.total || 0);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+      message.error("Failed to load images");
+    } finally {
+      setLoadingRows(false);
+    }
+  }, [current, pageSize, search, sortField, sortOrder]);
+
+  React.useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const onSearch = () => {
-    setFilters([{ field: "q", operator: "contains", value: search }], "replace");
+    setCurrent(1);
+    loadData();
   };
 
   // Use AdminDate component for consistent date formatting
@@ -93,8 +124,7 @@ export default function ImagesList() {
         const json = await res.json();
         setViewRecord(json);
       } else {
-        // fallback to any existing data from table if fetch fails
-        const rows = ((tableProps.dataSource as ImageRow[] | undefined) || []);
+        // fallback to any existing data from local rows if fetch fails
         const fallback = rows.find(r => r.id === id) as unknown as AdminImage | undefined;
         setViewRecord(fallback || null);
       }
@@ -117,7 +147,7 @@ export default function ImagesList() {
   };
 
   return (
-    <List title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>Images <Tag color="blue">{(tableProps.pagination as any)?.total ?? ((tableProps.dataSource as any[])?.length ?? 0)}</Tag></span>} headerButtons={() => (
+    <List title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>Images <Tag color="blue">{total}</Tag></span>} headerButtons={() => (
       <Space>
         <Input
           allowClear
@@ -133,35 +163,24 @@ export default function ImagesList() {
     )}>
       <Table
         rowKey="id"
-        dataSource={tableProps.dataSource}
-        loading={tableProps.loading}
-        onChange={(pag, filters, sorter, extra) => {
-          try {
-            const c = (pag as any)?.current;
-            const ps = (pag as any)?.pageSize;
-            if (typeof window !== 'undefined') {
-              (window as any).__admin_images_page = c;
-              (window as any).__admin_images_pageSize = ps;
-            }
-          } catch {}
-          const fn = (tableProps as any).onChange;
-          if (typeof fn === 'function') fn(pag, filters, sorter, extra);
+        dataSource={rows}
+        loading={loadingRows}
+        onChange={(pag, _filters, sorter) => {
+          const c = (pag as any)?.current || 1;
+          const ps = (pag as any)?.pageSize || 20;
+          setCurrent(c);
+          setPageSize(ps);
+          const s = Array.isArray(sorter) ? sorter[0] : sorter;
+          const field = (s as any)?.field as string | undefined;
+          const order = (s as any)?.order as ("ascend" | "descend" | undefined);
+          setSortField(field);
+          setSortOrder(order);
         }}
         pagination={{
-          ...(tableProps.pagination as any),
+          current,
+          pageSize,
+          total,
           showSizeChanger: false,
-          onChange: (page: number, pageSize?: number) => {
-            const nextSize = pageSize ?? (tableProps.pagination as any)?.pageSize;
-            try {
-              if (typeof window !== 'undefined') {
-                (window as any).__admin_images_page = page;
-                (window as any).__admin_images_pageSize = nextSize;
-              }
-            } catch {}
-            const pg = { ...(tableProps.pagination as any), current: page, pageSize: nextSize };
-            const fn = (tableProps as any).onChange;
-            if (typeof fn === 'function') fn(pg, (tableProps as any).filters || {}, (tableProps as any).sorter || {});
-          },
           itemRender: (page: number, _type: any, original: any) => {
             const label = original?.props?.children ?? original;
             return (
@@ -171,15 +190,16 @@ export default function ImagesList() {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  const nextSize = (tableProps.pagination as any)?.pageSize;
-                  const pg = { ...(tableProps.pagination as any), current: page, pageSize: nextSize };
-                  const fn = (tableProps as any).onChange;
-                  if (typeof fn === 'function') fn(pg, (tableProps as any).filters || {}, (tableProps as any).sorter || {});
+                  setCurrent(page);
                 }}
               >
                 {label}
               </button>
             );
+          },
+          onChange: (p, ps) => {
+            setCurrent(p);
+            setPageSize(ps || 20);
           },
         }}
       >

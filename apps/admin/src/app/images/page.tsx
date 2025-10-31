@@ -57,6 +57,8 @@ function PrivacyToggleCell({ id, initial }: { id: string; initial: boolean }) {
 
 export default function ImagesList() {
   const [search, setSearch] = React.useState("");
+  const [current, setCurrent] = React.useState<number>(1);
+  const [pageSize, setPageSize] = React.useState<number>(20);
   const [viewOpen, setViewOpen] = React.useState(false);
   const [viewRecord, setViewRecord] = React.useState<AdminImage | null>(null);
   const [detailsLoading, setDetailsLoading] = React.useState(false);
@@ -64,8 +66,8 @@ export default function ImagesList() {
 
   const { tableProps, setFilters } = useTable<ImageRow>({
     resource: "images",
-    pagination: { pageSize: 20 },
-    syncWithLocation: true,
+    pagination: { pageSize: 20, mode: "server" as const },
+    syncWithLocation: false,
   });
 
   const onSearch = () => {
@@ -131,7 +133,25 @@ export default function ImagesList() {
         <Button type="primary" onClick={onSearch}>Search</Button>
       </Space>
     )}>
-      <Table rowKey="id" {...tableProps}>
+      <Table
+        rowKey="id"
+        dataSource={tableProps.dataSource}
+        loading={tableProps.loading}
+        onChange={(pag, filters, sorter, extra) => {
+          const c = (pag as any)?.current || 1;
+          const ps = (pag as any)?.pageSize || 20;
+          if (current !== c) setCurrent(c);
+          if (pageSize !== ps) setPageSize(ps);
+          const fn = (tableProps as any).onChange;
+          if (typeof fn === 'function') fn(pag, filters, sorter, extra);
+        }}
+        pagination={{
+          current,
+          pageSize,
+          total: (tableProps.pagination as any)?.total,
+          showSizeChanger: false,
+        }}
+      >
         <Table.Column<ImageRow>
           title="Preview"
           dataIndex="image_url"

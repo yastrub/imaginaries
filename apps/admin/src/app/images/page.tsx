@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { List, useTable } from "@refinedev/antd";
 import { Table, Space, Input, Button, Tag, Image as AntImage, Typography, Drawer, theme, Spin, Switch, message } from "antd";
 import { SearchOutlined, EyeOutlined, InfoCircleOutlined } from "@ant-design/icons";
@@ -57,46 +56,16 @@ function PrivacyToggleCell({ id, initial }: { id: string; initial: boolean }) {
 }
 
 export default function ImagesList() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [search, setSearch] = React.useState("");
   const [viewOpen, setViewOpen] = React.useState(false);
   const [viewRecord, setViewRecord] = React.useState<AdminImage | null>(null);
   const [detailsLoading, setDetailsLoading] = React.useState(false);
   const { token } = theme.useToken();
 
-  // Normalize URL params: support currentPage/page -> current, limit -> pageSize
-  React.useEffect(() => {
-    const sp = searchParams;
-    if (!sp) return;
-    const params = new URLSearchParams(sp.toString());
-    const currentPage = params.get('currentPage');
-    const current = params.get('current');
-    const page = params.get('page');
-    const limit = params.get('limit');
-    const pageSize = params.get('pageSize') || limit || undefined;
-    let changed = false;
-    if (currentPage && current !== currentPage) {
-      params.set('current', currentPage);
-      params.delete('currentPage');
-      changed = true;
-    } else if (!current && page) {
-      params.set('current', page);
-      changed = true;
-    }
-    if (limit && !params.get('pageSize')) {
-      params.set('pageSize', limit);
-      changed = true;
-    }
-    if (changed) {
-      router.replace(`/images?${params.toString()}`);
-    }
-  }, [searchParams, router]);
-
   const { tableProps, setFilters } = useTable<ImageRow>({
     resource: "images",
     pagination: { pageSize: 20 },
-    syncWithLocation: true,
+    syncWithLocation: false,
   });
 
   const onSearch = () => {

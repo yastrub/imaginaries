@@ -3,18 +3,9 @@ import type { BaseRecord, CrudFilters, CrudSorting, HttpError, DataProvider } fr
 function buildQuery(params: { filters?: CrudFilters; pagination?: { current?: number; pageSize?: number } | undefined; sorters?: CrudSorting }) {
   const search = new URLSearchParams();
   const { pagination, filters, sorters } = params;
-  // Determine page & limit from refine-provided pagination with URL fallback (syncWithLocation)
-  let current = pagination?.current;
-  let pageSize = pagination?.pageSize;
-  if (typeof window !== 'undefined') {
-    const url = new URLSearchParams(window.location.search);
-    const urlCurrent = parseInt(url.get('current') || url.get('currentPage') || url.get('page') || '', 10);
-    const urlPageSize = parseInt(url.get('pageSize') || url.get('limit') || '', 10);
-    if (Number.isFinite(urlCurrent)) current = urlCurrent;
-    if (Number.isFinite(urlPageSize)) pageSize = urlPageSize;
-  }
-  current = current ?? 1;
-  pageSize = pageSize ?? 20;
+  // Determine page & limit from refine-provided pagination only
+  const current = pagination?.current ?? 1;
+  const pageSize = pagination?.pageSize ?? 20;
   search.set("page", String(current));
   search.set("limit", String(pageSize));
   if (filters) {

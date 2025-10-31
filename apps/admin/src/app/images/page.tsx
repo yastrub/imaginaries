@@ -131,13 +131,7 @@ export default function ImagesList() {
         <Button type="primary" onClick={onSearch}>Search</Button>
       </Space>
     )}>
-      <Table
-        rowKey="id"
-        dataSource={tableProps.dataSource}
-        pagination={tableProps.pagination}
-        onChange={tableProps.onChange as any}
-        loading={tableProps.loading}
-      >
+      <Table rowKey="id" {...tableProps}>
         <Table.Column<ImageRow>
           title="Preview"
           dataIndex="image_url"

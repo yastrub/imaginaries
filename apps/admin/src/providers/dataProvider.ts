@@ -3,11 +3,11 @@ import type { BaseRecord, CrudFilters, CrudSorting, HttpError, DataProvider } fr
 function buildQuery(params: { filters?: CrudFilters; pagination?: { current?: number; pageSize?: number } | undefined; sorters?: CrudSorting }) {
   const search = new URLSearchParams();
   const { pagination, filters, sorters } = params;
-  // Determine currentPage & pageSize from refine pagination only
+  // Determine page & limit from refine pagination only
   const current = pagination?.current ?? 1;
   const pageSize = pagination?.pageSize ?? 20;
-  search.set("currentPage", String(current));
-  search.set("pageSize", String(pageSize));
+  search.set("page", String(current));
+  search.set("limit", String(pageSize));
   if (filters) {
     const q = filters.find((f: any) => f.field === "q" || f.field === "email");
     const v = (q?.value as string) || "";

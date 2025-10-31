@@ -27,6 +27,15 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 export const dataProvider: DataProvider = {
   getList: async <TData extends BaseRecord>({ resource, pagination, filters, sorters }: any) => {
     const qs = buildQuery({ pagination, filters, sorters });
+    try {
+      // Debug: verify pagination values making it to the provider
+      // eslint-disable-next-line no-console
+      console.debug('[admin:dataProvider] getList', resource, {
+        current: pagination?.current,
+        pageSize: pagination?.pageSize,
+        qs,
+      });
+    } catch {}
     const res = await fetch(`${API_BASE}/api/admin/${resource}?${qs}`, { credentials: "include" });
     if (!res.ok) throw (await res.json()) as HttpError;
     const json = await res.json();

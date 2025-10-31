@@ -64,8 +64,8 @@ export default function ImagesList() {
 
   const { tableProps, setFilters } = useTable<ImageRow>({
     resource: "images",
-    pagination: { pageSize: 20, mode: "server" as const },
-    syncWithLocation: false,
+    pagination: { pageSize: 20 },
+    syncWithLocation: true,
   });
 
   const onSearch = () => {

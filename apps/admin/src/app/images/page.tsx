@@ -135,8 +135,53 @@ export default function ImagesList() {
         rowKey="id"
         dataSource={tableProps.dataSource}
         loading={tableProps.loading}
-        onChange={tableProps.onChange as any}
-        pagination={tableProps.pagination as any}
+        onChange={(pag, filters, sorter, extra) => {
+          try {
+            const c = (pag as any)?.current;
+            const ps = (pag as any)?.pageSize;
+            if (typeof window !== 'undefined') {
+              (window as any).__admin_images_page = c;
+              (window as any).__admin_images_pageSize = ps;
+            }
+          } catch {}
+          const fn = (tableProps as any).onChange;
+          if (typeof fn === 'function') fn(pag, filters, sorter, extra);
+        }}
+        pagination={{
+          ...(tableProps.pagination as any),
+          showSizeChanger: false,
+          onChange: (page: number, pageSize?: number) => {
+            const nextSize = pageSize ?? (tableProps.pagination as any)?.pageSize;
+            try {
+              if (typeof window !== 'undefined') {
+                (window as any).__admin_images_page = page;
+                (window as any).__admin_images_pageSize = nextSize;
+              }
+            } catch {}
+            const pg = { ...(tableProps.pagination as any), current: page, pageSize: nextSize };
+            const fn = (tableProps as any).onChange;
+            if (typeof fn === 'function') fn(pg, (tableProps as any).filters || {}, (tableProps as any).sorter || {});
+          },
+          itemRender: (page: number, _type: any, original: any) => {
+            const label = original?.props?.children ?? original;
+            return (
+              <button
+                type="button"
+                style={{ background: 'transparent', border: 0, padding: 0, cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const nextSize = (tableProps.pagination as any)?.pageSize;
+                  const pg = { ...(tableProps.pagination as any), current: page, pageSize: nextSize };
+                  const fn = (tableProps as any).onChange;
+                  if (typeof fn === 'function') fn(pg, (tableProps as any).filters || {}, (tableProps as any).sorter || {});
+                }}
+              >
+                {label}
+              </button>
+            );
+          },
+        }}
       >
         <Table.Column<ImageRow>
           title="Preview"

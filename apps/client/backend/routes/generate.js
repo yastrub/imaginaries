@@ -427,7 +427,7 @@ router.put('/:imageId/privacy', auth, async (req, res) => {
 router.post('/', auth, generateLimiter, checkGenerationLimits, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { prompt, model = DEFAULT_GENERATOR, size = '1024x1024', quality = 'hd', drawingPng, drawingSvg, cameraPng, is_private = true } = req.body;
+    const { prompt, model = DEFAULT_GENERATOR, size = '1024x1024', quality = 'hd', drawingPng, drawingSvg, cameraPng, is_private = true, reimagineImageUrl } = req.body;
     
     // Check if we have sketch or camera data
     const hasSketch = drawingPng && drawingSvg;
@@ -440,8 +440,23 @@ router.post('/', auth, generateLimiter, checkGenerationLimits, async (req, res) 
     // This can be controlled by a query parameter or environment variable
     const useDirectSketchProcessing = req.query.directSketch === 'true' || process.env.USE_DIRECT_SKETCH === 'true';
     
-    // If camera is provided, prefer Gemini edit path; include sketch as second image if present
-    if (hasCamera) {
+    // Reimagine flow takes precedence if provided
+    if (reimagineImageUrl) {
+      // Gate by plan (DB-driven)
+      const planKeyRes = await query('SELECT subscription_plan FROM users WHERE id = $1', [userId]);
+      const planKey = planKeyRes.rows?.[0]?.subscription_plan || 'free';
+      let allowReimagine = false;
+      try {
+        const allowRes = await query('SELECT allow_reimagine FROM plans WHERE key = $1', [planKey]);
+        allowReimagine = !!allowRes.rows?.[0]?.allow_reimagine;
+      } catch {}
+      if (!allowReimagine) {
+        return res.status(403).json({ error: 'Reimagine feature is not available on your plan' });
+      }
+      // Use the non-watermarked image url sent by client
+      const imageUrls = [reimagineImageUrl];
+      imageUrl = await generateImage(prompt, GENERATORS.FAL_GEMINI_REIMAGINE, { imageUrls });
+    } else if (hasCamera) {
       // Gate by plan (DB-driven)
       const planKeyRes = await query('SELECT subscription_plan FROM users WHERE id = $1', [userId]);
       const planKey = planKeyRes.rows?.[0]?.subscription_plan || 'free';

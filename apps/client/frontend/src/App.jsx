@@ -454,7 +454,18 @@ function AppContent() {
     
     
     // Then make the API call to generate the image
-    generateImage(promptForImage, user?.id, drawingPng, drawingSvg, isPrivate, cameraPng)
+    // Include reimagineImageUrl if set by Reimagine button
+    (() => {
+      try {
+        return window.__reimagineImageUrl || null;
+      } catch {
+        return null;
+      }
+    })();
+    const reimagineImageUrl = (typeof window !== 'undefined' && window.__reimagineImageUrl) ? window.__reimagineImageUrl : null;
+    // Clear the flag early to avoid accidental reuse
+    try { if (typeof window !== 'undefined') window.__reimagineImageUrl = null; } catch {}
+    generateImage(promptForImage, user?.id, drawingPng, drawingSvg, isPrivate, cameraPng, reimagineImageUrl)
       .then((imageData) => {
         console.log('Image generated successfully:', imageData);
         

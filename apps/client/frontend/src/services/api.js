@@ -4,7 +4,7 @@ import { useToast } from '../components/ui/use-toast';
 // Track ongoing requests
 const ongoingRequests = new Map();
 
-export async function generateImage(prompt, userId = null, drawingPng = null, drawingSvg = null, isPrivate = true, cameraPng = null) {
+export async function generateImage(prompt, userId = null, drawingPng = null, drawingSvg = null, isPrivate = true, cameraPng = null, reimagineImageUrl = null) {
   try {
     if (!userId) {
       throw new Error('Authentication required');
@@ -15,7 +15,7 @@ export async function generateImage(prompt, userId = null, drawingPng = null, dr
     
     // Create a unique key for this request - use a hash of the prompt instead of the full prompt
     // This prevents issues with special characters and long prompts
-    const requestKey = `${userId}-${hasDrawing ? 'with-drawing' : (cameraPng ? 'with-camera' : 'no-drawing')}-${Date.now()}`;
+    const requestKey = `${userId}-${hasDrawing ? 'with-drawing' : (cameraPng ? 'with-camera' : (reimagineImageUrl ? 'with-reimagine' : 'no-drawing'))}-${Date.now()}`;
     console.log('[Client] Starting image generation:', { 
       prompt, 
       userId, 
@@ -55,6 +55,10 @@ export async function generateImage(prompt, userId = null, drawingPng = null, dr
         // Add camera photo if available
         if (cameraPng) {
           requestBody.cameraPng = cameraPng;
+        }
+        // Add reimagine image url if available
+        if (reimagineImageUrl) {
+          requestBody.reimagineImageUrl = reimagineImageUrl;
         }
         
         // Use the same endpoint for both sketch and text-based generation

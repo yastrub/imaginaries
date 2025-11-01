@@ -3,7 +3,8 @@ import { useSelector } from 'react-redux';
 import { createPortal } from 'react-dom';
 import { useViewportOverlay } from '../hooks/useViewportOverlay';
 import { showQrModal } from '../lib/qr';
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, EyeOff, Heart, DollarSign, Share2, Download, Repeat } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, EyeOff, Heart, DollarSign, Share2, Download, Repeat, Sparkles } from 'lucide-react';
+import { useSubscription } from '../hooks/useSubscription';
 // Note: Avoid using global toast here to prevent app-level rerenders that can reload grids
 
 export function ImageLightbox({
@@ -23,6 +24,10 @@ export function ImageLightbox({
   isPublicGallery = false // New prop to identify if this is in the public gallery
 }) {
   const overlayStyle = useViewportOverlay();
+  // Plan gating for Reimagine
+  const user = useSelector((state) => state?.auth?.user);
+  const { plan: planDetails } = useSubscription(user?.id);
+  const canReimagine = !!planDetails?.allowReimagine;
   const [loaded, setLoaded] = useState(false);
   const [showControls, setShowControls] = useState(true); // Start with controls hidden
   // Delay showing spinner to avoid quick flash on cached images
@@ -843,6 +848,24 @@ export function ImageLightbox({
           {/* Action buttons - only shown when not zoomed in */}
           {isAuthenticated && showControls && scale === 1 && (
             <div className="absolute top-4 right-4 flex gap-2 z-10">
+              {canReimagine && (
+                <button
+                  className="p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors"
+                  title="Reimagine"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const nonWatermarked = currentImage?.image_url || currentImage?.url || null;
+                    if (nonWatermarked) {
+                      try { window.__reimagineImageUrl = nonWatermarked; } catch {}
+                      if (window.location.pathname !== '/imagine') {
+                        window.location.href = '/imagine';
+                      }
+                    }
+                  }}
+                >
+                  <Sparkles className="w-5 h-5 text-white" />
+                </button>
+              )}
               {onQuoteRequest && (
                 <button
                   className="p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors"

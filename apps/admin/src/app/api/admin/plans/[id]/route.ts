@@ -9,7 +9,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const id = parseInt(params.id, 10);
     if (!Number.isFinite(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
     const res = await query(`
-      SELECT id, key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_product_id, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images, allow_camera,
+      SELECT id, key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_product_id, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images, allow_camera, allow_reimagine,
              price_cents, annual_price_cents, currency, is_active, is_public, sort_order, created_at, updated_at
       FROM plans WHERE id = $1
     `, [id]);
@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!Number.isFinite(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
 
     const body = await req.json();
-    const allowed = ['key','name','description','max_generations_per_day','max_generations_per_month','max_free_generations','stripe_product_id','stripe_price_monthly_id','stripe_price_annual_id','show_watermark','allow_private_images','allow_camera','price_cents','annual_price_cents','currency','is_active','is_public','sort_order'] as const;
+    const allowed = ['key','name','description','max_generations_per_day','max_generations_per_month','max_free_generations','stripe_product_id','stripe_price_monthly_id','stripe_price_annual_id','show_watermark','allow_private_images','allow_camera','allow_reimagine','price_cents','annual_price_cents','currency','is_active','is_public','sort_order'] as const;
     const fields: string[] = [];
     const values: any[] = [];
     let idx = 1;
@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!fields.length) return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
 
     values.push(id);
-    const sql = `UPDATE plans SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING id, key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_product_id, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images, allow_camera, price_cents, annual_price_cents, currency, is_active, is_public, sort_order, created_at, updated_at`;
+    const sql = `UPDATE plans SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING id, key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_product_id, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images, allow_camera, allow_reimagine, price_cents, annual_price_cents, currency, is_active, is_public, sort_order, created_at, updated_at`;
     const res = await query(sql, values);
     if (!res.rows.length) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(res.rows[0]);

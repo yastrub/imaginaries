@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Download, DollarSign, Loader2, Repeat, Heart, Share2, Lock, Unlock, EyeOff } from 'lucide-react';
+import { Download, DollarSign, Loader2, Repeat, Heart, Share2, Lock, Unlock, EyeOff, Sparkles } from 'lucide-react';
 import { Button } from './ui/button';
 import { useSelector } from 'react-redux';
 import { ImageLightbox } from './ImageLightbox';
 import { showQrModal } from '../lib/qr';
+import { useSubscription } from '../hooks/useSubscription';
 
 
 // CRITICAL PERFORMANCE OPTIMIZATION:
@@ -46,6 +47,9 @@ function ImageCardComponent({
   const noticeTimerRef = useRef(null);
   useEffect(() => () => { if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current); }, []);
   const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
+  const user = useSelector((state) => state?.auth?.user);
+  const { plan: planDetails } = useSubscription(user?.id);
+  const canReimagine = !!planDetails?.allowReimagine;
 
   // Update local state when props change
   useEffect(() => {
@@ -371,6 +375,28 @@ function ImageCardComponent({
       {/* Action buttons */}
       {showActions && isAuthenticated && (
         <div className="absolute top-3 right-3 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
+          {canReimagine && (
+            <Button
+              variant="default"
+              size="icon"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const nonWatermarked = image.image_url || image.url || null;
+                if (nonWatermarked) {
+                  try { window.__reimagineImageUrl = nonWatermarked; } catch {}
+                  // Navigate to imagine page so user can type instructions then submit
+                  if (window.location.pathname !== '/imagine') {
+                    window.location.href = '/imagine';
+                  }
+                }
+              }}
+              className="h-10 w-10"
+              title="Reimagine"
+            >
+              <Sparkles className="w-5 h-5" />
+            </Button>
+          )}
           {allowPrivateImages && (
             <Button
               variant="default"

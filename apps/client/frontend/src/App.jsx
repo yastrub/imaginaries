@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation, Routes, Route, BrowserRouter, Navigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useToast } from './components/ui/use-toast';
+import { convaiConfig } from './config/convai';
 import { Toaster } from './components/ui/Toaster';
 // Auth hook is already imported as useReduxAuth below
 import { usePromptContext, PromptProvider } from './contexts/PromptContext';
@@ -138,8 +139,14 @@ function AppContent() {
   // Inject ElevenLabs Convai widget for business-tier users only
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const enabledRaw = params.get('convai') ?? (typeof window !== 'undefined' ? window.__ELEVENLABS_CONVAI_ENABLED : undefined) ?? localStorage.getItem('convai_enabled') ?? import.meta.env.VITE_ELEVENLABS_CONVAI_ENABLED;
-    const agentId = params.get('agentId') ?? (typeof window !== 'undefined' ? window.__ELEVENLABS_CONVAI_AGENT_ID : undefined) ?? localStorage.getItem('convai_agent_id') ?? import.meta.env.VITE_ELEVENLABS_CONVAI_AGENT_ID;
+    const enabledRaw = params.get('convai')
+      ?? (typeof window !== 'undefined' ? window.__ELEVENLABS_CONVAI_ENABLED : undefined)
+      ?? localStorage.getItem('convai_enabled')
+      ?? (convaiConfig.enabled ? 'true' : 'false');
+    const agentId = params.get('agentId')
+      ?? (typeof window !== 'undefined' ? window.__ELEVENLABS_CONVAI_AGENT_ID : undefined)
+      ?? localStorage.getItem('convai_agent_id')
+      ?? convaiConfig.agentId;
     const enabled = String(enabledRaw).toLowerCase() === 'true' || String(enabledRaw) === '1';
     const isBusiness = isAuthenticated && (user?.subscription_plan === 'business');
 

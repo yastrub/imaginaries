@@ -137,8 +137,10 @@ function AppContent() {
 
   // Inject ElevenLabs Convai widget for business-tier users only
   useEffect(() => {
-    const enabled = import.meta.env.VITE_ELEVENLABS_CONVAI_ENABLED === 'true';
-    const agentId = import.meta.env.VITE_ELEVENLABS_CONVAI_AGENT_ID;
+    const params = new URLSearchParams(window.location.search);
+    const enabledRaw = params.get('convai') ?? (typeof window !== 'undefined' ? window.__ELEVENLABS_CONVAI_ENABLED : undefined) ?? localStorage.getItem('convai_enabled') ?? import.meta.env.VITE_ELEVENLABS_CONVAI_ENABLED;
+    const agentId = params.get('agentId') ?? (typeof window !== 'undefined' ? window.__ELEVENLABS_CONVAI_AGENT_ID : undefined) ?? localStorage.getItem('convai_agent_id') ?? import.meta.env.VITE_ELEVENLABS_CONVAI_AGENT_ID;
+    const enabled = String(enabledRaw).toLowerCase() === 'true' || String(enabledRaw) === '1';
     const isBusiness = isAuthenticated && (user?.subscription_plan === 'business');
 
     // If disabled or misconfigured, ensure widget is removed
@@ -159,10 +161,15 @@ function AppContent() {
         document.head.appendChild(s);
       }
       // Mount widget if not present
-      if (!document.querySelector('elevenlabs-convai')) {
+      const existingNode = document.querySelector('elevenlabs-convai');
+      if (!existingNode) {
         const w = document.createElement('elevenlabs-convai');
         w.setAttribute('agent-id', agentId);
         document.body.appendChild(w);
+      } else {
+        if (existingNode.getAttribute('agent-id') !== agentId) {
+          existingNode.setAttribute('agent-id', agentId);
+        }
       }
     } else {
       // Remove widget for non-business or logged-out users
@@ -175,7 +182,7 @@ function AppContent() {
       const existing = document.querySelector('elevenlabs-convai');
       if (existing) existing.remove();
     };
-  }, [isAuthenticated, user?.subscription_plan]);
+  }, [isAuthenticated, user?.subscription_plan, location.search]);
   
   // Get data from the consolidated hook
   const {

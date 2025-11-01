@@ -28,6 +28,7 @@ export const GenerateForm = React.memo(function GenerateForm({
   const [isPrivate, setIsPrivate] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const typingTimerRef = useRef(null);
+  const [hasPromptFocus, setHasPromptFocus] = useState(false);
   const [initialPromptHeight, setInitialPromptHeight] = useState(null);
   
   // Get user subscription plan from Redux store
@@ -153,7 +154,7 @@ export const GenerateForm = React.memo(function GenerateForm({
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     typingTimerRef.current = setTimeout(() => {
       setIsTyping(false);
-    }, 700);
+    }, 1200);
   };
 
   const onPromptFocus = () => {
@@ -162,13 +163,16 @@ export const GenerateForm = React.memo(function GenerateForm({
       clearTimeout(typingTimerRef.current);
       typingTimerRef.current = null;
     }
+    setHasPromptFocus(true);
   };
 
   const onPromptBlur = () => {
-    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-    typingTimerRef.current = setTimeout(() => {
-      setIsTyping(false);
-    }, 150);
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    setHasPromptFocus(false);
+    setIsTyping(false);
   };
 
   const maskedFirstWord = useMemo(() => {

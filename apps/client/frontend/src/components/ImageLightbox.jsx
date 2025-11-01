@@ -77,6 +77,34 @@ export function ImageLightbox({
     return () => clearTimeout(t);
   }, [loaded, currentImage]);
 
+  // Keep activeIndex in sync with the image clicked/opened, even if images reorder or new ones are added
+  useEffect(() => {
+    if (!open) return;
+    // Helper to extract a stable identifier
+    const getId = (im) => im?.id ?? im?._id ?? im?.image_id ?? null;
+    const targetId = getId(image);
+    let idx = -1;
+    if (Array.isArray(images) && images.length > 0) {
+      if (targetId != null) {
+        idx = images.findIndex((im) => getId(im) === targetId);
+      }
+      // Fallback to URL match if no id match
+      if (idx === -1) {
+        const tUrl = image?.image_url || image?.url || null;
+        if (tUrl) {
+          idx = images.findIndex((im) => (im?.image_url || im?.url) === tUrl);
+        }
+      }
+    }
+    if (idx === -1 && Number.isFinite(currentIndex)) {
+      idx = Math.min(Math.max(0, currentIndex), Math.max(0, images.length - 1));
+    }
+    const nextIndex = idx >= 0 ? idx : 0;
+    if (Number.isFinite(nextIndex) && nextIndex !== activeIndex) {
+      setActiveIndex(nextIndex);
+    }
+  }, [open, image?.id, image?._id, image?.image_id, image?.image_url, image?.url, images, images.length, currentIndex]);
+
   // When the displayed image changes, set `loaded` based on cache state to avoid a flash
   // Only react when the actual src changes, not when the image object reference changes
   useEffect(() => {

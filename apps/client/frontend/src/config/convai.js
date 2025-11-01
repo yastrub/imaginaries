@@ -5,5 +5,5 @@ export const convaiConfig = {
   // Default enable/disable; can be overridden at runtime via URL/globals/localStorage
   enabled: false,
   // Default agent id; can be overridden at runtime via URL/globals/localStorage
-  agentId: agent_5901k63qwck9eeetkzmbmfev87s7,
+  agentId: 'agent_5901k63qwck9eeetkzmbmfev87s7',
 };

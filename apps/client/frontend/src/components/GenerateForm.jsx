@@ -118,6 +118,8 @@ export const GenerateForm = React.memo(function GenerateForm({
         const url = window.__reimagineImageUrl;
         if (url && typeof url === 'string') {
           setReimagineImageUrl(url);
+          // Clear existing text for reimagine flow only
+          try { setPrompt(''); } catch {}
           // Focus prompt so user can type instructions immediately
           try { promptInputRef?.current?.focus(); } catch {}
         }
@@ -128,6 +130,8 @@ export const GenerateForm = React.memo(function GenerateForm({
       const url = (e && e.detail && e.detail.url) ? e.detail.url : (window.__reimagineImageUrl || null);
       if (url) {
         setReimagineImageUrl(url);
+        // Clear existing text for reimagine flow only
+        try { setPrompt(''); } catch {}
         try { promptInputRef?.current?.focus(); } catch {}
       }
     };

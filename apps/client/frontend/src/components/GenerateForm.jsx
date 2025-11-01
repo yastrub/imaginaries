@@ -154,7 +154,7 @@ export const GenerateForm = React.memo(function GenerateForm({
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     typingTimerRef.current = setTimeout(() => {
       setIsTyping(false);
-    }, 1200);
+    }, 2400);
   };
 
   const onPromptFocus = () => {

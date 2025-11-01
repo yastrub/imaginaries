@@ -454,16 +454,11 @@ function AppContent() {
     
     
     // Then make the API call to generate the image
-    // Include reimagineImageUrl if set by Reimagine button
-    (() => {
-      try {
-        return window.__reimagineImageUrl || null;
-      } catch {
-        return null;
-      }
-    })();
-    const reimagineImageUrl = (typeof window !== 'undefined' && window.__reimagineImageUrl) ? window.__reimagineImageUrl : null;
-    // Clear the flag early to avoid accidental reuse
+    // Prefer GenerateForm-provided URL; fallback to global flag if present
+    const reimagineFromForm = drawingData?.reimagineImageUrl || null;
+    const reimagineFromWindow = (typeof window !== 'undefined' && window.__reimagineImageUrl) ? window.__reimagineImageUrl : null;
+    const reimagineImageUrl = reimagineFromForm || reimagineFromWindow;
+    // Clear the global flag early to avoid accidental reuse
     try { if (typeof window !== 'undefined') window.__reimagineImageUrl = null; } catch {}
     generateImage(promptForImage, user?.id, drawingPng, drawingSvg, isPrivate, cameraPng, reimagineImageUrl)
       .then((imageData) => {

@@ -857,6 +857,10 @@ export function ImageLightbox({
                     const nonWatermarked = currentImage?.image_url || currentImage?.url || null;
                     if (nonWatermarked) {
                       try { window.__reimagineImageUrl = nonWatermarked; } catch {}
+                      try { window.dispatchEvent(new CustomEvent('reimagine-set', { detail: { url: nonWatermarked } })); } catch {}
+                      // Close lightbox immediately so user sees prompt
+                      try { onClose && onClose(); } catch {}
+                      // Navigate to imagine if we're not already there
                       if (window.location.pathname !== '/imagine') {
                         window.location.href = '/imagine';
                       }

@@ -385,6 +385,7 @@ function ImageCardComponent({
                 const nonWatermarked = image.image_url || image.url || null;
                 if (nonWatermarked) {
                   try { window.__reimagineImageUrl = nonWatermarked; } catch {}
+                  try { window.dispatchEvent(new CustomEvent('reimagine-set', { detail: { url: nonWatermarked } })); } catch {}
                   // Navigate to imagine page so user can type instructions then submit
                   if (window.location.pathname !== '/imagine') {
                     window.location.href = '/imagine';

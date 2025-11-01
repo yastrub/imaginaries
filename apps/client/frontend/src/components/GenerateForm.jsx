@@ -22,6 +22,7 @@ export const GenerateForm = React.memo(function GenerateForm({
   const [drawingState, setDrawingState] = useState(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [cameraThumbnail, setCameraThumbnail] = useState(null);
+  const [reimagineImageUrl, setReimagineImageUrl] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   // Always initialize as false (public/eye ON)
   const [isPrivate, setIsPrivate] = useState(false);
@@ -110,6 +111,37 @@ export const GenerateForm = React.memo(function GenerateForm({
     };
   }, [setPrompt]);
 
+  // Reimagine: listen for global flag and event; show image preview near prompt and focus textarea
+  useEffect(() => {
+    const applyReimagineFromWindow = () => {
+      try {
+        const url = window.__reimagineImageUrl;
+        if (url && typeof url === 'string') {
+          setReimagineImageUrl(url);
+          // Focus prompt so user can type instructions immediately
+          try { promptInputRef?.current?.focus(); } catch {}
+        }
+      } catch {}
+    };
+
+    const onReimagineSet = (e) => {
+      const url = (e && e.detail && e.detail.url) ? e.detail.url : (window.__reimagineImageUrl || null);
+      if (url) {
+        setReimagineImageUrl(url);
+        try { promptInputRef?.current?.focus(); } catch {}
+      }
+    };
+
+    window.addEventListener('reimagine-set', onReimagineSet);
+    // Initial check in case it was set prior to mount
+    applyReimagineFromWindow();
+    const t = setTimeout(applyReimagineFromWindow, 200);
+    return () => {
+      window.removeEventListener('reimagine-set', onReimagineSet);
+      clearTimeout(t);
+    };
+  }, [promptInputRef]);
+
   const handlePromptInputChange = (e) => {
     const v = e.target.value;
     setPrompt(v);
@@ -181,12 +213,13 @@ export const GenerateForm = React.memo(function GenerateForm({
       return;
     }
 
-    // Pass drawing data (both PNG and SVG) and camera photo to the submit handler
+    // Pass drawing data (both PNG and SVG), camera photo, and reimagine URL to the submit handler
     onSubmit(e, {
       drawingPng: drawingThumbnail,
       drawingSvg: drawingSvgData,
       isPrivate: isPrivate,
-      cameraPng: cameraThumbnail
+      cameraPng: cameraThumbnail,
+      reimagineImageUrl: reimagineImageUrl
     });
   };
 
@@ -216,7 +249,7 @@ export const GenerateForm = React.memo(function GenerateForm({
         <form onSubmit={handleSubmit} className="w-full">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="input-wrapper flex">
-              {(drawingThumbnail || cameraThumbnail) && (
+              {(drawingThumbnail || cameraThumbnail || reimagineImageUrl) && (
                 <div className="flex items-center gap-[1px] bg-zinc-700/40">
                   {cameraThumbnail && (
                     <div className="relative flex-shrink-0 w-[4rem] h-[4rem] bg-zinc-800 border-r border-zinc-700">
@@ -226,6 +259,19 @@ export const GenerateForm = React.memo(function GenerateForm({
                         onClick={() => setCameraThumbnail(null)}
                         className="absolute top-0 right-0 w-5 h-5 flex items-center justify-center bg-zinc-900/80 hover:bg-red-600 rounded-bl text-zinc-400 hover:text-white transition-colors"
                         title="Remove photo"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                      </button>
+                    </div>
+                  )}
+                  {reimagineImageUrl && (
+                    <div className="relative flex-shrink-0 w-[4rem] h-[4rem] bg-zinc-800 border-r border-zinc-700">
+                      <img src={reimagineImageUrl} alt="Reimagine" className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setReimagineImageUrl(null)}
+                        className="absolute top-0 right-0 w-5 h-5 flex items-center justify-center bg-zinc-900/80 hover:bg-red-600 rounded-bl text-zinc-400 hover:text-white transition-colors"
+                        title="Remove image"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                       </button>

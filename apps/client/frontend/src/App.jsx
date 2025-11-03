@@ -18,6 +18,7 @@ import { usePromptClearer } from './hooks/usePromptClearer';
 import { useDirectPromptSubmission } from './hooks/useDirectPromptSubmission';
 import { usePresetsData } from './hooks/usePresetsData';
 import { EmailConfirmationPage } from './components/EmailConfirmationPage';
+import { PasswordResetPage } from './components/PasswordResetPage';
 import { Header } from './components/Header';
 import { Gallery } from './components/Gallery';
 import { Modal } from './components/Modal';
@@ -955,6 +956,7 @@ function AppContent() {
           
           <Route path="/share/:imageId" element={<SharePage />} />
           <Route path="/confirm-email" element={<EmailConfirmationPage />} />
+          <Route path="/reset-password" element={<PasswordResetPage />} />
           <Route path="*" element={
             <div className="min-h-screen bg-black flex flex-col">
               {/* Header Component */}

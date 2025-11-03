@@ -27,6 +27,7 @@ function PrivacyToggleCell({ id, initial }: { id: string; initial: boolean }) {
   const [loading, setLoading] = React.useState<boolean>(false);
   React.useEffect(() => { setChecked(initial); }, [initial]);
   const onToggle = async (next: boolean) => {
+    const prev = checked;
     setChecked(next);
     setLoading(true);
     try {
@@ -41,18 +42,15 @@ function PrivacyToggleCell({ id, initial }: { id: string; initial: boolean }) {
       setChecked(!!json.is_private);
       message.success(`Image set to ${json.is_private ? 'Private' : 'Public'}`);
     } catch (e) {
-      setChecked(initial);
+      setChecked(prev);
       message.error('Failed to update visibility');
     } finally {
       setLoading(false);
     }
   };
-  if (checked) {
-    return <Tag color="red">Private</Tag>;
-  }
   return (
     <Space>
-      <Tag color="green">Public</Tag>
+      <Tag color={checked ? 'red' : 'green'}>{checked ? 'Private' : 'Public'}</Tag>
       <Switch checked={checked} loading={loading} onChange={onToggle} size="small" />
     </Space>
   );

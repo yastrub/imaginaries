@@ -271,6 +271,15 @@ function ensureUpdateOverlay() {
   };
 }
 
+// Ensure async ops cannot hang indefinitely
+function withTimeout(promise, ms = 1500) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((resolve) => { timer = setTimeout(() => resolve('__timeout__'), ms); })
+  ]).finally(() => { try { clearTimeout(timer); } catch {} });
+}
+
 async function purgeCachesAndReloadWithOverlay() {
   if (updatingInProgress) return; updatingInProgress = true;
   const ui = ensureUpdateOverlay();
@@ -278,17 +287,28 @@ async function purgeCachesAndReloadWithOverlay() {
   try {
     ui.setStatus('Unregistering service workers');
     try {
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(r => r.unregister().catch(() => {})));
+      if ('serviceWorker' in navigator && navigator.serviceWorker?.getRegistrations) {
+        const regs = await withTimeout(navigator.serviceWorker.getRegistrations(), 1500);
+        if (Array.isArray(regs)) {
+          // Don't let unregister hang either
+          await Promise.race([
+            Promise.allSettled(regs.map(r => r.unregister().catch(() => {}))),
+            new Promise((resolve) => setTimeout(resolve, 1500))
+          ]);
+        }
       }
     } catch {}
 
     ui.setStatus('Purging caches');
     try {
       if (window.caches && caches.keys) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k).catch(() => {})));
+        const keys = await withTimeout(caches.keys(), 1500);
+        if (Array.isArray(keys)) {
+          await Promise.race([
+            Promise.allSettled(keys.map(k => caches.delete(k).catch(() => {}))),
+            new Promise((resolve) => setTimeout(resolve, 1500))
+          ]);
+        }
       }
     } catch {}
 

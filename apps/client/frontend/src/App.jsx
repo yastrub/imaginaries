@@ -437,7 +437,7 @@ function AppContent() {
     console.log('FINAL SUBMISSION PROMPT:', submissionPrompt);
     
     // Extract drawing data and privacy setting if provided
-    const { drawingPng, drawingSvg, isPrivate = true, cameraPng = null } = drawingData || {};
+    const { drawingPng, drawingSvg, isPrivate = true, cameraPng = null, uploadedPng = null } = drawingData || {};
     
     // Ensure we have a valid prompt
     if (!submissionPrompt || submissionPrompt.trim() === '') {
@@ -474,7 +474,7 @@ function AppContent() {
     const reimagineImageUrl = reimagineFromForm || reimagineFromWindow;
     // Clear the global flag early to avoid accidental reuse
     try { if (typeof window !== 'undefined') window.__reimagineImageUrl = null; } catch {}
-    generateImage(promptForImage, user?.id, drawingPng, drawingSvg, isPrivate, cameraPng, reimagineImageUrl)
+    generateImage(promptForImage, user?.id, drawingPng, drawingSvg, isPrivate, cameraPng, uploadedPng, reimagineImageUrl)
       .then((imageData) => {
         console.log('Image generated successfully:', imageData);
         

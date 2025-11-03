@@ -427,11 +427,12 @@ router.put('/:imageId/privacy', auth, async (req, res) => {
 router.post('/', auth, generateLimiter, checkGenerationLimits, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { prompt, model = DEFAULT_GENERATOR, size = '1024x1024', quality = 'hd', drawingPng, drawingSvg, cameraPng, is_private = true, reimagineImageUrl } = req.body;
+    const { prompt, model = DEFAULT_GENERATOR, size = '1024x1024', quality = 'hd', drawingPng, drawingSvg, cameraPng, uploadedPng, is_private = true, reimagineImageUrl } = req.body;
     
     // Check if we have sketch or camera data
     const hasSketch = drawingPng && drawingSvg;
     const hasCamera = !!cameraPng;
+    const hasUpload = !!uploadedPng;
     
     let finalPrompt = prompt;
     let imageUrl;
@@ -474,6 +475,32 @@ router.post('/', auth, generateLimiter, checkGenerationLimits, async (req, res) 
       }
 
       const imageUrls = [camUrl];
+      if (hasSketch && drawingPng) {
+        // Upload sketch as well to obtain URL
+        const uploadedSketch = await uploadSketch(drawingPng, drawingSvg || null, userId);
+        if (uploadedSketch?.image_url) imageUrls.push(uploadedSketch.image_url);
+      }
+
+      // Use FAL Gemini Edit with system prompt configured server-side
+      imageUrl = await generateImage(prompt, GENERATORS.FAL_GEMINI_EDIT, { imageUrls });
+    } else if (hasUpload) {
+      // Gate by plan (DB-driven)
+      const planKeyRes = await query('SELECT subscription_plan FROM users WHERE id = $1', [userId]);
+      const planKey = planKeyRes.rows?.[0]?.subscription_plan || 'free';
+      const allowUploadRes = await query('SELECT allow_upload FROM plans WHERE key = $1', [planKey]);
+      const allowUpload = !!allowUploadRes.rows?.[0]?.allow_upload;
+      if (!allowUpload) {
+        return res.status(403).json({ error: 'Upload feature is not available on your plan' });
+      }
+
+      // Upload uploaded image to obtain a public URL
+      const uploaded = await uploadSketch(uploadedPng, null, userId);
+      const upUrl = uploaded?.image_url;
+      if (!upUrl) {
+        return res.status(500).json({ error: 'Failed to upload image' });
+      }
+
+      const imageUrls = [upUrl];
       if (hasSketch && drawingPng) {
         // Upload sketch as well to obtain URL
         const uploadedSketch = await uploadSketch(drawingPng, drawingSvg || null, userId);
@@ -543,7 +570,8 @@ router.post('/', auth, generateLimiter, checkGenerationLimits, async (req, res) 
       quality,
       // Flag if the image was generated from a sketch
       ...(hasSketch && { fromSketch: true }),
-      ...(hasCamera && { fromCamera: true })
+      ...(hasCamera && { fromCamera: true }),
+      ...(hasUpload && { fromUpload: true })
     };
     
     // Determine if the image should be private based on DB plan flag and request

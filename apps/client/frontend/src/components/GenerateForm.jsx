@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sparkles, Settings2, Pencil, Eye, EyeOff, Camera } from 'lucide-react';
+import { Sparkles, Settings2, Pencil, Eye, EyeOff, Camera, Upload } from 'lucide-react';
 import { AutoResizeTextarea } from './AutoResizeTextarea';
 import { DrawingBoard } from './DrawingBoard';
 // Import the openAuthModal function
@@ -22,6 +22,8 @@ export const GenerateForm = React.memo(function GenerateForm({
   const [drawingState, setDrawingState] = useState(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [cameraThumbnail, setCameraThumbnail] = useState(null);
+  const [uploadedThumbnail, setUploadedThumbnail] = useState(null);
+  const fileInputRef = useRef(null);
   const [reimagineImageUrl, setReimagineImageUrl] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   // Always initialize as false (public/eye ON)
@@ -37,6 +39,8 @@ export const GenerateForm = React.memo(function GenerateForm({
   const canUsePrivateImages = !!planDetails?.allowPrivateImages;
   const canUseCamera = !!planDetails?.allowCamera;
   const shouldShowCamera = isMobile && (isAuthenticated ? canUseCamera : true);
+  const canUseUpload = !!planDetails?.allowUpload;
+  const shouldShowUpload = isAuthenticated ? canUseUpload : true;
   // UI: camera availability is mobile-only; server enforces plan gating
   useEffect(() => {
     try {
@@ -213,6 +217,35 @@ export const GenerateForm = React.memo(function GenerateForm({
     setIsCameraOpen(false);
   };
 
+  const onUploadClick = () => {
+    if (!isAuthenticated) {
+      openAuthModal();
+      return;
+    }
+    try { fileInputRef.current?.click(); } catch {}
+  };
+
+  const onFileSelected = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const allowed = ['image/jpeg','image/png','image/webp','image/jpg'];
+    if (!allowed.includes(file.type)) {
+      e.target.value = '';
+      return;
+    }
+    const max = 10 * 1024 * 1024;
+    if (file.size > max) {
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setUploadedThumbnail(reader.result);
+      try { promptInputRef?.current?.focus(); } catch {}
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
@@ -227,6 +260,7 @@ export const GenerateForm = React.memo(function GenerateForm({
       drawingSvg: drawingSvgData,
       isPrivate: isPrivate,
       cameraPng: cameraThumbnail,
+      uploadedPng: uploadedThumbnail,
       reimagineImageUrl: reimagineImageUrl
     });
   };
@@ -257,17 +291,20 @@ export const GenerateForm = React.memo(function GenerateForm({
         <form onSubmit={handleSubmit} className="w-full">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="input-wrapper flex">
-              {(drawingThumbnail || cameraThumbnail || reimagineImageUrl) && (
+              {(drawingThumbnail || cameraThumbnail || uploadedThumbnail || reimagineImageUrl) && (
                 <div className="flex items-center gap-[1px] bg-zinc-700/40">
                   {cameraThumbnail && (
                     <div className="relative flex-shrink-0 w-[4rem] h-[4rem] bg-zinc-800 border-r border-zinc-700">
                       <img src={cameraThumbnail} alt="Camera" className="h-full w-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => setCameraThumbnail(null)}
-                        className="absolute top-0 right-0 w-5 h-5 flex items-center justify-center bg-zinc-900/80 hover:bg-red-600 rounded-bl text-zinc-400 hover:text-white transition-colors"
-                        title="Remove photo"
-                      >
+                      <button type="button" onClick={() => setCameraThumbnail(null)} className="absolute top-0 right-0 w-5 h-5 flex items-center justify-center bg-zinc-900/80 hover:bg-red-600 rounded-bl text-zinc-400 hover:text-white transition-colors" title="Remove photo">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                      </button>
+                    </div>
+                  )}
+                  {uploadedThumbnail && (
+                    <div className="relative flex-shrink-0 w-[4rem] h-[4rem] bg-zinc-800 border-r border-zinc-700">
+                      <img src={uploadedThumbnail} alt="Upload" className="h-full w-full object-cover" />
+                      <button type="button" onClick={() => setUploadedThumbnail(null)} className="absolute top-0 right-0 w-5 h-5 flex items-center justify-center bg-zinc-900/80 hover:bg-red-600 rounded-bl text-zinc-400 hover:text-white transition-colors" title="Remove image">
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                       </button>
                     </div>
@@ -275,43 +312,18 @@ export const GenerateForm = React.memo(function GenerateForm({
                   {reimagineImageUrl && (
                     <div className="relative flex-shrink-0 w-[4rem] h-[4rem] bg-zinc-800 border-r border-zinc-700">
                       <img src={reimagineImageUrl} alt="Reimagine" className="h-full w-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => setReimagineImageUrl(null)}
-                        className="absolute top-0 right-0 w-5 h-5 flex items-center justify-center bg-zinc-900/80 hover:bg-red-600 rounded-bl text-zinc-400 hover:text-white transition-colors"
-                        title="Remove image"
-                      >
+                      <button type="button" onClick={() => setReimagineImageUrl(null)} className="absolute top-0 right-0 w-5 h-5 flex items-center justify-center bg-zinc-900/80 hover:bg-red-600 rounded-bl text-zinc-400 hover:text-white transition-colors" title="Remove image">
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                       </button>
                     </div>
                   )}
                   {drawingThumbnail && (
                     <div className="relative flex-shrink-0 w-[4rem] h-[4rem] bg-zinc-800 border-r border-zinc-700">
-                      <button
-                        type="button"
-                        onClick={handleDrawingClick}
-                        className="w-full h-full"
-                      >
-                        <img 
-                          src={drawingThumbnail} 
-                          alt="Drawing" 
-                          className="h-full w-full object-contain"
-                        />
+                      <button type="button" onClick={handleDrawingClick} className="w-full h-full">
+                        <img src={drawingThumbnail} alt="Drawing" className="h-full w-full object-contain" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDrawingThumbnail(null);
-                          setDrawingSvgData(null);
-                          setDrawingState(null);
-                        }}
-                        className="absolute top-0 right-0 w-5 h-5 flex items-center justify-center bg-zinc-900/80 hover:bg-red-600 rounded-bl text-zinc-400 hover:text-white transition-colors"
-                        title="Remove drawing"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M18 6 6 18" />
-                          <path d="m6 6 12 12" />
-                        </svg>
+                      <button type="button" onClick={() => { setDrawingThumbnail(null); setDrawingSvgData(null); setDrawingState(null); }} className="absolute top-0 right-0 w-5 h-5 flex items-center justify-center bg-zinc-900/80 hover:bg-red-600 rounded-bl text-zinc-400 hover:text-white transition-colors" title="Remove drawing">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                       </button>
                     </div>
                   )}
@@ -342,41 +354,29 @@ export const GenerateForm = React.memo(function GenerateForm({
                   </div>
                 )}
                 <div className="absolute right-4 top-0 h-[4rem] flex items-center">
-                  <div className={`flex items-center gap-1 bg-zinc-800/50 p-1 rounded-lg transition-opacity ${showIcons ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                  >
-                    <button
-                      type="button"
-                      onClick={handleDrawingClick}
-                      className="p-2 text-zinc-400 hover:text-white transition-colors"
-                    >
+                  <div className={`flex items-center gap-1 bg-zinc-800/50 p-1 rounded-lg transition-opacity ${showIcons ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                    <button type="button" onClick={handleDrawingClick} className="p-2 text-zinc-400 hover:text-white transition-colors">
                       <Pencil className="w-5 h-5" />
                     </button>
                     {shouldShowCamera && (
-                      <button
-                        type="button"
-                        onClick={handleCameraClick}
-                        className={`p-2 transition-colors text-zinc-400 hover:text-white`}
-                        title={'Take a photo'}
-                      >
+                      <button type="button" onClick={handleCameraClick} className={`p-2 transition-colors text-zinc-400 hover:text-white`} title={'Take a photo'}>
                         <Camera className="w-5 h-5" />
                       </button>
                     )}
+                    {shouldShowUpload && (
+                      <>
+                        <button type="button" onClick={onUploadClick} className={`p-2 transition-colors text-zinc-400 hover:text-white`} title={'Upload image'}>
+                          <Upload className="w-5 h-5" />
+                        </button>
+                        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" onChange={onFileSelected} />
+                      </>
+                    )}
                     {isAuthenticated && canUsePrivateImages && (
-                      <button
-                        type="button"
-                        onClick={() => setIsPrivate(!isPrivate)}
-                        className={`p-2 transition-colors ${isPrivate ? 'text-primary' : 'text-zinc-400 hover:text-white'}`}
-                        title={isPrivate ? 'Private image (only visible to you)' : 'Public image (visible to everyone)'}
-                        data-privacy-state={isPrivate ? 'private' : 'public'}
-                      >
+                      <button type="button" onClick={() => setIsPrivate(!isPrivate)} className={`p-2 transition-colors ${isPrivate ? 'text-primary' : 'text-zinc-400 hover:text-white'}`} title={isPrivate ? 'Private image (only visible to you)' : 'Public image (visible to everyone)'} data-privacy-state={isPrivate ? 'private' : 'public'}>
                         {isPrivate ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={openPresetsModal}
-                      className={`p-2 transition-colors ${selectedPresets.length > 0 ? 'text-primary' : 'text-zinc-400 hover:text-white'}`}
-                    >
+                    <button type="button" onClick={openPresetsModal} className={`p-2 transition-colors ${selectedPresets.length > 0 ? 'text-primary' : 'text-zinc-400 hover:text-white'}`}>
                       <Settings2 className="w-5 h-5" />
                     </button>
                   </div>

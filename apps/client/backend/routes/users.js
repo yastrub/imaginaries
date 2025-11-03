@@ -25,7 +25,7 @@ async function getSubscriptionForCurrentUser(req, res) {
     let planRow = null;
     try {
       const planRes = await query(
-        `SELECT key, name, show_watermark, allow_private_images, allow_camera, allow_reimagine, max_generations_per_month, max_free_generations
+        `SELECT key, name, show_watermark, allow_private_images, allow_camera, allow_upload, allow_reimagine, max_generations_per_month, max_free_generations
          FROM plans WHERE key = $1`,
         [user.subscription_plan]
       );
@@ -61,6 +61,7 @@ async function getSubscriptionForCurrentUser(req, res) {
         requiresWatermark: !!(planRow?.show_watermark ?? getPlanConfig(user.subscription_plan)?.requiresWatermark),
         allowPrivateImages: !!(planRow?.allow_private_images ?? getPlanConfig(user.subscription_plan)?.allowPrivateImages),
         allowCamera: !!(planRow?.allow_camera ?? false),
+        allowUpload: !!(planRow?.allow_upload ?? false),
         allowReimagine: !!(planRow?.allow_reimagine ?? false),
       },
       max_generations_per_month,

@@ -20,6 +20,7 @@ export type Plan = {
   show_watermark: boolean;
   allow_private_images: boolean;
   allow_camera: boolean;
+  allow_upload: boolean;
   allow_reimagine: boolean;
   price_cents: number;
   annual_price_cents: number;
@@ -73,6 +74,7 @@ export default function PlansPage() {
       show_watermark: true,
       allow_private_images: false,
       allow_camera: false,
+      allow_upload: false,
       allow_reimagine: false,
       price_dollars: 0,
       annual_price_dollars: 0,
@@ -97,6 +99,7 @@ export default function PlansPage() {
       show_watermark: row.show_watermark,
       allow_private_images: row.allow_private_images,
       allow_camera: (row as any).allow_camera ?? false,
+      allow_upload: (row as any).allow_upload ?? false,
       allow_reimagine: (row as any).allow_reimagine ?? false,
       price_dollars: (row.price_cents || 0) / 100,
       annual_price_dollars: (row.annual_price_cents || 0) / 100,
@@ -121,6 +124,7 @@ export default function PlansPage() {
       show_watermark: !!values.show_watermark,
       allow_private_images: !!values.allow_private_images,
       allow_camera: !!values.allow_camera,
+      allow_upload: !!values.allow_upload,
       allow_reimagine: !!values.allow_reimagine,
       price_cents: Math.round((Number(values.price_dollars) || 0) * 100),
       annual_price_cents: Math.round((Number(values.annual_price_dollars) || 0) * 100),
@@ -176,6 +180,13 @@ export default function PlansPage() {
         <Table.Column<Plan>
           dataIndex="allow_reimagine"
           title="Reimagine"
+          sorter
+          render={(v: boolean) => v ? <Tag color="green">Yes</Tag> : <Tag color="red">No</Tag>}
+          width={150}
+        />
+        <Table.Column<Plan>
+          dataIndex="allow_upload"
+          title="Upload"
           sorter
           render={(v: boolean) => v ? <Tag color="green">Yes</Tag> : <Tag color="red">No</Tag>}
           width={150}
@@ -255,6 +266,9 @@ export default function PlansPage() {
             <Switch />
           </Form.Item>
           <Form.Item name="allow_camera" label="Allow Camera" valuePropName="checked">
+            <Switch />
+          </Form.Item>
+          <Form.Item name="allow_upload" label="Allow Upload" valuePropName="checked">
             <Switch />
           </Form.Item>
           <Form.Item name="allow_reimagine" label="Allow Reimagine" valuePropName="checked">

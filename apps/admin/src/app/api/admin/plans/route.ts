@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       stripe_price_annual_id: 'p.stripe_price_annual_id',
       show_watermark: 'p.show_watermark',
       allow_private_images: 'p.allow_private_images',
+      allow_upload: 'p.allow_upload',
       allow_reimagine: 'p.allow_reimagine',
       price_cents: 'p.price_cents',
       annual_price_cents: 'p.annual_price_cents',
@@ -67,6 +68,7 @@ export async function GET(req: NextRequest) {
         p.show_watermark,
         p.allow_private_images,
         p.allow_camera,
+        p.allow_upload,
         p.allow_reimagine,
         p.price_cents,
         p.annual_price_cents,
@@ -114,6 +116,7 @@ export async function POST(req: NextRequest) {
       show_watermark = true,
       allow_private_images = false,
       allow_camera = false,
+      allow_upload = false,
       allow_reimagine = false,
       price_cents = 0,
       annual_price_cents = 0,
@@ -129,15 +132,15 @@ export async function POST(req: NextRequest) {
 
     const insertSql = `
       INSERT INTO plans (
-        key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_product_id, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images, allow_camera, allow_reimagine,
+        key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_product_id, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images, allow_camera, allow_upload, allow_reimagine,
         price_cents, annual_price_cents, currency, is_active, is_public, sort_order
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
-      RETURNING id, key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_product_id, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images, allow_camera, allow_reimagine,
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+      RETURNING id, key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_product_id, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images, allow_camera, allow_upload, allow_reimagine,
         price_cents, annual_price_cents, currency, is_active, is_public, sort_order, created_at, updated_at
     `;
 
     const values = [
-      key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_product_id, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images, allow_camera, allow_reimagine,
+      key, name, description, max_generations_per_day, max_generations_per_month, max_free_generations, stripe_product_id, stripe_price_monthly_id, stripe_price_annual_id, show_watermark, allow_private_images, allow_camera, allow_upload, allow_reimagine,
       price_cents, annual_price_cents, currency, is_active, is_public, sort_order
     ];
 

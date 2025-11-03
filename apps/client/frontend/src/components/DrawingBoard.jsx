@@ -23,6 +23,8 @@ export function DrawingBoard({
   const [selectedColor, setSelectedColor] = useState(savedDrawingState?.color || COLORS[0].value);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [usingNativeFullscreen, setUsingNativeFullscreen] = useState(false);
+  const [fsUserInitiated, setFsUserInitiated] = useState(false);
+  const fsUserInitiatedRef = useRef(false);
   const [canvasSize, setCanvasSize] = useState(512);
   const canvasRef = useRef(null);
   const canvasContainerRef = useRef(null);
@@ -85,17 +87,25 @@ export function DrawingBoard({
         if (document.fullscreenElement && document.exitFullscreen) {
           document.exitFullscreen();
           setUsingNativeFullscreen(false);
+          setFsUserInitiated(false);
+          fsUserInitiatedRef.current = false;
         } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
           document.webkitExitFullscreen();
           setUsingNativeFullscreen(false);
+          setFsUserInitiated(false);
+          fsUserInitiatedRef.current = false;
         } else {
           // In-app fullscreen
           setIsFullscreen(false);
           setUsingNativeFullscreen(false);
+          setFsUserInitiated(false);
+          fsUserInitiatedRef.current = false;
         }
       } catch {
         setIsFullscreen(false);
         setUsingNativeFullscreen(false);
+        setFsUserInitiated(false);
+        fsUserInitiatedRef.current = false;
       }
     } else {
       // Enter fullscreen: try native first, fallback to in-app
@@ -103,6 +113,8 @@ export function DrawingBoard({
       const fallback = () => {
         setUsingNativeFullscreen(false);
         setIsFullscreen(true);
+        setFsUserInitiated(true);
+        fsUserInitiatedRef.current = true;
       };
       try {
         if (el?.requestFullscreen) {
@@ -112,6 +124,8 @@ export function DrawingBoard({
             if (active) {
               setUsingNativeFullscreen(true);
               setIsFullscreen(true);
+              setFsUserInitiated(true);
+              fsUserInitiatedRef.current = true;
             } else {
               fallback();
             }
@@ -124,6 +138,8 @@ export function DrawingBoard({
             if (active) {
               setUsingNativeFullscreen(true);
               setIsFullscreen(true);
+              setFsUserInitiated(true);
+              fsUserInitiatedRef.current = true;
             } else {
               fallback();
             }
@@ -206,8 +222,22 @@ export function DrawingBoard({
   useEffect(() => {
     const onFsChange = () => {
       const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
-      setIsFullscreen(active);
-      if (!active) setUsingNativeFullscreen(false);
+      if (!active) {
+        setIsFullscreen(false);
+        setUsingNativeFullscreen(false);
+        setFsUserInitiated(false);
+        fsUserInitiatedRef.current = false;
+      } else {
+        // Only honor native fullscreen if user explicitly initiated from this component
+        if (fsUserInitiatedRef.current) {
+          setIsFullscreen(true);
+          setUsingNativeFullscreen(true);
+        } else {
+          // Ignore spurious native FS activations
+          setIsFullscreen(false);
+          setUsingNativeFullscreen(false);
+        }
+      }
     };
     document.addEventListener('fullscreenchange', onFsChange);
     document.addEventListener('webkitfullscreenchange', onFsChange);
@@ -224,6 +254,8 @@ export function DrawingBoard({
       if (!native && usingNativeFullscreen) {
         setUsingNativeFullscreen(false);
         setIsFullscreen(false);
+        setFsUserInitiated(false);
+        fsUserInitiatedRef.current = false;
       }
     };
     const opts = { passive: true };
@@ -324,12 +356,12 @@ export function DrawingBoard({
       <div 
         ref={canvasContainerRef} 
         className={`relative w-full flex justify-center ${
-          isFullscreen ? 'items-center bg-black' : ''
-        } ${isFullscreen && !usingNativeFullscreen ? 'fixed inset-0 z-[9999]' : ''}`}
+          isFullscreen && fsUserInitiated ? 'items-center bg-black' : ''
+        } ${isFullscreen && fsUserInitiated && !usingNativeFullscreen ? 'fixed inset-0 z-[9999]' : ''}`}
         style={{
-          maxWidth: isFullscreen && !usingNativeFullscreen ? 'none' : '512px',
-          width: isFullscreen && !usingNativeFullscreen ? '100vw' : '100%',
-          height: isFullscreen && !usingNativeFullscreen ? '100dvh' : 'auto',
+          maxWidth: isFullscreen && fsUserInitiated && !usingNativeFullscreen ? 'none' : '512px',
+          width: isFullscreen && fsUserInitiated && !usingNativeFullscreen ? '100vw' : '100%',
+          height: isFullscreen && fsUserInitiated && !usingNativeFullscreen ? '100dvh' : 'auto',
           minHeight: 0,
           overscrollBehavior: 'contain'
         }}

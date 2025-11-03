@@ -25,6 +25,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 function PrivacyToggleCell({ id, initial }: { id: string; initial: boolean }) {
   const [checked, setChecked] = React.useState<boolean>(initial);
   const [loading, setLoading] = React.useState<boolean>(false);
+  const { token } = theme.useToken();
   React.useEffect(() => { setChecked(initial); }, [initial]);
   const onToggle = async (next: boolean) => {
     const prev = checked;
@@ -51,7 +52,13 @@ function PrivacyToggleCell({ id, initial }: { id: string; initial: boolean }) {
   return (
     <Space>
       <Tag color={checked ? 'red' : 'green'}>{checked ? 'Private' : 'Public'}</Tag>
-      <Switch checked={checked} loading={loading} onChange={onToggle} size="small" />
+      <Switch
+        checked={checked}
+        loading={loading}
+        onChange={onToggle}
+        size="small"
+        style={{ backgroundColor: checked ? token.colorError : undefined }}
+      />
     </Space>
   );
 }

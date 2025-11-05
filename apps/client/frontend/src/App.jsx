@@ -34,6 +34,7 @@ import { SharePage } from './components/SharePage';
 import HistoryModal from './components/HistoryModal';
 import { UpgradePage } from './components/UpgradePage';
 import { decrement, fetchQuota, reset as resetQuota } from './store/quotaSlice';
+import { openAuthModal } from './components/CompletelyIsolatedAuth';
 
 /**
  * Main App component
@@ -383,11 +384,7 @@ function AppContent() {
     
     // Check authentication
     if (!isAuthenticated) {
-      toast({
-        title: 'Authentication Required',
-        description: 'Please sign in to generate images.',
-        variant: 'destructive',
-      });
+      try { openAuthModal(); } catch (e) { console.error('Failed to open auth modal', e); }
       return;
     }
     

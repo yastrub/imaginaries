@@ -60,13 +60,19 @@ export const Header = React.memo(function Header({
 
     // Main route (/) behavior depends on authentication and showGallery state
     if (currentPath === '/' || currentPath === '') {
-      // If user is not authenticated, toggle gallery view on main screen
+      // If user is not authenticated
       if (!isAuthenticated) {
+        // If the primary action is Imagine (we are currently showing gallery), open auth modal
+        if (showGallery) {
+          openAuthModal();
+          return;
+        }
+        // Otherwise, toggle gallery view
         console.log('Main route: Toggling gallery view');
         if (typeof onToggleGallery === 'function') {
           onToggleGallery();
         }
-      } 
+      }
       // If user is authenticated, navigate to /imagine
       else {
         console.log('Authenticated on main route: Navigating to /imagine');
@@ -303,7 +309,7 @@ export const Header = React.memo(function Header({
                   variant="ghost"
                   size="sm"
                   onClick={() => navigate('/imagine')}
-                  className="text-zinc-400 hover:text-white gap-2"
+                  className="text-zinc-300 hover:text-white gap-2 border border-zinc-700 bg-zinc-900/40 hover:bg-zinc-800"
                 >
                   <Sparkles className="w-4 h-4" />
                   Imagine
@@ -315,7 +321,7 @@ export const Header = React.memo(function Header({
                   variant="ghost"
                   size="sm"
                   onClick={handleGalleryToggle}
-                  className="text-zinc-400 hover:text-white gap-2"
+                  className="text-zinc-300 hover:text-white gap-2 border border-zinc-700 bg-zinc-900/40 hover:bg-zinc-800"
                 >
                 {window.location.pathname.startsWith('/gallery') ? (
                   <>
@@ -350,7 +356,7 @@ export const Header = React.memo(function Header({
               variant="ghost"
               size="sm"
               onClick={handleHistoryClick}
-              className="text-zinc-400 hover:text-white gap-2"
+              className="text-zinc-300 hover:text-white gap-2 border border-zinc-700 bg-zinc-900/40 hover:bg-zinc-800"
             >
               <History className="w-4 h-4" />
               My Jewelry
@@ -406,7 +412,7 @@ export const Header = React.memo(function Header({
             variant="ghost"
             size="sm"
             onClick={openAuthModal}
-            className="text-zinc-400 hover:text-white gap-2"
+            className="text-zinc-300 hover:text-white gap-2 border border-zinc-700 bg-zinc-900/40 hover:bg-zinc-800"
           >
             <LogIn className="w-4 h-4" />
             Sign in

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Crown, Check, ArrowRight, BadgePercent, Loader2 } from 'lucide-react';
+import { Crown, Check, ArrowRight, BadgePercent, Loader2, X } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { Button } from './ui/button';
 import { useReduxAuth } from '@/hooks/useReduxAuth';
@@ -80,6 +80,26 @@ export function UpgradePage() {
       };
     });
   }, [plans]);
+
+  function parsePlanFeatures(text) {
+    if (!text || typeof text !== 'string') return [];
+    return text
+      .split(/\r?\n/)
+      .map((raw) => raw.trim())
+      .filter((line) => !!line)
+      .map((line) => {
+        const first = line[0];
+        const rest = line.slice(1).trim().replace(/^[-*]\s*/, '');
+        if (first === '-') {
+          return { type: 'available', text: rest || line.slice(1).trim() };
+        }
+        if (first === '*') {
+          return { type: 'unavailable', text: rest || line.slice(1).trim() };
+        }
+        // Default to available if no marker
+        return { type: 'available', text: line };
+      });
+  }
 
   const currentSortOrder = useMemo(() => {
     if (!currentPlanKey) return null;
@@ -215,10 +235,25 @@ export function UpgradePage() {
                 )}
 
                 <ul className="text-sm text-zinc-300 space-y-2 mt-2">
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-400" /> {p.maxGenerationsPerMonthEffective && p.maxGenerationsPerMonthEffective > 0 ? `${p.maxGenerationsPerMonthEffective} generations per month` : 'Unlimited generations'}</li>
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-400" /> High-res generations</li>
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-400" /> {p.allowPrivateImages ? 'Private galleries' : 'Public gallery only'}</li>
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-400" /> {p.requiresWatermark ? 'Watermark enabled' : 'No watermark'}</li>
+                  {p.featuresText && p.featuresText.trim().length > 0 ? (
+                    parsePlanFeatures(p.featuresText).map((f, idx) => (
+                      <li key={idx} className="flex items-center gap-2">
+                        {f.type === 'available' ? (
+                          <Check className="w-4 h-4 text-green-400" />
+                        ) : (
+                          <X className="w-4 h-4 text-red-400" />
+                        )}
+                        <span>{f.text}</span>
+                      </li>
+                    ))
+                  ) : (
+                    <>
+                      <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-400" /> {p.maxGenerationsPerMonthEffective && p.maxGenerationsPerMonthEffective > 0 ? `${p.maxGenerationsPerMonthEffective} generations per month` : 'Unlimited generations'}</li>
+                      <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-400" /> High-res generations</li>
+                      <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-400" /> {p.allowPrivateImages ? 'Private galleries' : 'Public gallery only'}</li>
+                      <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-400" /> {p.requiresWatermark ? 'Watermark enabled' : 'No watermark'}</li>
+                    </>
+                  )}
                 </ul>
 
                 <div className="mt-auto pt-2">

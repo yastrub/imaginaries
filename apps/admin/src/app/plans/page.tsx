@@ -76,6 +76,7 @@ export default function PlansPage() {
       allow_camera: false,
       allow_upload: false,
       allow_reimagine: false,
+      features_text: '',
       price_dollars: 0,
       annual_price_dollars: 0,
       is_active: true,
@@ -101,6 +102,7 @@ export default function PlansPage() {
       allow_camera: (row as any).allow_camera ?? false,
       allow_upload: (row as any).allow_upload ?? false,
       allow_reimagine: (row as any).allow_reimagine ?? false,
+      features_text: (row as any).features_text || '',
       price_dollars: (row.price_cents || 0) / 100,
       annual_price_dollars: (row.annual_price_cents || 0) / 100,
       currency: row.currency || 'USD',
@@ -126,6 +128,7 @@ export default function PlansPage() {
       allow_camera: !!values.allow_camera,
       allow_upload: !!values.allow_upload,
       allow_reimagine: !!values.allow_reimagine,
+      features_text: (values.features_text || '').toString(),
       price_cents: Math.round((Number(values.price_dollars) || 0) * 100),
       annual_price_cents: Math.round((Number(values.annual_price_dollars) || 0) * 100),
       currency: values.currency || 'USD',
@@ -234,6 +237,9 @@ export default function PlansPage() {
           </Form.Item>
           <Form.Item name="description" label="Description">
             <Input.TextArea rows={3} />
+          </Form.Item>
+          <Form.Item name="features_text" label="Features (plain list)">
+            <Input.TextArea rows={8} placeholder={`- 500 generations / month\n- High-res generations\n- Private galleries\n* Watermark on images`} />
           </Form.Item>
           <Form.Item name="currency" label="Currency" rules={[{ required: true }]}>
             <Select options={[{value:'USD',label:'USD'}]} />

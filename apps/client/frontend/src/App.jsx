@@ -782,7 +782,7 @@ function AppContent() {
                   onToggleLike={toggleLike}
                   likedImages={likedImages}
                   likeCounts={likeCounts}
-                  loadImages={refreshMainScreen}
+                  loadImages={loadData}
                   hasMore={hasMorePublic}
                   currentView={currentView}
                   switchView={switchGalleryView}

@@ -542,7 +542,7 @@ export function SharePage() {
           <div className="w-full">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-white text-2xl font-semibold">
-                Make this Jewelry
+                Get this jewelry
               </h1>
               <Button
                 variant="outline"

@@ -9,8 +9,7 @@ import { Provider } from 'react-redux';
 import { store } from '../store';
 import { TermsOfUseModal } from './TermsOfUseModal';
 import { useViewportOverlay } from '../hooks/useViewportOverlay';
-import { AUTH_PROVIDER } from '../auth/config';
-import { SignInButton } from '@clerk/clerk-react';
+import { AUTH_PROVIDER, AUTH_MODE } from '../auth/config';
 
 /**
  * A completely isolated auth component that manages its own state
@@ -34,7 +33,9 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
   const [isRequestingReset, setIsRequestingReset] = useState(false);
   const [resetRequestSuccess, setResetRequestSuccess] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [magicSent, setMagicSent] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [ClerkSignInButton, setClerkSignInButton] = useState(null);
   
   // Refs
   const formRef = useRef(null);
@@ -44,6 +45,23 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
   const { toast } = useToast();
   const overlayStyle = useViewportOverlay();
   
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (AUTH_PROVIDER === 'clerk') {
+        try {
+          const mod = await import(/* @vite-ignore */ '@clerk/clerk-react');
+          if (mounted) setClerkSignInButton(() => mod.SignInButton);
+        } catch {
+          if (mounted) setClerkSignInButton(() => null);
+        }
+      } else {
+        setClerkSignInButton(() => null);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   // Create portal element
   useEffect(() => {
     // Create a div for the modal portal
@@ -546,10 +564,82 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
 
             {AUTH_PROVIDER === 'clerk' ? (
               <div className="space-y-3">
-                <SignInButton mode="modal" afterSignInUrl="/imagine" afterSignUpUrl="/imagine">
-                  <Button className="w-full h-10 gap-2">Continue</Button>
-                </SignInButton>
+                {ClerkSignInButton ? (
+                  <ClerkSignInButton mode="modal" afterSignInUrl="/imagine" afterSignUpUrl="/imagine">
+                    <Button className="w-full h-10 gap-2">Continue</Button>
+                  </ClerkSignInButton>
+                ) : (
+                  <Button className="w-full h-10 gap-2" disabled>Loading…</Button>
+                )}
               </div>
+            ) : AUTH_MODE === 'magic' ? (
+              <>
+                {magicSent ? (
+                  <>
+                    <p className="text-zinc-400 mb-6">We sent a sign-in link to:</p>
+                    <p className="text-white font-medium mb-6">{email}</p>
+                    <p className="text-zinc-400 mb-6">The link expires in 15 minutes and can be used once.</p>
+                    <Button onClick={closeModal} className="w-full h-10">Close</Button>
+                  </>
+                ) : (
+                  <>
+                    {error && (
+                      <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">
+                        {error}
+                      </div>
+                    )}
+                    <div className="space-y-4">
+                      <div>
+                        <label htmlFor="magic-email" className="block text-sm font-medium text-zinc-400 mb-1">Email address</label>
+                        <input
+                          id="magic-email"
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white disabled:opacity-50"
+                          required
+                          disabled={loading}
+                        />
+                      </div>
+                      <Button
+                        onClick={async () => {
+                          if (loading) return;
+                          try {
+                            setError(null);
+                            setLoading(true);
+                            const res = await fetch('/api/auth/magic/request', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ email, redirect: '/imagine' })
+                            });
+                            if (!res.ok) {
+                              const data = await res.json().catch(() => ({}));
+                              throw new Error(data.error || 'Failed to send magic link');
+                            }
+                            setMagicSent(true);
+                          } catch (e) {
+                            setError(e.message || 'Failed to send magic link');
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                        disabled={loading || !email}
+                        className="w-full h-10 gap-2"
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Sending link...
+                          </>
+                        ) : (
+                          'Send magic link'
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </>
             ) : (
               <>
                 {error && (

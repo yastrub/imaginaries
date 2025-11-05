@@ -43,6 +43,119 @@ function setAuthCookie(res, token) {
 // Add auth middleware to protected routes
 router.use('/resend-confirmation', auth);
 
+// Magic Link: request and verify (only when local auth)
+router.post('/magic/request', authLimiter, async (req, res) => {
+  try {
+    if ((process.env.AUTH_PROVIDER || 'local').toLowerCase() !== 'local') {
+      return res.status(404).json({ error: 'Magic links only available in local auth mode' });
+    }
+    const { email, redirect } = req.body || {};
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+    const emailNorm = String(email).toLowerCase().trim();
+
+    // Generate single-use token
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Try find user (optional)
+    const u = await query('SELECT id FROM users WHERE email = $1 LIMIT 1', [emailNorm]);
+    const userId = u.rows[0]?.id || null;
+
+    // Persist magic link (single-use)
+    await query(
+      `INSERT INTO magic_links (user_id, email, token_hash, expires_at, created_at, ip, user_agent)
+       VALUES ($1, $2, $3, $4, NOW(), $5, $6)`,
+      [userId, emailNorm, tokenHash, expiresAt, req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'Unknown', req.headers['user-agent'] || 'Unknown']
+    );
+
+    // Build verify URL on backend to set cookie then redirect
+    const appUrl = getAppUrl();
+    const redirectPath = (typeof redirect === 'string' && redirect.startsWith('/')) ? redirect : '/imagine';
+    const verifyUrl = `${process.env.APP_API_URL || ''}/api/auth/magic/verify?token=${rawToken}&r=${encodeURIComponent(redirectPath)}`;
+    // Fallback: if APP_API_URL not set, try relative path on same origin
+    const finalVerifyUrl = verifyUrl.startsWith('http') ? verifyUrl : `${appUrl.replace(/\/$/, '')}/api/auth/magic/verify?token=${rawToken}&r=${encodeURIComponent(redirectPath)}`;
+
+    try {
+      await sendEmail('magicLink', { email: emailNorm, magicUrl: finalVerifyUrl });
+    } catch (e) {
+      console.error('Failed to send magic link:', e);
+      return res.status(500).json({ error: 'Failed to send magic link' });
+    }
+
+    return res.json({ success: true, message: 'Magic link sent if the email is registered' });
+  } catch (error) {
+    console.error('Magic link request error:', error);
+    return res.status(500).json({ error: 'Failed to process request' });
+  }
+});
+
+router.get('/magic/verify', async (req, res) => {
+  try {
+    if ((process.env.AUTH_PROVIDER || 'local').toLowerCase() !== 'local') {
+      return res.status(404).json({ error: 'Magic links only available in local auth mode' });
+    }
+    const rawToken = String(req.query.token || '').trim();
+    if (!rawToken) return res.status(400).send('Missing token');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    // Lookup token
+    const ml = await query('SELECT * FROM magic_links WHERE token_hash = $1 LIMIT 1', [tokenHash]);
+    const row = ml.rows[0];
+    if (!row) return res.status(400).send('Invalid or used token');
+    if (row.used_at) return res.status(400).send('This link has already been used');
+    if (new Date() > new Date(row.expires_at)) return res.status(400).send('This link has expired');
+
+    // Resolve or create user
+    let userId = row.user_id;
+    let email = row.email;
+    if (!userId) {
+      const u = await query('SELECT * FROM users WHERE email = $1 LIMIT 1', [email]);
+      let user = u.rows[0];
+      if (!user) {
+        // Create user with confirmed email
+        const initialIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'Unknown';
+        const userAgent = req.headers['user-agent'] || 'Unknown';
+        const ins = await query(
+          `INSERT INTO users (email, password, email_confirmed, initial_ip, last_ip, last_user_agent, subscription_plan)
+           VALUES ($1, NULL, $2, $3, $4, $5, $6)
+           RETURNING *`,
+          [email, true, initialIp, initialIp, userAgent, 'free']
+        );
+        user = ins.rows[0];
+      }
+      userId = user.id;
+    } else {
+      // Touch last login
+      await query('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [userId]);
+    }
+
+    // Mark token used
+    await query('UPDATE magic_links SET used_at = NOW() WHERE token_hash = $1', [tokenHash]);
+
+    // Fetch role for JWT
+    const roleRes = await query(
+      `SELECT u.email, u.role_id, r.name AS role_name FROM users u LEFT JOIN roles r ON r.id = u.role_id WHERE u.id = $1`,
+      [userId]
+    );
+    const roleRow = roleRes.rows[0] || {};
+    const roles = roleRow.role_name ? [roleRow.role_name] : ['public'];
+
+    const appToken = generateJWT(userId, roleRow.email, roles, roleRow.role_id, roleRow.role_name);
+    setAuthCookie(res, appToken);
+
+    // Redirect back to app
+    const appUrl = getAppUrl();
+    const r = String(req.query.r || '/imagine');
+    const path = r.startsWith('/') ? r : '/imagine';
+    const dest = `${appUrl.replace(/\/$/, '')}${path}`;
+    return res.redirect(dest);
+  } catch (error) {
+    console.error('Magic link verify error:', error);
+    return res.status(500).send('Authentication failed');
+  }
+});
+
 // Clerk token exchange: verify Clerk token, upsert/link user, mint our JWT cookie
 router.post('/clerk/exchange', authLimiter, async (req, res) => {
   try {

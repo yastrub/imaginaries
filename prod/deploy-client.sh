@@ -141,6 +141,7 @@ deploy_backend() {
     print_action "Building backend production image..."
     if ! docker build -t imaginaries-backend:prod .; then
         print_error "Failed to build backend image"
+        return 1
     fi
 
     local app="imaginaries-backend"
@@ -240,6 +241,7 @@ deploy_frontend() {
     print_action "Building frontend production image..."
     if ! docker build -t imaginaries-frontend:prod .; then
         print_error "Failed to build frontend image"
+        return 1
     fi
 
     local app="imaginaries-frontend"

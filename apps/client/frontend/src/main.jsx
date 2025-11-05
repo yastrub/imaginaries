@@ -10,8 +10,6 @@ import { queryClient } from './lib/reactQuery';
 import { AuthInitializer } from './components/AuthInitializer';
 import { AppUnlocker } from './components/AppUnlocker';
 import { AUTH_PROVIDER, CLERK_PUBLISHABLE_KEY } from './auth/config';
-import { ClerkProvider } from '@clerk/clerk-react';
-import { ClerkBridge } from './auth/ClerkBridge';
 import './styles/main.css';
 try {
   const prevent = (e) => { e.preventDefault(); };
@@ -57,7 +55,6 @@ const RootTree = (
       <AuthInitializer>
         <AppUnlocker>
           <App />
-          {AUTH_PROVIDER === 'clerk' && <ClerkBridge />}
         </AppUnlocker>
       </AuthInitializer>
     </QueryClientProvider>
@@ -66,14 +63,26 @@ const RootTree = (
 
 const rootEl = document.getElementById('root');
 if (AUTH_PROVIDER === 'clerk') {
-  if (!CLERK_PUBLISHABLE_KEY) {
-    console.error('Missing VITE_CLERK_PUBLISHABLE_KEY while AUTH_PROVIDER=clerk');
-  }
-  ReactDOM.createRoot(rootEl).render(
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
-      {RootTree}
-    </ClerkProvider>
-  );
+  (async () => {
+    try {
+      if (!CLERK_PUBLISHABLE_KEY) {
+        console.error('Missing VITE_CLERK_PUBLISHABLE_KEY while AUTH_PROVIDER=clerk');
+      }
+      const [{ ClerkProvider }, { ClerkBridge }] = await Promise.all([
+        import('@clerk/clerk-react'),
+        import('./auth/ClerkBridge'),
+      ]);
+      ReactDOM.createRoot(rootEl).render(
+        <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+          {RootTree}
+          <ClerkBridge />
+        </ClerkProvider>
+      );
+    } catch (e) {
+      console.error('Failed to load Clerk modules:', e);
+      ReactDOM.createRoot(rootEl).render(RootTree);
+    }
+  })();
 } else {
   ReactDOM.createRoot(rootEl).render(RootTree);
 }

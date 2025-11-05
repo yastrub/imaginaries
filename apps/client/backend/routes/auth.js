@@ -40,6 +40,80 @@ function setAuthCookie(res, token) {
   });
 }
 
+// Verify 6-digit code
+router.post('/magic/verify-code', authLimiter, async (req, res) => {
+  try {
+    if ((process.env.AUTH_PROVIDER || 'local').toLowerCase() !== 'local') {
+      return res.status(404).json({ error: 'Code login only available in local auth mode' });
+    }
+    const { email, code } = req.body || {};
+    if (!email || !code) return res.status(400).json({ error: 'Email and code are required' });
+    const emailNorm = String(email).toLowerCase().trim();
+    const codeStr = String(code).replace(/\D/g, '');
+    if (!/^\d{6}$/.test(codeStr)) return res.status(400).json({ error: 'Invalid code format' });
+    const codeHash = crypto.createHash('sha256').update(codeStr).digest('hex');
+
+    // Find latest valid, unused code
+    const ml = await query(
+      `SELECT * FROM magic_links
+       WHERE email = $1 AND code_hash = $2 AND used_at IS NULL AND expires_at > NOW()
+       ORDER BY created_at DESC LIMIT 1`,
+      [emailNorm, codeHash]
+    );
+    const row = ml.rows[0];
+    if (!row) return res.status(400).json({ error: 'Invalid or expired code' });
+
+    // Resolve or create user
+    let userId = row.user_id;
+    if (!userId) {
+      const u = await query('SELECT * FROM users WHERE email = $1 LIMIT 1', [emailNorm]);
+      let user = u.rows[0];
+      const ip = req.headers['cf-connecting-ip'] || req.headers['x-client-ip'] || req.headers['x-real-ip'] || (req.headers['x-forwarded-for']?.split(',')[0].trim()) || req.socket.remoteAddress || 'Unknown';
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+      if (!user) {
+        const ins = await query(
+          `INSERT INTO users (email, password, email_confirmed, initial_ip, last_ip, last_user_agent, subscription_plan)
+           VALUES ($1, NULL, $2, $3, $4, $5, $6)
+           RETURNING *`,
+          [emailNorm, true, ip, ip, userAgent, 'free']
+        );
+        user = ins.rows[0];
+      } else {
+        await query('UPDATE users SET last_ip = $1, last_user_agent = $2, last_login_at = CURRENT_TIMESTAMP WHERE id = $3', [ip, userAgent, user.id]);
+      }
+      userId = user.id;
+    }
+
+    // Mark used
+    await query('UPDATE magic_links SET used_at = NOW() WHERE id = $1', [row.id]);
+
+    // Fetch role and mint cookie
+    const roleRes = await query(
+      `SELECT u.email, u.role_id, r.name AS role_name FROM users u LEFT JOIN roles r ON r.id = u.role_id WHERE u.id = $1`,
+      [userId]
+    );
+    const roleRow = roleRes.rows[0] || {};
+    const roles = roleRow.role_name ? [roleRow.role_name] : ['public'];
+    const appToken = generateJWT(userId, roleRow.email, roles, roleRow.role_id, roleRow.role_name);
+    setAuthCookie(res, appToken);
+
+    // Return user payload
+    const userRes = await query(
+      `SELECT u.id, u.email, u.email_confirmed, u.subscription_plan, u.created_at,
+              u.first_name, u.last_name, u.role_id, r.name AS role_name
+       FROM users u
+       LEFT JOIN roles r ON r.id = u.role_id
+       WHERE u.id = $1`,
+      [userId]
+    );
+    const user = userRes.rows[0] || { id: userId, email: roleRow.email, role_id: roleRow.role_id, role_name: roleRow.role_name };
+    return res.json({ user: { ...user, roles }, isAuthenticated: true });
+  } catch (error) {
+    console.error('Verify code error:', error);
+    return res.status(500).json({ error: 'Authentication failed' });
+  }
+});
+
 // Add auth middleware to protected routes
 router.use('/resend-confirmation', auth);
 
@@ -53,10 +127,12 @@ router.post('/magic/request', authLimiter, async (req, res) => {
     if (!email) return res.status(400).json({ error: 'Email is required' });
     const emailNorm = String(email).toLowerCase().trim();
 
-    // Generate single-use token
+    // Generate single-use token and code
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const codeHash = crypto.createHash('sha256').update(code).digest('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     // Try find user (optional)
     const u = await query('SELECT id FROM users WHERE email = $1 LIMIT 1', [emailNorm]);
@@ -64,9 +140,9 @@ router.post('/magic/request', authLimiter, async (req, res) => {
 
     // Persist magic link (single-use)
     await query(
-      `INSERT INTO magic_links (user_id, email, token_hash, expires_at, created_at, ip, user_agent)
-       VALUES ($1, $2, $3, $4, NOW(), $5, $6)`,
-      [userId, emailNorm, tokenHash, expiresAt, req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'Unknown', req.headers['user-agent'] || 'Unknown']
+      `INSERT INTO magic_links (user_id, email, token_hash, code_hash, expires_at, created_at, ip, user_agent)
+       VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7)`,
+      [userId, emailNorm, tokenHash, codeHash, expiresAt, req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'Unknown', req.headers['user-agent'] || 'Unknown']
     );
 
     // Build verify URL on backend to set cookie then redirect
@@ -77,7 +153,12 @@ router.post('/magic/request', authLimiter, async (req, res) => {
     const finalVerifyUrl = verifyUrl.startsWith('http') ? verifyUrl : `${appUrl.replace(/\/$/, '')}/api/auth/magic/verify?token=${rawToken}&r=${encodeURIComponent(redirectPath)}`;
 
     try {
-      await sendEmail('magicLink', { email: emailNorm, magicUrl: finalVerifyUrl });
+      const mode = (process.env.AUTH_MODE || 'magic').toLowerCase();
+      if (mode === 'code') {
+        await sendEmail('codeLogin', { email: emailNorm, code, expiresMinutes: 15 });
+      } else {
+        await sendEmail('magicLink', { email: emailNorm, magicUrl: finalVerifyUrl });
+      }
     } catch (e) {
       console.error('Failed to send magic link:', e);
       return res.status(500).json({ error: 'Failed to send magic link' });

@@ -36,6 +36,9 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
   const [magicSent, setMagicSent] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [ClerkSignInButton, setClerkSignInButton] = useState(null);
+  const [codeSent, setCodeSent] = useState(false);
+  const [codeDigits, setCodeDigits] = useState(['', '', '', '', '', '']);
+  const codeRefs = useRef([]);
   
   // Refs
   const formRef = useRef(null);
@@ -572,6 +575,165 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
                   <Button className="w-full h-10 gap-2" disabled>Loading…</Button>
                 )}
               </div>
+            ) : AUTH_MODE === 'code' ? (
+              <>
+                {codeSent ? (
+                  <>
+                    <p className="text-zinc-400 mb-2">We sent a 6-digit code to</p>
+                    <p className="text-white font-medium mb-4">{email}</p>
+                    <p className="text-zinc-500 mb-6 text-sm">Enter the code below to finish signing in. It expires in 15 minutes.</p>
+
+                    {error && (
+                      <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">
+                        {error}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-center gap-2 mb-6">
+                      {codeDigits.map((d, i) => (
+                        <input
+                          key={i}
+                          ref={(el) => (codeRefs.current[i] = el)}
+                          value={d}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 1);
+                            const next = [...codeDigits];
+                            next[i] = val;
+                            setCodeDigits(next);
+                            if (val && i < 5) codeRefs.current[i + 1]?.focus();
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Backspace' && !codeDigits[i] && i > 0) {
+                              e.preventDefault();
+                              const next = [...codeDigits];
+                              next[i - 1] = '';
+                              setCodeDigits(next);
+                              codeRefs.current[i - 1]?.focus();
+                            }
+                          }}
+                          onPaste={(e) => {
+                            const data = (e.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+                            if (data) {
+                              e.preventDefault();
+                              const arr = data.split('');
+                              const next = ['','','','','',''];
+                              for (let j = 0; j < arr.length && j < 6; j++) next[j] = arr[j];
+                              setCodeDigits(next);
+                              const last = Math.min(arr.length - 1, 5);
+                              codeRefs.current[last]?.focus();
+                            }
+                          }}
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          className="w-12 h-12 text-center text-xl font-semibold rounded-lg bg-zinc-800 border border-zinc-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      ))}
+                    </div>
+
+                    <Button
+                      className="w-full h-10 gap-2"
+                      disabled={loading || codeDigits.some((c) => !c)}
+                      onClick={async () => {
+                        if (loading) return;
+                        try {
+                          setError(null);
+                          setLoading(true);
+                          const code = codeDigits.join('');
+                          const res = await fetch('/api/auth/magic/verify-code', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ email, code })
+                          });
+                          const data = await res.json().catch(() => ({}));
+                          if (!res.ok) throw new Error(data.error || 'Invalid or expired code');
+                          try { setUser(data.user); } catch {}
+                          closeModal();
+                        } catch (e) {
+                          setError(e.message || 'Verification failed');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Verifying...
+                        </>
+                      ) : (
+                        'Verify code'
+                      )}
+                    </Button>
+
+                    <button
+                      type="button"
+                      className="mt-4 w-full text-sm text-zinc-400 hover:text-white"
+                      onClick={() => setCodeSent(false)}
+                    >
+                      Use a different email
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {error && (
+                      <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">
+                        {error}
+                      </div>
+                    )}
+                    <div className="space-y-4">
+                      <div>
+                        <label htmlFor="code-email" className="block text-sm font-medium text-zinc-400 mb-1">Email address</label>
+                        <input
+                          id="code-email"
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white disabled:opacity-50"
+                          required
+                          disabled={loading}
+                        />
+                      </div>
+                      <Button
+                        onClick={async () => {
+                          if (loading) return;
+                          try {
+                            setError(null);
+                            setLoading(true);
+                            // Request a code (uses same endpoint as magic request)
+                            const res = await fetch('/api/auth/magic/request', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ email })
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (!res.ok) throw new Error(data.error || 'Failed to send code');
+                            setCodeDigits(['','','','','','']);
+                            setCodeSent(true);
+                            setTimeout(() => codeRefs.current[0]?.focus(), 0);
+                          } catch (e) {
+                            setError(e.message || 'Failed to send code');
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                        disabled={loading || !email}
+                        className="w-full h-10 gap-2"
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Sending code...
+                          </>
+                        ) : (
+                          'Send code'
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </>
             ) : AUTH_MODE === 'magic' ? (
               <>
                 {magicSent ? (

@@ -38,9 +38,9 @@ export const GenerateForm = React.memo(function GenerateForm({
   const { plan: planDetails } = useSubscription(user?.id);
   const canUsePrivateImages = !!planDetails?.allowPrivateImages;
   const canUseCamera = !!planDetails?.allowCamera;
-  const shouldShowCamera = isMobile && (isAuthenticated ? canUseCamera : true);
+  const shouldShowCamera = isMobile && isAuthenticated && canUseCamera;
   const canUseUpload = !!planDetails?.allowUpload;
-  const shouldShowUpload = isAuthenticated ? canUseUpload : true;
+  const shouldShowUpload = isAuthenticated && canUseUpload;
   // UI: camera availability is mobile-only; server enforces plan gating
   useEffect(() => {
     try {

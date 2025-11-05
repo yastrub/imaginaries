@@ -9,6 +9,9 @@ import { setIsTerminalApp, setTerminalName } from './store/envSlice';
 import { queryClient } from './lib/reactQuery';
 import { AuthInitializer } from './components/AuthInitializer';
 import { AppUnlocker } from './components/AppUnlocker';
+import { AUTH_PROVIDER, CLERK_PUBLISHABLE_KEY } from './auth/config';
+import { ClerkProvider } from '@clerk/clerk-react';
+import { ClerkBridge } from './auth/ClerkBridge';
 import './styles/main.css';
 try {
   const prevent = (e) => { e.preventDefault(); };
@@ -48,14 +51,29 @@ try {
   });
 } catch {}
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+const RootTree = (
   <Provider store={store}>
     <QueryClientProvider client={queryClient}>
       <AuthInitializer>
         <AppUnlocker>
           <App />
+          {AUTH_PROVIDER === 'clerk' && <ClerkBridge />}
         </AppUnlocker>
       </AuthInitializer>
     </QueryClientProvider>
   </Provider>
 );
+
+const rootEl = document.getElementById('root');
+if (AUTH_PROVIDER === 'clerk') {
+  if (!CLERK_PUBLISHABLE_KEY) {
+    console.error('Missing VITE_CLERK_PUBLISHABLE_KEY while AUTH_PROVIDER=clerk');
+  }
+  ReactDOM.createRoot(rootEl).render(
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+      {RootTree}
+    </ClerkProvider>
+  );
+} else {
+  ReactDOM.createRoot(rootEl).render(RootTree);
+}

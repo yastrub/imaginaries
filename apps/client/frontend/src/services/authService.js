@@ -1,5 +1,6 @@
 import { store } from '../store';
 import { setUser, logout } from '../store/authSlice';
+import { AUTH_PROVIDER } from '../auth/config';
 
 /**
  * Authentication service functions
@@ -81,6 +82,10 @@ export const authService = {
    */
   signOut: async () => {
     try {
+      // If using Clerk, sign out there first to avoid re-signing via ClerkBridge
+      if (AUTH_PROVIDER === 'clerk') {
+        try { await window.Clerk?.signOut?.(); } catch {}
+      }
       const response = await fetch('/api/auth/signout', {
         method: 'POST',
         credentials: 'include'

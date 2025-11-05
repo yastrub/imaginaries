@@ -9,6 +9,8 @@ import { Provider } from 'react-redux';
 import { store } from '../store';
 import { TermsOfUseModal } from './TermsOfUseModal';
 import { useViewportOverlay } from '../hooks/useViewportOverlay';
+import { AUTH_PROVIDER } from '../auth/config';
+import { SignInButton } from '@clerk/clerk-react';
 
 /**
  * A completely isolated auth component that manages its own state
@@ -541,147 +543,156 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
             <h2 className="text-2xl font-bold text-white mb-6">
               {isSignUp ? 'Create an account' : 'Sign in to your account'}
             </h2>
-            
-            {error && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">
-                {error}
-              </div>
-            )}
-    
-            <form 
-              ref={formRef}
-              onSubmit={handleSubmit} 
-              className={cn(
-                "space-y-4 transition-transform",
-                isShaking && "animate-shake"
-              )}
-            >
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-zinc-400 mb-1">
-                  Email address
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white disabled:opacity-50"
-                  required
-                  disabled={loading}
-                />
-              </div>
-    
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-zinc-400 mb-1">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white disabled:opacity-50"
-                  required
-                  disabled={loading}
-                />
-              </div>
 
-              {/* Show promo code field only for signup and when there's a code in localStorage */}
-              {isSignUp && getPromoCode() && (
-                <div>
-                  <label htmlFor="promoCode" className="block text-sm font-medium text-zinc-400 mb-1">
-                    Promo Code
-                  </label>
-                  <input
-                    id="promoCode"
-                    type="text"
-                    defaultValue={getPromoCode()}
-                    className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white disabled:opacity-50"
-                    disabled={loading}
-                    readOnly
-                  />
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Promo code will be applied during signup
-                  </p>
-                </div>
-              )}
+            {AUTH_PROVIDER === 'clerk' ? (
+              <div className="space-y-3">
+                <SignInButton mode="modal" afterSignInUrl="/imagine" afterSignUpUrl="/imagine">
+                  <Button className="w-full h-10 gap-2">Continue</Button>
+                </SignInButton>
+              </div>
+            ) : (
+              <>
+                {error && (
+                  <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">
+                    {error}
+                  </div>
+                )}
 
-              {!isSignUp && (
-                <div className="text-right">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (loading) return;
-                      setIsForgotPassword(true);
-                      setError(null);
-                    }}
-                    className="text-xs text-zinc-400 hover:text-primary transition-colors"
-                    disabled={loading}
-                  >
-                    Forgot your password?
-                  </button>
-                </div>
-              )}
-              
-              {isSignUp && (
-                <div className="flex items-start">
-                  <div className="flex items-center h-5">
+                <form 
+                  ref={formRef}
+                  onSubmit={handleSubmit} 
+                  className={cn(
+                    "space-y-4 transition-transform",
+                    isShaking && "animate-shake"
+                  )}
+                >
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-zinc-400 mb-1">
+                      Email address
+                    </label>
                     <input
-                      id="terms"
-                      type="checkbox"
-                      checked={acceptedTerms}
-                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white disabled:opacity-50"
+                      required
                       disabled={loading}
-                      className="w-4 h-4 text-primary bg-zinc-800 border-zinc-700 rounded focus:ring-primary focus:ring-2"
                     />
                   </div>
-                  <div className="ml-3 text-sm">
-                    <label htmlFor="terms" className="text-zinc-400">
-                      I agree to the{' '}
+
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-zinc-400 mb-1">
+                      Password
+                    </label>
+                    <input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white disabled:opacity-50"
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+
+                  {isSignUp && getPromoCode() && (
+                    <div>
+                      <label htmlFor="promoCode" className="block text-sm font-medium text-zinc-400 mb-1">
+                        Promo Code
+                      </label>
+                      <input
+                        id="promoCode"
+                        type="text"
+                        defaultValue={getPromoCode()}
+                        className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white disabled:opacity-50"
+                        disabled={loading}
+                        readOnly
+                      />
+                      <p className="text-xs text-zinc-500 mt-1">
+                        Promo code will be applied during signup
+                      </p>
+                    </div>
+                  )}
+
+                  {!isSignUp && (
+                    <div className="text-right">
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setShowTermsModal(true);
+                        onClick={() => {
+                          if (loading) return;
+                          setIsForgotPassword(true);
+                          setError(null);
                         }}
-                        className="text-primary hover:underline focus:outline-none"
+                        className="text-xs text-zinc-400 hover:text-primary transition-colors"
+                        disabled={loading}
                       >
-                        Terms of Service
+                        Forgot your password?
                       </button>
-                    </label>
-                  </div>
+                    </div>
+                  )}
+
+                  {isSignUp && (
+                    <div className="flex items-start">
+                      <div className="flex items-center h-5">
+                        <input
+                          id="terms"
+                          type="checkbox"
+                          checked={acceptedTerms}
+                          onChange={(e) => setAcceptedTerms(e.target.checked)}
+                          disabled={loading}
+                          className="w-4 h-4 text-primary bg-zinc-800 border-zinc-700 rounded focus:ring-primary focus:ring-2"
+                        />
+                      </div>
+                      <div className="ml-3 text-sm">
+                        <label htmlFor="terms" className="text-zinc-400">
+                          I agree to the{' '}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setShowTermsModal(true);
+                            }}
+                            className="text-primary hover:underline focus:outline-none"
+                          >
+                            Terms of Service
+                          </button>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-10 gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {isSignUp ? 'Creating account...' : 'Signing in...'}
+                      </>
+                    ) : (
+                      isSignUp ? 'Sign up' : 'Sign in'
+                    )}
+                  </Button>
+                </form>
+
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={() => {
+                      if (loading) return;
+                      setIsSignUp(!isSignUp);
+                      setError(null);
+                    }}
+                    className="text-zinc-400 hover:text-white text-sm disabled:opacity-50"
+                    disabled={loading}
+                  >
+                    {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+                  </button>
                 </div>
-              )}
-    
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full h-10 gap-2"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {isSignUp ? 'Creating account...' : 'Signing in...'}
-                  </>
-                ) : (
-                  isSignUp ? 'Sign up' : 'Sign in'
-                )}
-              </Button>
-            </form>
-    
-            <div className="mt-4 text-center">
-              <button
-                onClick={() => {
-                  if (loading) return;
-                  setIsSignUp(!isSignUp);
-                  setError(null);
-                }}
-                className="text-zinc-400 hover:text-white text-sm disabled:opacity-50"
-                disabled={loading}
-              >
-                {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-              </button>
-            </div>
+              </>
+            )}
           </>
         )}
         

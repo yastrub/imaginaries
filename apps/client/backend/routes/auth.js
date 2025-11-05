@@ -6,6 +6,7 @@ import { sendEmail } from '../config/email.js';
 import crypto from 'crypto';
 import { auth } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
+import os from 'os';
 
 const router = express.Router();
 
@@ -41,6 +42,96 @@ function setAuthCookie(res, token) {
 
 // Add auth middleware to protected routes
 router.use('/resend-confirmation', auth);
+
+// Clerk token exchange: verify Clerk token, upsert/link user, mint our JWT cookie
+router.post('/clerk/exchange', authLimiter, async (req, res) => {
+  try {
+    if ((process.env.AUTH_PROVIDER || '').toLowerCase() !== 'clerk') {
+      return res.status(404).json({ error: 'Clerk auth is disabled' });
+    }
+
+    const { token, email: emailFromClient, firstName, lastName } = req.body || {};
+    if (!token) return res.status(400).json({ error: 'Missing Clerk token' });
+
+    // Lazy import jose to avoid hard dependency when not using Clerk
+    let jose;
+    try {
+      jose = await import('jose');
+    } catch (e) {
+      console.error('Missing dependency: jose. Please install with `npm i jose` in backend.');
+      return res.status(500).json({ error: 'Server missing dependency for Clerk verification (jose)' });
+    }
+
+    const issuer = (process.env.CLERK_ISSUER || '').trim();
+    if (!issuer) return res.status(500).json({ error: 'CLERK_ISSUER is not configured on server' });
+    const audience = (process.env.CLERK_AUDIENCE || '').trim() || undefined;
+    const jwksUrl = new URL('.well-known/jwks.json', issuer.endsWith('/') ? issuer : issuer + '/');
+
+    const JWKS = jose.createRemoteJWKSet(jwksUrl);
+    let payload;
+    try {
+      const verified = await jose.jwtVerify(token, JWKS, { issuer, audience });
+      payload = verified.payload || {};
+    } catch (e) {
+      console.error('Clerk token verification failed:', e?.message || e);
+      return res.status(401).json({ error: 'Invalid Clerk token' });
+    }
+
+    const clerkUserId = String(payload.sub || '').trim();
+    const emailJwt = (payload.email || payload.email_address || '').toLowerCase();
+    const emailVerified = Boolean(payload.email_verified || payload.email_verified_at || payload['https://schemas.clerk.dev/email_verified']);
+    const email = (emailJwt || emailFromClient || '').toLowerCase();
+    if (!clerkUserId) return res.status(400).json({ error: 'Missing clerk user id in token' });
+    if (!email) return res.status(400).json({ error: 'Missing email in token' });
+
+    // Link or create local user
+    const ip = req.headers['cf-connecting-ip'] || req.headers['x-client-ip'] || req.headers['x-real-ip'] || (req.headers['x-forwarded-for']?.split(',')[0].trim()) || req.socket.remoteAddress || 'Unknown';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    // 1) Try by clerk_user_id
+    let dbUserRes = await query('SELECT * FROM users WHERE clerk_user_id = $1', [clerkUserId]);
+    let userRow = dbUserRes.rows[0];
+    if (!userRow) {
+      // 2) Try by email
+      dbUserRes = await query('SELECT * FROM users WHERE email = $1', [email]);
+      userRow = dbUserRes.rows[0];
+      if (userRow) {
+        // Attach Clerk id to existing user
+        await query('UPDATE users SET clerk_user_id = $1, auth_provider = $2, email_confirmed = $3, first_name = COALESCE(first_name, $4), last_name = COALESCE(last_name, $5), last_ip = $6, last_user_agent = $7, last_login_at = CURRENT_TIMESTAMP WHERE id = $8', [clerkUserId, 'clerk', emailVerified || true, firstName || null, lastName || null, ip, userAgent, userRow.id]);
+      } else {
+        // Create new user (passwordless) confirmed by Clerk
+        const ins = await query(
+          `INSERT INTO users (email, password, email_confirmed, clerk_user_id, auth_provider, initial_ip, last_ip, last_user_agent, first_name, last_name)
+           VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9)
+           RETURNING *`,
+          [email, true, clerkUserId, 'clerk', ip, ip, userAgent, firstName || null, lastName || null]
+        );
+        userRow = ins.rows[0];
+      }
+    } else {
+      // Update last seen
+      await query('UPDATE users SET last_ip = $1, last_user_agent = $2, last_login_at = CURRENT_TIMESTAMP WHERE id = $3', [ip, userAgent, userRow.id]);
+    }
+
+    // Fetch role details for JWT
+    const roleRes = await query(
+      `SELECT u.role_id, r.name AS role_name FROM users u LEFT JOIN roles r ON r.id = u.role_id WHERE u.id = $1`,
+      [userRow.id]
+    );
+    const roleRow = roleRes.rows[0] || {};
+    const roles = roleRow.role_name ? [roleRow.role_name] : ['public'];
+
+    const appToken = generateJWT(userRow.id, userRow.email, roles, roleRow.role_id, roleRow.role_name);
+    setAuthCookie(res, appToken);
+
+    // Return unified user payload
+    const { password: _pw, reset_token: _rt, confirmation_token: _ct, ...safeUser } = userRow;
+    return res.json({ user: { ...safeUser, role_id: roleRow.role_id, role_name: roleRow.role_name, roles }, isAuthenticated: true });
+  } catch (error) {
+    console.error('Clerk exchange error:', error);
+    return res.status(500).json({ error: 'Failed to exchange Clerk token' });
+  }
+});
 
 // Sign up
 router.post('/signup', authLimiter, async (req, res) => {

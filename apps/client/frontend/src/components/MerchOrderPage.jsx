@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useLocation, Link } from 'react-router-dom';
 
 const SIZES = ['XS','S','M','L','XL','XXL'];
 
 export function MerchOrderPage() {
   const { id } = useParams();
+  const location = useLocation();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,11 +21,33 @@ export function MerchOrderPage() {
     (async () => {
       try {
         setLoading(true);
-        const resp = await fetch(`/api/merch-orders/orders/${id}`, { credentials: 'include', cache: 'no-store' });
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data?.error || 'Failed to load order');
-        if (!mounted) return;
-        setOrder(data.order);
+        if (id) {
+          const resp = await fetch(`/api/merch-orders/orders/${id}`, { credentials: 'include', cache: 'no-store' });
+          const data = await resp.json();
+          if (!resp.ok) throw new Error(data?.error || 'Failed to load order');
+          if (!mounted) return;
+          setOrder(data.order);
+        } else {
+          // Query-based flow: src, color, size, amount, currency
+          const sp = new URLSearchParams(location.search);
+          const src = sp.get('src');
+          const color = (sp.get('color') || 'white').toLowerCase();
+          const size = (sp.get('size') || 'L').toUpperCase();
+          const amount = Number(sp.get('amount') || '160');
+          const currency = sp.get('currency') || 'AED';
+          if (!src) throw new Error('Missing poster image');
+          const now = new Date().toISOString();
+          setOrder({
+            id: 'new',
+            status: 'draft',
+            merch_type: 'T-SHIRT',
+            source_image: src,
+            merch_details: { size, color },
+            merch_price: { amount, currency },
+            created_at: now,
+            updated_at: now
+          });
+        }
       } catch (e) {
         if (!mounted) return;
         setError(e.message || 'Failed to load');
@@ -33,7 +56,7 @@ export function MerchOrderPage() {
       }
     })();
     return () => { mounted = false; };
-  }, [id]);
+  }, [id, location.search]);
 
   const posterUrl = order?.source_image;
   const color = order?.merch_details?.color || 'white';
@@ -49,14 +72,40 @@ export function MerchOrderPage() {
     if (!order) return;
     try {
       setSubmitting(true);
-      const resp = await fetch(`/api/merch-orders/orders/${id}/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ name, phone, email, comments })
-      });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data?.error || 'Failed to submit order');
+      if (id) {
+        const resp = await fetch(`/api/merch-orders/orders/${id}/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ name, phone, email, comments })
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data?.error || 'Failed to submit order');
+      } else {
+        // Create draft then submit
+        const draftResp = await fetch('/api/merch-orders/orders/draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            sourceImageUrl: posterUrl,
+            merchType: 'T-SHIRT',
+            details: { size, color },
+            price
+          })
+        });
+        const draftData = await draftResp.json();
+        if (!draftResp.ok) throw new Error(draftData?.error || 'Failed to create order');
+        const newId = draftData.id;
+        const submitResp = await fetch(`/api/merch-orders/orders/${newId}/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ name, phone, email, comments })
+        });
+        const submitData = await submitResp.json();
+        if (!submitResp.ok) throw new Error(submitData?.error || 'Failed to submit order');
+      }
       setSubmitted(true);
     } catch (e) {
       alert(e.message || 'Failed to submit order');
@@ -106,7 +155,8 @@ export function MerchOrderPage() {
             {/* Form */}
             <div>
               <form onSubmit={onSubmit} className="space-y-4">
-                <div className="text-lg font-medium">Contact details</div>
+                <div className="text-lg font-semibold">Complete Order</div>
+                <div className="text-sm text-zinc-400 -mt-1">We will contact you to confirm and provide payment information.</div>
                 <div>
                   <label className="block text-sm text-zinc-400 mb-1">Name</label>
                   <input className="w-full px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-600" value={name} onChange={(e) => setName(e.target.value)} required />

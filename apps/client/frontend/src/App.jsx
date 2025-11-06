@@ -852,6 +852,7 @@ function AppContent() {
           <Route path="/merch" element={<MerchDemo />} />
 
           {/* Merch order mobile checkout */}
+          <Route path="/merch/order" element={<MerchOrderPage />} />
           <Route path="/merch/order/:id" element={<MerchOrderPage />} />
 
           {/* Upgrade page (auth required) */}

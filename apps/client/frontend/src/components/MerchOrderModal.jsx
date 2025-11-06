@@ -20,26 +20,19 @@ export function MerchOrderModal({ isOpen, onClose, posterUrl }) {
     if (!posterUrl) return;
     try {
       setIsSubmitting(true);
-      const resp = await fetch('/api/merch-orders/orders/draft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          sourceImageUrl: posterUrl,
-          merchType: 'T-SHIRT',
-          details: { size, color },
-          price
-        })
-      });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data?.error || 'Failed to create order');
-      const url = (data && data.url) ? data.url : `/merch/order/${data.id}`;
+      const params = new URLSearchParams({
+        src: posterUrl,
+        color,
+        size,
+        amount: String(price.amount),
+        currency: price.currency
+      }).toString();
+      const url = `/merch/order?${params}`;
       const full = `${window.location.origin}${url}`;
       showQrModal({ url: full, title: 'Continue on your phone', subtitle: 'Scan to complete your order' });
-      // keep modal open so user can scan again; also allow close
     } catch (e) {
-      console.error('Order draft failed', e);
-      alert('Failed to start order. Please try again.');
+      console.error('QR open failed', e);
+      alert('Failed to open QR. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

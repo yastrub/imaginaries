@@ -46,7 +46,7 @@ export function MerchOrderModal({ isOpen, onClose, posterUrl }) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Oversized Unisex T-Shirt" className="max-w-3xl">
+    <Modal isOpen={isOpen} onClose={onClose} title="Order T-Shirt" className="max-w-3xl">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Product mockup */}
         <div>

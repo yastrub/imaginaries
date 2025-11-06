@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CameraCapture } from './CameraCapture';
 import { MERCH_PRESETS, DEFAULT_MERCH_PRESET } from '../config/merchPresets';
-import { ChevronLeft, ChevronRight, Camera, RefreshCcw, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Camera, RefreshCcw, Sparkles, ShoppingBag } from 'lucide-react';
+import { MerchOrderModal } from './MerchOrderModal';
 
 export function MerchDemo() {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -12,6 +13,7 @@ export function MerchDemo() {
   const [error, setError] = useState(null);
   const [items, setItems] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isOrderOpen, setIsOrderOpen] = useState(false);
 
   const containerRef = useRef(null);
 
@@ -230,6 +232,16 @@ export function MerchDemo() {
                   <div className="text-zinc-500">No items yet</div>
                 )}
               </div>
+              {/* Order CTA */}
+              <div className="mt-3 flex justify-end">
+                <button
+                  disabled={!activeItem}
+                  onClick={() => setIsOrderOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-white text-black hover:bg-zinc-100 disabled:opacity-50"
+                >
+                  <ShoppingBag className="w-4 h-4"/> Order T-Shirt
+                </button>
+              </div>
               {/* Nav */}
               <button
                 className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white disabled:opacity-30"
@@ -251,6 +263,12 @@ export function MerchDemo() {
           </div>
         </div>
       </div>
+
+      <MerchOrderModal
+        isOpen={isOrderOpen}
+        onClose={() => setIsOrderOpen(false)}
+        posterUrl={activeItem?.url}
+      />
 
       {isCameraOpen && (
         <CameraCapture

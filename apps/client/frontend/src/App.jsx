@@ -34,6 +34,7 @@ import { SharePage } from './components/SharePage';
 import HistoryModal from './components/HistoryModal';
 import { UpgradePage } from './components/UpgradePage';
 import { MerchDemo } from './components/MerchDemo';
+import { MerchOrderPage } from './components/MerchOrderPage';
 import { decrement, fetchQuota, reset as resetQuota } from './store/quotaSlice';
 import { openAuthModal } from './components/CompletelyIsolatedAuth';
 
@@ -849,6 +850,9 @@ function AppContent() {
 
           {/* Merch demo page */}
           <Route path="/merch" element={<MerchDemo />} />
+
+          {/* Merch order mobile checkout */}
+          <Route path="/merch/order/:id" element={<MerchOrderPage />} />
 
           {/* Upgrade page (auth required) */}
           <Route path="/upgrade" element={

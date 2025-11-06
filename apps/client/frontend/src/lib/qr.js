@@ -100,11 +100,9 @@ export function showQrModal({ url, title = 'Scan to open', subtitle = '', hint =
     head.appendChild(h);
     head.appendChild(close);
 
-    const note = document.createElement('div');
-    note.textContent = subtitle || hint || '';
-    note.style.opacity = '0.75';
-    note.style.fontSize = '13px';
-    note.style.margin = '2px 0 10px 0';
+    const noteTop = document.createElement('div');
+    noteTop.textContent = '';
+    noteTop.style.margin = '0';
 
     const wrap = document.createElement('div');
     wrap.style.display = 'flex';
@@ -163,8 +161,19 @@ export function showQrModal({ url, title = 'Scan to open', subtitle = '', hint =
     }
 
     panel.appendChild(head);
-    panel.appendChild(note);
+    panel.appendChild(noteTop);
     panel.appendChild(wrap);
+
+    // Subtitle under QR
+    if (subtitle || hint) {
+      const note = document.createElement('div');
+      note.textContent = subtitle || hint;
+      note.style.opacity = '0.85';
+      note.style.fontSize = '14px';
+      note.style.textAlign = 'center';
+      note.style.margin = '14px 0 6px 0';
+      panel.appendChild(note);
+    }
 
     overlay.appendChild(panel);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) { try { overlay._cleanup && overlay._cleanup(); } catch {} try { overlay.remove(); } catch {}; qrOverlay = null; } });

@@ -143,10 +143,7 @@ export function MerchDemo() {
 
   const activeItem = items[activeIndex] || null;
 
-  // Reset fade when active item changes
-  useEffect(() => {
-    setActiveLoaded(false);
-  }, [activeItem?.url]);
+  // Keep fade stable; do not reset on URL change to avoid flicker
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -264,7 +261,11 @@ export function MerchDemo() {
                   <img
                     src={activeItem.url}
                     alt="Magazine"
-                    className={`w-full h-full object-cover transition-opacity duration-500 ${activeLoaded ? 'opacity-100' : 'opacity-0'}`}
+                    className={
+                      activeItem.isPlaceholder
+                        ? 'w-full h-full object-cover opacity-100'
+                        : `w-full h-full object-cover transition-opacity duration-500 ${activeLoaded ? 'opacity-100' : 'opacity-0'}`
+                    }
                     onLoad={() => setActiveLoaded(true)}
                   />
                 ) : (

@@ -17,6 +17,7 @@ export function MerchDemo() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isOrderOpen, setIsOrderOpen] = useState(false);
   const [activeLoaded, setActiveLoaded] = useState(false);
+  const [portalGifUrl, setPortalGifUrl] = useState('/images/portal-animation.gif');
 
   const containerRef = useRef(null);
 
@@ -59,9 +60,25 @@ export function MerchDemo() {
 
   // Preload heavy portal animation gif
   useEffect(() => {
-    const img = new Image();
-    img.src = '/images/portal-animation.gif';
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await fetch('/api/version', { cache: 'no-store' });
+        const data = await resp.json().catch(() => ({}));
+        const buildId = data?.buildId || Math.floor(Date.now() / 1000);
+        const url = `/images/portal-animation.gif?v=${buildId}`;
+        if (!cancelled) setPortalGifUrl(url);
+      } catch {
+        // keep default
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = portalGifUrl;
+  }, [portalGifUrl]);
 
   const handleGenerate = useCallback(async () => {
     if (!selfieDataUrl) {
@@ -73,7 +90,7 @@ export function MerchDemo() {
     try {
       // Insert skeleton placeholder and scroll to gallery
       const placeholderId = `placeholder-${Date.now()}`;
-      const placeholder = { url: '/images/portal-animation.gif', created_at: new Date().toISOString(), public_id: placeholderId, isPlaceholder: true };
+      const placeholder = { url: portalGifUrl, created_at: new Date().toISOString(), public_id: placeholderId, isPlaceholder: true };
       setItems((prev) => [placeholder, ...prev]);
       setActiveIndex(0);
       setTimeout(() => { try { containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {} }, 0);

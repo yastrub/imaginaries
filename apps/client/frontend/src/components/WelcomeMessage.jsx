@@ -13,7 +13,7 @@ function seededRandom(seed) {
 const WelcomeMessageComponent = () => {
   const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
   const tapCountRef = useRef(0);
-  const lastTapTsRef = useRef(0);
+  const tapWindowTimerRef = useRef(null);
   // The text to animate
   const text = "What would you like to imagine?";
 
@@ -98,15 +98,19 @@ const WelcomeMessageComponent = () => {
         onClick={(e) => {
           e.stopPropagation();
           if (!isTerminalApp) return;
-          const now = Date.now();
-          // Reset if more than 3 seconds between taps
-          if (now - (lastTapTsRef.current || 0) > 3000) {
-            tapCountRef.current = 0;
+          if (!tapWindowTimerRef.current) {
+            tapWindowTimerRef.current = setTimeout(() => {
+              tapCountRef.current = 0;
+              tapWindowTimerRef.current = null;
+            }, 3000);
           }
-          lastTapTsRef.current = now;
           tapCountRef.current += 1;
           if (tapCountRef.current >= 5) {
             tapCountRef.current = 0;
+            if (tapWindowTimerRef.current) {
+              clearTimeout(tapWindowTimerRef.current);
+              tapWindowTimerRef.current = null;
+            }
             try { window.location.href = '/merch'; } catch {}
           }
         }}

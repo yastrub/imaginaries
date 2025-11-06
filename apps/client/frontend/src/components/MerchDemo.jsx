@@ -125,7 +125,7 @@ export function MerchDemo() {
           >
             Imagine
           </button>
-          <div className="text-white font-medium">Artificial Merch Demo</div>
+          <div className="text-white font-medium">ART*FICIAL Merch Demo</div>
           <button
             className="px-3 py-2 rounded-md border border-zinc-700 text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
             onClick={loadList}
@@ -150,9 +150,9 @@ export function MerchDemo() {
                 <Camera className="w-4 h-4"/> Take Selfie
               </button>
             </div>
-            <div className="aspect-square rounded-md bg-zinc-800 flex items-center justify-center overflow-hidden">
+            <div className="aspect-[3/4] rounded-md bg-zinc-800 flex items-center justify-center overflow-hidden">
               {selfieDataUrl ? (
-                <img src={selfieDataUrl} alt="Selfie" className="w-full h-full object-cover" />
+                <img src={selfieDataUrl} alt="Selfie" className="w-full h-full object-contain" />
               ) : (
                 <div className="text-zinc-500">No selfie yet</div>
               )}
@@ -216,7 +216,7 @@ export function MerchDemo() {
               <div className="text-sm text-zinc-400">{items.length} items</div>
             </div>
             <div className="relative">
-              <div className="aspect-square rounded-md bg-zinc-800 flex items-center justify-center overflow-hidden">
+              <div className="aspect-[3/4] rounded-md bg-zinc-800 flex items-center justify-center overflow-hidden">
                 {activeItem ? (
                   <img src={activeItem.url} alt="Magazine" className="w-full h-full object-contain" />
                 ) : (

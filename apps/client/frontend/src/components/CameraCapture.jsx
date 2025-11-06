@@ -70,23 +70,41 @@ export function CameraCapture({ onCapture, onCancel }) {
 
   const performCapture = async () => {
     if (!videoRef.current) return;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
     const video = videoRef.current;
     const vw = video.videoWidth;
     const vh = video.videoHeight;
     if (!vw || !vh) return;
 
-    // Natural camera aspect, no rotation
-    canvas.width = vw;
-    canvas.height = vh;
+    // Target 3:4 canvas, letterbox if needed (no cropping)
+    const targetRatio = 3 / 4;
+    let cw = Math.round(vh * targetRatio);
+    let ch = vh;
+    if (cw > vw) {
+      cw = vw;
+      ch = Math.round(vw / targetRatio);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cw;
+    canvas.height = ch;
+    const ctx = canvas.getContext('2d');
+
+    // Compute scale to fit entire video within canvas (object-contain)
+    const scale = Math.min(cw / vw, ch / vh);
+    const dw = Math.round(vw * scale);
+    const dh = Math.round(vh * scale);
+    const dx = Math.round((cw - dw) / 2);
+    const dy = Math.round((ch - dh) / 2);
+
     ctx.save();
     if (facing === 'user') {
-      ctx.translate(vw, 0);
+      // Mirror horizontally for front camera
+      ctx.translate(cw, 0);
       ctx.scale(-1, 1);
+      ctx.drawImage(video, cw - dx - dw, dy, dw, dh);
+    } else {
+      ctx.drawImage(video, dx, dy, dw, dh);
     }
-    ctx.drawImage(video, 0, 0, vw, vh);
     ctx.restore();
 
     const dataUrl = canvas.toDataURL('image/png');
@@ -131,12 +149,12 @@ export function CameraCapture({ onCapture, onCancel }) {
           {error && (
             <div className="text-red-400 text-sm w-full">{error}</div>
           )}
-          <div className="w-full bg-black rounded-lg overflow-hidden relative flex items-center justify-center">
+          <div className="w-full bg-black rounded-lg overflow-hidden relative flex items-center justify-center aspect-[3/4]">
             <video
               ref={videoRef}
               playsInline
               muted
-              className="w-full h-auto object-contain"
+              className="w-full h-full object-contain"
               style={{ transform: facing==='user' ? 'scaleX(-1)' : 'none', transformOrigin: 'center center' }}
             />
             {isCounting && (

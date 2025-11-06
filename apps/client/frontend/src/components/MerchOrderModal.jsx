@@ -51,7 +51,7 @@ export function MerchOrderModal({ isOpen, onClose, posterUrl }) {
         {/* Product mockup */}
         <div>
           <div className="relative bg-white rounded-lg overflow-hidden border border-zinc-700">
-            <div className="relative w-full aspect-[1/1] sm:aspect-[4/5] bg-white">
+            <div className="relative w-full aspect-square bg-white">
               {/* Base shirt */}
               <img src={shirtSrc} alt={`${color} shirt`} className="absolute inset-0 w-full h-full object-contain" />
               {/* Poster overlay */}
@@ -62,7 +62,7 @@ export function MerchOrderModal({ isOpen, onClose, posterUrl }) {
                     alt="Poster"
                     className="object-contain"
                     style={{
-                      width: '56%',
+                      width: '28%',
                       aspectRatio: '3 / 4',
                       top: '14%',
                       transform: 'translateY(6%)',

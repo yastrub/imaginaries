@@ -1,7 +1,7 @@
 // Simple QR modal using DOM. Avoids extra dependencies.
 let qrOverlay = null;
 
-export function showQrModal({ url, title = 'Scan to open', subtitle = '', hint = 'Use your phone camera', size = 512 } = {}) {
+export function showQrModal({ url, title = 'Scan to open', subtitle = '', hint = 'Use your phone camera', size = 512, showLink = true } = {}) {
   try {
     if (!url) return;
     const encoded = encodeURIComponent(url);
@@ -150,16 +150,17 @@ export function showQrModal({ url, title = 'Scan to open', subtitle = '', hint =
     box.appendChild(spinner);
     box.appendChild(img);
 
-    const link = document.createElement('div');
-    link.textContent = url;
-    link.style.marginTop = '12px';
-    link.style.fontSize = '12px';
-    link.style.color = '#a1a1aa';
-    link.style.wordBreak = 'break-all';
-    link.style.textAlign = 'center';
-
     wrap.appendChild(box);
-    wrap.appendChild(link);
+    if (showLink) {
+      const link = document.createElement('div');
+      link.textContent = url;
+      link.style.marginTop = '12px';
+      link.style.fontSize = '12px';
+      link.style.color = '#a1a1aa';
+      link.style.wordBreak = 'break-all';
+      link.style.textAlign = 'center';
+      wrap.appendChild(link);
+    }
 
     panel.appendChild(head);
     panel.appendChild(note);

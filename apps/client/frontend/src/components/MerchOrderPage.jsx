@@ -119,7 +119,7 @@ export function MerchOrderPage() {
       <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
           <div className="text-xl font-semibold">Merch Checkout</div>
-          <Link className="text-sm text-zinc-400 hover:text-white" to="/merch">Back to Merch</Link>
+          <div />
         </div>
         {loading && (
           <div className="text-zinc-400">Loading order…</div>
@@ -140,7 +140,7 @@ export function MerchOrderPage() {
                         src={posterUrl}
                         alt="Poster"
                         className="object-contain"
-                        style={{ width: '56%', aspectRatio: '3 / 4', top: '14%', transform: 'translateY(6%)' }}
+                        style={{ width: '33%', aspectRatio: '3 / 4', position: 'absolute', top: '25%', left: '50%', transform: 'translate(-50%, 0)' }}
                       />
                     </div>
                   )}

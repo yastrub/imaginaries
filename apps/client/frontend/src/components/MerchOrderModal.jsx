@@ -29,7 +29,7 @@ export function MerchOrderModal({ isOpen, onClose, posterUrl }) {
       }).toString();
       const url = `/merch/order?${params}`;
       const full = `${window.location.origin}${url}`;
-      showQrModal({ url: full, title: 'Continue on your phone', subtitle: 'Scan to complete your order' });
+      showQrModal({ url: full, title: 'Continue on your phone', subtitle: 'Scan to complete your order', showLink: false });
     } catch (e) {
       console.error('QR open failed', e);
       alert('Failed to open QR. Please try again.');
@@ -55,7 +55,7 @@ export function MerchOrderModal({ isOpen, onClose, posterUrl }) {
                     alt="Poster"
                     className="object-contain"
                     style={{
-                      width: '28%',
+                      width: '33%',
                       aspectRatio: '3 / 4',
                       position: 'absolute',
                       top: '25%',

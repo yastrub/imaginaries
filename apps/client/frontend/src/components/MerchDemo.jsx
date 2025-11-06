@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { CameraCapture } from './CameraCapture';
 import { MERCH_PRESETS, DEFAULT_MERCH_PRESET } from '../config/merchPresets';
 import { ChevronLeft, ChevronRight, Camera, RefreshCcw, Sparkles, ShoppingBag } from 'lucide-react';
 import { MerchOrderModal } from './MerchOrderModal';
 
 export function MerchDemo() {
+  const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [selfieDataUrl, setSelfieDataUrl] = useState(null);
   const [preset, setPreset] = useState(DEFAULT_MERCH_PRESET);
@@ -14,6 +16,7 @@ export function MerchDemo() {
   const [items, setItems] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isOrderOpen, setIsOrderOpen] = useState(false);
+  const [activeLoaded, setActiveLoaded] = useState(false);
 
   const containerRef = useRef(null);
 
@@ -54,6 +57,12 @@ export function MerchDemo() {
     loadList();
   }, [loadList]);
 
+  // Preload heavy portal animation gif
+  useEffect(() => {
+    const img = new Image();
+    img.src = '/images/portal-animation.gif';
+  }, []);
+
   const handleGenerate = useCallback(async () => {
     if (!selfieDataUrl) {
       setError('Please take a selfie first');
@@ -62,6 +71,13 @@ export function MerchDemo() {
     setError(null);
     setIsGenerating(true);
     try {
+      // Insert skeleton placeholder and scroll to gallery
+      const placeholderId = `placeholder-${Date.now()}`;
+      const placeholder = { url: '/images/portal-animation.gif', created_at: new Date().toISOString(), public_id: placeholderId, isPlaceholder: true };
+      setItems((prev) => [placeholder, ...prev]);
+      setActiveIndex(0);
+      setTimeout(() => { try { containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {} }, 0);
+
       const logoDataUrl = await fetchLogoAsDataUrl();
       const resp = await fetch('/api/merch/generate', {
         method: 'POST',
@@ -74,14 +90,21 @@ export function MerchDemo() {
       }
       const data = await resp.json();
       if (data?.url) {
-        // Prepend new item and focus it
-        const newItem = { url: data.url, created_at: new Date().toISOString(), public_id: `local-${Date.now()}` };
-        setItems((prev) => [newItem, ...prev]);
+        // Preload final image then gently swap
+        await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = resolve; img.onerror = resolve;
+          img.src = data.url;
+        });
+        const finalId = `local-${Date.now()}`;
+        setItems((prev) => prev.map(it => it.public_id === placeholderId ? { url: data.url, created_at: new Date().toISOString(), public_id: finalId } : it));
         setActiveIndex(0);
       }
     } catch (e) {
       console.error('Generate error', e);
       setError(e?.message || 'Failed to generate');
+      // remove placeholder if present
+      setItems((prev) => prev.filter(it => !it.isPlaceholder));
     } finally {
       setIsGenerating(false);
     }
@@ -120,6 +143,11 @@ export function MerchDemo() {
 
   const activeItem = items[activeIndex] || null;
 
+  // Reset fade when active item changes
+  useEffect(() => {
+    setActiveLoaded(false);
+  }, [activeItem?.url]);
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
@@ -146,7 +174,13 @@ export function MerchDemo() {
       </div>
 
       <div className="container mx-auto px-4 pt-24 pb-10">
-        {/* Controls */}
+        {!isTerminalApp ? (
+          <div className="max-w-xl mx-auto text-center py-20 text-zinc-400">
+            <div className="text-2xl text-white font-semibold mb-3">Merch is available on the Terminal only</div>
+            <div>Use the QR from the T‑Shirt modal to complete your order on your phone.</div>
+          </div>
+        ) : (
+        /* Controls */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left: selfie */}
           <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
@@ -227,7 +261,12 @@ export function MerchDemo() {
             <div className="relative">
               <div className="aspect-[3/4] rounded-md bg-zinc-800 flex items-center justify-center overflow-hidden">
                 {activeItem ? (
-                  <img src={activeItem.url} alt="Magazine" className="w-full h-full object-contain" />
+                  <img
+                    src={activeItem.url}
+                    alt="Magazine"
+                    className={`w-full h-full object-cover transition-opacity duration-500 ${activeLoaded ? 'opacity-100' : 'opacity-0'}`}
+                    onLoad={() => setActiveLoaded(true)}
+                  />
                 ) : (
                   <div className="text-zinc-500">No items yet</div>
                 )}
@@ -262,6 +301,7 @@ export function MerchDemo() {
             </div>
           </div>
         </div>
+        )}
       </div>
 
       <MerchOrderModal

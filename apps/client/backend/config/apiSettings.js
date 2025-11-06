@@ -131,7 +131,7 @@ export const settings = {
         params: {
           sync_mode: false,
           num_images: 1,
-          output_format: 'jpeg',
+          output_format: 'png',
           aspect_ratio: '1:1',
           limit_generations: true
         },
@@ -144,12 +144,24 @@ export const settings = {
         params: {
           sync_mode: false,
           num_images: 1,
-          output_format: 'jpeg',
+          output_format: 'png',
           aspect_ratio: '1:1',
           limit_generations: true
         },
         system_prompt: "make a change to existing jewelry piece, instructions are provided in a user prompt, if no instruction provided make a slight variation of the jewelry in the image. try to identify the type of jewelry."
-      }
+      },
+      fal_gemini_collage: {
+        api_url: 'https://queue.fal.run',
+        model: 'fal-ai/gemini-25-flash-image',
+        version: 'edit',
+        params: {
+          sync_mode: false,
+          num_images: 1,
+          output_format: 'png',
+          aspect_ratio: '3:4',
+          limit_generations: true
+        },
+      },
     }
   }
 };

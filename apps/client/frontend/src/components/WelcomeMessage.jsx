@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
+import { useSelector } from 'react-redux';
 
 // Create a stable random number generator with a fixed seed
 function seededRandom(seed) {
@@ -10,6 +11,9 @@ function seededRandom(seed) {
 
 // Create a memoized version of the component to prevent re-renders
 const WelcomeMessageComponent = () => {
+  const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
+  const tapCountRef = useRef(0);
+  const lastTapTsRef = useRef(0);
   // The text to animate
   const text = "What would you like to imagine?";
 
@@ -91,7 +95,21 @@ const WelcomeMessageComponent = () => {
       <div
         role="presentation"
         onMouseDown={(e) => { e.stopPropagation(); }}
-        onClick={(e) => { e.stopPropagation(); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!isTerminalApp) return;
+          const now = Date.now();
+          // Reset if more than 3 seconds between taps
+          if (now - (lastTapTsRef.current || 0) > 3000) {
+            tapCountRef.current = 0;
+          }
+          lastTapTsRef.current = now;
+          tapCountRef.current += 1;
+          if (tapCountRef.current >= 5) {
+            tapCountRef.current = 0;
+            try { window.location.href = '/merch'; } catch {}
+          }
+        }}
       >
         <h1 className="text-[4.0rem] leading-[1] font-extralight text-center mb-6 tracking-normal select-none">
           <span className="anim-text-flow">

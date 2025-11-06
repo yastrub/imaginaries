@@ -27,18 +27,14 @@ export async function uploadImage(imageUrl, userId, imageId = null) {
   if (isDevelopment) {
     return devDB.uploadImage(imageUrl, userId, imageId);
   }
-
   try {
     const folder = getFolder(userId);
-    // Use provided imageId if available, otherwise generate a new one
     if (!imageId) {
       imageId = uuidv4();
     }
-    
-    // Upload to Cloudinary with optimizations
     const result = await cloudinary.uploader.upload(imageUrl, {
       folder,
-      public_id: imageId, // Use UUID as public_id
+      public_id: imageId,
       transformation: [
         { quality: 'auto:best' },
         { fetch_format: 'auto' },
@@ -46,18 +42,93 @@ export async function uploadImage(imageUrl, userId, imageId = null) {
       ],
       resource_type: 'image'
     });
-
     console.log('Cloudinary upload successful:', {
       publicId: result.public_id,
       url: result.secure_url,
       format: result.format,
       size: result.bytes
     });
-
     return result.secure_url;
   } catch (error) {
     console.error('Cloudinary upload error:', error);
     throw new Error('Failed to upload image to Cloudinary');
+  }
+}
+
+// Upload a base64 data URL directly to a specific Cloudinary folder with optional public_id
+export async function uploadDataUrlToCloudinary(folder, publicId, dataUrl) {
+  if (isDevelopment) {
+    try {
+      // Reuse dev uploadSketch path for simplicity
+      const result = await devDB.uploadSketch(dataUrl, null, folder || 'dev');
+      return result?.image_url || dataUrl;
+    } catch (e) {
+      return dataUrl;
+    }
+  }
+  try {
+    const result = await cloudinary.uploader.upload(dataUrl, {
+      folder,
+      public_id: publicId || undefined,
+      transformation: [
+        { quality: 'auto:best' },
+        { fetch_format: 'auto' },
+        { format: 'png' }
+      ],
+      resource_type: 'image'
+    });
+    return result.secure_url;
+  } catch (error) {
+    console.error('Cloudinary uploadDataUrlToCloudinary error:', error);
+    throw new Error('Failed to upload image');
+  }
+}
+
+// Upload an external URL to a specific Cloudinary folder with optional public_id
+export async function uploadUrlToCloudinary(folder, publicId, url) {
+  if (isDevelopment) {
+    // In dev, just return the original URL
+    return url;
+  }
+  try {
+    const result = await cloudinary.uploader.upload(url, {
+      folder,
+      public_id: publicId || undefined,
+      transformation: [
+        { quality: 'auto:best' },
+        { fetch_format: 'auto' },
+        { format: 'png' }
+      ],
+      resource_type: 'image'
+    });
+    return result.secure_url;
+  } catch (error) {
+    console.error('Cloudinary uploadUrlToCloudinary error:', error);
+    throw new Error('Failed to upload image');
+  }
+}
+
+// List Cloudinary resources by prefix (folder path)
+export async function listResourcesByPrefix(prefix, max = 50) {
+  if (isDevelopment) {
+    // No listing in dev; return empty list
+    return [];
+  }
+  try {
+    const res = await cloudinary.api.resources({
+      type: 'upload',
+      prefix,
+      max_results: max,
+      direction: 'desc'
+    });
+    return (res.resources || []).map(r => ({
+      public_id: r.public_id,
+      url: r.secure_url,
+      created_at: r.created_at
+    }));
+  } catch (error) {
+    console.error('Cloudinary listResourcesByPrefix error:', error);
+    return [];
   }
 }
 

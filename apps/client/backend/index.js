@@ -14,6 +14,7 @@ import { ordersRouter } from './routes/orders.js';
 import { terminalsRouter } from './routes/terminals.js';
 import { imagesRouter } from './routes/images.js';
 import { plansRouter } from './routes/plans.js';
+import { merchRouter } from './routes/merch.js';
 import { billingRouter, registerStripeWebhook } from './routes/billing.js';
 import { profileRouter } from './routes/profile.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -117,6 +118,7 @@ async function startServer() {
     app.use('/api/billing', billingRouter);
     app.use('/api/orders', ordersRouter);
     app.use('/api/terminals', terminalsRouter);
+    app.use('/api/merch', merchRouter);
 
     // Version endpoint for clients/terminals to detect new deploys
     app.get('/api/version', async (req, res) => {

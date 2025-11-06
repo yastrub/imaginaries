@@ -233,7 +233,7 @@ export function MerchDemo() {
                 )}
               </div>
               {/* Order CTA */}
-              <div className="mt-3 flex justify-end">
+              <div className="mt-4 flex justify-center">
                 <button
                   disabled={!activeItem}
                   onClick={() => setIsOrderOpen(true)}

@@ -64,16 +64,15 @@ export function MerchOrderModal({ isOpen, onClose, posterUrl }) {
                     style={{
                       width: '28%',
                       aspectRatio: '3 / 4',
-                      top: '14%',
-                      transform: 'translateY(6%)',
+                      position: 'absolute',
+                      top: '25%',
+                      left: '50%',
+                      transform: 'translate(-50%, 0)',
                     }}
                   />
                 </div>
               )}
             </div>
-          </div>
-          <div className="mt-3 text-sm text-zinc-400">
-            Mockup preview. Final print uses your selected poster.
           </div>
         </div>
 

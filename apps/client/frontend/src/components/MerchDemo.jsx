@@ -32,7 +32,11 @@ export function MerchDemo() {
 
   const loadList = useCallback(async () => {
     try {
-      const resp = await fetch('/api/merch/list', { credentials: 'include' });
+      const resp = await fetch(`/api/merch/list?_=${Date.now()}`, {
+        credentials: 'include',
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       const data = await resp.json();
       if (data && Array.isArray(data.items)) {
         setItems(data.items);
@@ -125,10 +129,13 @@ export function MerchDemo() {
           >
             Imagine
           </button>
-          <div className="text-white font-medium">ART*FICIAL Merch Demo</div>
+          <div className="text-white font-medium">ART*FICIAL Merch</div>
           <button
             className="px-3 py-2 rounded-md border border-zinc-700 text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
-            onClick={loadList}
+            onClick={() => {
+              // Force refetch and, as a fallback, hard reload
+              loadList();
+            }}
             title="Reload"
           >
             <RefreshCcw className="w-4 h-4" /> Reload

@@ -17,19 +17,8 @@ router.post('/generate', async (req, res) => {
     const folderBase = 'artificial/events/01';
     const ts = Date.now();
 
-    // Upload selfie to Cloudinary to obtain a public URL
-    const selfieUrl = await uploadDataUrlToCloudinary(`${folderBase}/inputs`, `selfie-${ts}`, selfieDataUrl);
-
-    // Upload logo to Cloudinary; require logoDataUrl from client for reliability (local servers are not public)
-    let finalLogoUrl = null;
-    if (logoDataUrl) {
-      finalLogoUrl = await uploadDataUrlToCloudinary(`${folderBase}/assets`, `logo`, logoDataUrl);
-    } else {
-      // As a fallback, proceed without logo; collage will still run with single image
-      finalLogoUrl = null;
-    }
-
-    const imageUrls = finalLogoUrl ? [selfieUrl, finalLogoUrl] : [selfieUrl];
+    // Do NOT persist selfie/logo. Use data URLs directly for generation.
+    const imageUrls = logoDataUrl ? [selfieDataUrl, logoDataUrl] : [selfieDataUrl];
     const prompt = buildMerchPrompt(preset, !!keepPoses);
 
     // Generate with FAL Gemini Collage (png, 3:4) using both images
@@ -52,6 +41,9 @@ router.get('/list', async (req, res) => {
     const items = await listResourcesByPrefix(folderBase, 100);
     // Sort by created_at desc if available
     const sorted = items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     return res.json({ items: sorted });
   } catch (error) {
     console.error('[Merch] List error:', error);

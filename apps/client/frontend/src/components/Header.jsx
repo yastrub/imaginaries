@@ -9,6 +9,7 @@ import { openAuthModal } from './CompletelyIsolatedAuth';
 import { useNavigate } from 'react-router-dom';
 import AccountSettingsModal from './AccountSettingsModal';
 import { BugReportModal } from './BugReportModal';
+import { ReimagineModal } from './ReimagineModal';
 
 export const Header = React.memo(function Header({
   onOpenHistory,
@@ -33,6 +34,7 @@ export const Header = React.memo(function Header({
   const dropdownRef = useRef(null);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isBugModalOpen, setIsBugModalOpen] = useState(false);
+  const [isReimagineOpen, setIsReimagineOpen] = useState(false);
   const [titleTapCount, setTitleTapCount] = useState(0);
   const [showBuildVersion, setShowBuildVersion] = useState(false);
   const titleTapTimer = useRef(null);
@@ -352,6 +354,17 @@ export const Header = React.memo(function Header({
                 </Button>
               )
             )}
+            {isTerminalApp && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsReimagineOpen(true)}
+                className="text-zinc-300 hover:text-white gap-2 border border-zinc-700 bg-zinc-900/40 hover:bg-zinc-800"
+              >
+                <Sparkles className="w-4 h-4" />
+                Reimagine
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -420,6 +433,9 @@ export const Header = React.memo(function Header({
         )}
       </nav>
       <AccountSettingsModal open={isAccountModalOpen} onClose={() => setIsAccountModalOpen(false)} />
+      {isTerminalApp && (
+        <ReimagineModal isOpen={isReimagineOpen} onClose={() => setIsReimagineOpen(false)} />
+      )}
       {isBugModalOpen && (
         <BugReportModal isOpen={isBugModalOpen} onClose={() => setIsBugModalOpen(false)} />
       )}

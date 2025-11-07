@@ -3,6 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Modal } from './Modal';
 import { Sparkles } from 'lucide-react';
 
+// Module-level cache to prevent flicker on re-open
+let REIMAGINE_CACHE = {
+  items: null,
+  version: null,
+};
+
 export function ReimagineModal({ isOpen, onClose }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -14,22 +20,60 @@ export function ReimagineModal({ isOpen, onClose }) {
   useEffect(() => {
     if (!isOpen) return;
     let mounted = true;
-    (async () => {
+
+    const getVer = () => (typeof window !== 'undefined' && window.__BUILD_ID__) ? window.__BUILD_ID__ : null;
+    const isSame = (a, b) => {
+      if (!Array.isArray(a) || !Array.isArray(b)) return false;
+      if (a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i++) {
+        if (a[i]?.url !== b[i]?.url) return false;
+      }
+      return true;
+    };
+
+    const fetchManifest = async (mode) => {
       try {
-        setLoading(true);
-        const ver = (typeof window !== 'undefined' && window.__BUILD_ID__) ? window.__BUILD_ID__ : Date.now();
-        const resp = await fetch(`/images/reimagine/manifest.json?v=${ver}`, { cache: 'no-store' });
+        const ver = getVer();
+        const url = ver ? `/images/reimagine/manifest.json?v=${ver}` : `/images/reimagine/manifest.json`;
+        const resp = await fetch(url, { cache: 'no-store' });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data?.error || 'Failed to load');
         if (!mounted) return;
-        setItems(Array.isArray(data.items) ? data.items : []);
+        const nextItems = Array.isArray(data.items) ? data.items : [];
+        // Only update state if changed
+        if (!isSame(nextItems, REIMAGINE_CACHE.items || []) ) {
+          REIMAGINE_CACHE = { items: nextItems, version: ver };
+          if (mode === 'initial') {
+            setItems(nextItems);
+            // Allow smooth fade-in on first load; keep loaded as empty so cards animate
+          } else {
+            // On refresh, swap instantly without shimmer
+            setItems(nextItems);
+            setLoaded(new Set(nextItems.map((it) => it.url)));
+          }
+        }
       } catch (e) {
-        if (!mounted) return;
-        setError(e.message || 'Failed to load');
+        if (mode === 'initial') {
+          if (!mounted) return;
+          setError(e.message || 'Failed to load');
+        }
       } finally {
-        if (mounted) setLoading(false);
+        if (mode === 'initial') {
+          if (mounted) setLoading(false);
+        }
       }
-    })();
+    };
+
+    // If we have cache, show it immediately (no skeleton) and refresh in background
+    if (REIMAGINE_CACHE.items && REIMAGINE_CACHE.items.length) {
+      setItems(REIMAGINE_CACHE.items);
+      setLoaded(new Set(REIMAGINE_CACHE.items.map((it) => it.url)));
+      fetchManifest('refresh');
+    } else {
+      setLoading(true);
+      fetchManifest('initial');
+    }
+
     return () => { mounted = false; };
   }, [isOpen]);
 

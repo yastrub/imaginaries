@@ -454,8 +454,24 @@ router.post('/', auth, generateLimiter, checkGenerationLimits, async (req, res) 
       if (!allowReimagine) {
         return res.status(403).json({ error: 'Reimagine feature is not available on your plan' });
       }
-      // Use the non-watermarked image url sent by client
-      const imageUrls = [reimagineImageUrl];
+      // Ensure public absolute URL for FAL Gemini
+      let sourceUrl = reimagineImageUrl;
+      try {
+        // If a relative URL was sent, convert to absolute using request origin
+        if (typeof sourceUrl === 'string' && sourceUrl.startsWith('/')) {
+          sourceUrl = `${req.protocol}://${req.get('host')}${sourceUrl}`;
+        }
+      } catch {}
+      // Upload to Cloudinary (or storage) to guarantee public access
+      try {
+        const uploaded = await uploadImage(sourceUrl, userId);
+        if (uploaded) {
+          sourceUrl = uploaded;
+        }
+      } catch (e) {
+        console.warn('[Server] Reimagine: uploadImage failed, using original URL', e?.message);
+      }
+      const imageUrls = [sourceUrl];
       imageUrl = await generateImage(prompt, GENERATORS.FAL_GEMINI_REIMAGINE, { imageUrls });
     } else if (hasCamera) {
       // Gate by plan (DB-driven)

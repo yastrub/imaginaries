@@ -56,9 +56,15 @@ export async function generateImage(prompt, userId = null, drawingPng = null, dr
         if (cameraPng) {
           requestBody.cameraPng = cameraPng;
         }
-        // Add reimagine image url if available
+        // Add reimagine image url if available (ensure absolute URL)
         if (reimagineImageUrl) {
-          requestBody.reimagineImageUrl = reimagineImageUrl;
+          let u = reimagineImageUrl;
+          try {
+            if (typeof window !== 'undefined' && u.startsWith('/')) {
+              u = `${window.location.origin}${u}`;
+            }
+          } catch {}
+          requestBody.reimagineImageUrl = u;
         }
         // Add uploaded image if available
         if (uploadedPng) {

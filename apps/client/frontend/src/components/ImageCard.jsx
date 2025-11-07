@@ -224,7 +224,7 @@ function ImageCardComponent({
     
     try {
       if (isTerminalApp) {
-        showQrModal({ url: shareUrl, title: 'Scan to open', subtitle: 'Open this design on your phone' });
+        showQrModal({ url: shareUrl, title: 'Scan to open', subtitle: 'Open this design on your phone', showLink: false });
         return;
       }
       await navigator.clipboard.writeText(shareUrl);

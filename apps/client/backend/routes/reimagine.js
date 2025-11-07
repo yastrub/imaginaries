@@ -18,22 +18,30 @@ function toTitle(basename) {
 }
 
 router.get('/list', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   try {
-    res.set('Cache-Control', 'no-store');
-    const entries = await fs.readdir(LIB_DIR, { withFileTypes: true });
+    let entries = [];
+    try {
+      entries = await fs.readdir(LIB_DIR, { withFileTypes: true });
+    } catch (e) {
+      // If folder is missing or unreadable, return empty list instead of 500
+      return res.json({ items: [] });
+    }
     const files = entries
       .filter((d) => d.isFile())
       .map((d) => d.name)
       .filter((n) => /\.(png|jpg|jpeg|webp|gif)$/i.test(n));
-    const items = files.map((name) => ({
-      title: toTitle(name),
-      url: `/images/reimagine/${name}`,
-      filename: name,
-    }));
+    const items = files
+      .map((name) => ({
+        title: toTitle(name),
+        url: `/images/reimagine/${name}`,
+        filename: name,
+      }))
+      .sort((a, b) => a.title.localeCompare(b.title));
     return res.json({ items });
   } catch (e) {
-    console.error('[reimagine] list failed', e);
-    return res.status(500).json({ error: 'Failed to list reimagine items' });
+    // As a safety net, never error for listing
+    return res.json({ items: [] });
   }
 });
 

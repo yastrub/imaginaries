@@ -49,7 +49,7 @@ export function ReimagineModal({ isOpen, onClose }) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Reimagine as Jewelry" className="max-w-5xl">
+    <Modal isOpen={isOpen} onClose={onClose} title="Reimagine Gifts" className="max-w-5xl">
       <div className="overflow-y-auto max-h-[70vh] pr-2">
         <div className="space-y-6">
           <div className="flex items-center gap-3">

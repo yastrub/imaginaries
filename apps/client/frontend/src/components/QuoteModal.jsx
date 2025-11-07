@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { X, Loader2, DollarSign, BadgeCheck } from 'lucide-react';
 import { Button } from './ui/button';
@@ -20,6 +20,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
   const [parsedPrices, setParsedPrices] = useState(null); // [n1, n2, n3, n4]
   const overlayStyle = useViewportOverlay();
   const [selectedIdx, setSelectedIdx] = useState(null);
+  const initialPriceIdxRef = useRef(null);
   const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
   const OPTION_LABELS = [
     'Sterling Silver + Moissanites',
@@ -37,6 +38,15 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
 
   // Fetch price estimation when the modal opens
   useEffect(() => {
+    // Read desired preselected option from URL (if coming from QR)
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const pi = sp.get('priceIdx');
+      const n = pi != null ? Number(pi) : null;
+      if (Number.isInteger(n) && n >= 0 && n < 4) {
+        initialPriceIdxRef.current = n;
+      }
+    } catch {}
     // In Terminal app, allow QR flow without auth gating
     if (!isTerminalApp) {
       // Gate by auth: if not authenticated or not confirmed, open auth and close modal
@@ -98,7 +108,13 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
         const nums = parts.map(p => Number(String(p).replace(/[^0-9.]/g, ''))).filter(n => Number.isFinite(n));
         if (nums.length >= 4) {
           setParsedPrices(nums.slice(0,4));
-          setSelectedIdx(null);
+          // Apply preselected index from URL if valid
+          const pre = initialPriceIdxRef.current;
+          if (Number.isInteger(pre) && pre >= 0 && pre < 4) {
+            setSelectedIdx(pre);
+          } else {
+            setSelectedIdx(null);
+          }
         } else {
           setParsedPrices(null);
           setSelectedIdx(null);
@@ -216,8 +232,10 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
 
   const handleOrderSelected = async () => {
     if (isTerminalApp) {
-      const shareUrl = `${window.location.origin}/share/${image.id}?quote=1`;
-      showQrModal({ url: shareUrl, title: 'Continue on your phone', subtitle: 'Scan to open order page for this design' });
+      const sp = new URLSearchParams({ quote: '1' });
+      if (selectedIdx != null) sp.set('priceIdx', String(selectedIdx));
+      const shareUrl = `${window.location.origin}/share/${image.id}?${sp.toString()}`;
+      showQrModal({ url: shareUrl, title: 'Continue on your phone', subtitle: 'Scan to open order page for this design', showLink: false });
       return;
     }
     if (selectedIdx == null) return;
@@ -371,7 +389,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                   </div>
                   <div className="flex justify-center">
                     {isTerminalApp ? (
-                      <Button className="w-full max-w-xs" onClick={() => showQrModal({ url: `${window.location.origin}/share/${image.id}?quote=1`, title: 'Continue on your phone', subtitle: 'Scan to open order page for this design' })}>
+                      <Button className="w-full max-w-xs" onClick={() => showQrModal({ url: `${window.location.origin}/share/${image.id}?quote=1`, title: 'Continue on your phone', subtitle: 'Scan to open order page for this design', showLink: false })}>
                         Continue
                       </Button>
                     ) : (

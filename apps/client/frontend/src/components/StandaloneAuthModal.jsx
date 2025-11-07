@@ -66,7 +66,7 @@ const StandaloneAuth = memo(function StandaloneAuth({ onClose, toast }) {
       )}
 
       <h2 className="text-2xl font-bold text-white mb-6">
-        {isSignUp ? 'Create an account' : 'Sign in to your account'}
+        {isSignUp ? 'Create an account' : 'Sign in / Sign up'}
       </h2>
       
       {error && (

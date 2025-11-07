@@ -15,7 +15,8 @@ export function ReimagineModal({ isOpen, onClose }) {
     (async () => {
       try {
         setLoading(true);
-        const resp = await fetch('/api/reimagine/list', { cache: 'no-store', credentials: 'include' });
+        const ver = (typeof window !== 'undefined' && window.__BUILD_ID__) ? window.__BUILD_ID__ : Date.now();
+        const resp = await fetch(`/images/reimagine/manifest.json?v=${ver}`, { cache: 'no-store' });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data?.error || 'Failed to load');
         if (!mounted) return;

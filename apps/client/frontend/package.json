@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/genReimagineManifest.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/genReimagineManifest.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

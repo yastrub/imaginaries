@@ -50,38 +50,40 @@ export function ReimagineModal({ isOpen, onClose }) {
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Reimagine as Jewelry" className="max-w-5xl">
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search templates..."
-            className="flex-1 px-4 py-2 rounded-md bg-zinc-900 border border-zinc-700 text-white focus:outline-none focus:ring-2 focus:ring-zinc-600"
-          />
-        </div>
-        {loading && (
-          <div className="text-zinc-400">Loading…</div>
-        )}
-        {error && (
-          <div className="text-red-400">{error}</div>
-        )}
-        {!loading && !error && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {filtered.map((it) => (
-              <button key={it.url} onClick={() => onPick(it)} className="group rounded-lg overflow-hidden border border-zinc-800 hover:border-zinc-600 bg-zinc-900/60">
-                <div className="aspect-square bg-zinc-800">
-                  <img src={it.url} alt={it.title} className="w-full h-full object-cover group-hover:opacity-90 transition-opacity" />
-                </div>
-                <div className="px-3 py-2 text-left">
-                  <div className="text-sm text-zinc-200 truncate">{it.title}</div>
-                </div>
-              </button>
-            ))}
+      <div className="overflow-y-auto max-h-[70vh] pr-2">
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search templates..."
+              className="flex-1 px-4 py-2 rounded-md bg-zinc-900 border border-zinc-700 text-white focus:outline-none focus:ring-2 focus:ring-zinc-600"
+            />
           </div>
-        )}
-        {!loading && !error && filtered.length === 0 && (
-          <div className="text-zinc-500">No items found</div>
-        )}
+          {loading && (
+            <div className="text-zinc-400">Loading…</div>
+          )}
+          {error && (
+            <div className="text-red-400">{error}</div>
+          )}
+          {!loading && !error && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {filtered.map((it) => (
+                <button key={it.url} onClick={() => onPick(it)} className="group rounded-lg overflow-hidden border border-zinc-800 hover:border-zinc-600 bg-zinc-900/60">
+                  <div className="aspect-square bg-zinc-800">
+                    <img src={it.url} alt={it.title} className="w-full h-full object-cover group-hover:opacity-90 transition-opacity" />
+                  </div>
+                  <div className="px-3 py-2 text-left">
+                    <div className="text-sm text-zinc-200 truncate">{it.title}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+          {!loading && !error && filtered.length === 0 && (
+            <div className="text-zinc-500">No items found</div>
+          )}
+        </div>
       </div>
     </Modal>
   );

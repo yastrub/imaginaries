@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from './Modal';
+import { Sparkles } from 'lucide-react';
 
 export function ReimagineModal({ isOpen, onClose }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [query, setQuery] = useState('');
+  const [loaded, setLoaded] = useState(() => new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -61,7 +63,18 @@ export function ReimagineModal({ isOpen, onClose }) {
             />
           </div>
           {loading && (
-            <div className="text-zinc-400">Loading…</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div key={i} className="rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900/60">
+                  <div className="aspect-square relative overflow-hidden">
+                    <div className="absolute inset-0 animate-pulse bg-gradient-to-b from-zinc-800 to-zinc-700" />
+                  </div>
+                  <div className="px-3 py-2">
+                    <div className="h-3 w-3/4 bg-zinc-800 rounded animate-pulse" />
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
           {error && (
             <div className="text-red-400">{error}</div>
@@ -69,14 +82,34 @@ export function ReimagineModal({ isOpen, onClose }) {
           {!loading && !error && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {filtered.map((it) => (
-                <button key={it.url} onClick={() => onPick(it)} className="group rounded-lg overflow-hidden border border-zinc-800 hover:border-zinc-600 bg-zinc-900/60">
-                  <div className="aspect-square bg-zinc-800">
-                    <img src={it.url} alt={it.title} className="w-full h-full object-cover group-hover:opacity-90 transition-opacity" />
+                <div key={it.url} className="group rounded-lg overflow-hidden border border-zinc-800 hover:border-zinc-600 bg-zinc-900/60">
+                  <div className="aspect-square bg-zinc-800 relative overflow-hidden">
+                    {!loaded.has(it.url) && (
+                      <div className="absolute inset-0 animate-pulse bg-gradient-to-b from-zinc-800 to-zinc-700" />
+                    )}
+                    <img
+                      src={it.url}
+                      alt={it.title}
+                      loading="lazy"
+                      onLoad={() => setLoaded((prev) => {
+                        const next = new Set(prev);
+                        next.add(it.url);
+                        return next;
+                      })}
+                      className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${loaded.has(it.url) ? 'opacity-100' : 'opacity-0'}`}
+                    />
                   </div>
-                  <div className="px-3 py-2 text-left">
+                  <div className="px-3 py-2 text-left flex items-center justify-between gap-2">
                     <div className="text-sm text-zinc-200 truncate">{it.title}</div>
+                    <button
+                      onClick={() => onPick(it)}
+                      className="p-1.5 rounded-md text-zinc-300 hover:text-white hover:bg-zinc-800 focus:outline-none focus:ring-0"
+                      aria-label="Reimagine"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                    </button>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           )}

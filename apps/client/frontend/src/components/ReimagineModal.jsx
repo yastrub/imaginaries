@@ -103,7 +103,7 @@ export function ReimagineModal({ isOpen, onClose }) {
                     <div className="text-sm text-zinc-200 truncate">{it.title}</div>
                     <button
                       onClick={() => onPick(it)}
-                      className="p-1.5 rounded-md text-zinc-300 hover:text-white hover:bg-zinc-800 focus:outline-none focus:ring-0"
+                      className="py-1 pl-1 pr-0 rounded-md text-zinc-300 hover:text-white hover:bg-zinc-800 focus:outline-none focus:ring-0"
                       aria-label="Reimagine"
                     >
                       <Sparkles className="w-4 h-4" />

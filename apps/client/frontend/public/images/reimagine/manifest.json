@@ -16,6 +16,10 @@
     { "title": "Prayer Beads", "url": "/images/reimagine/prayer-beads.png", "filename": "prayer-beads.png" },
     { "title": "Zippo Lighter", "url": "/images/reimagine/zippo-lighter.png", "filename": "zippo-lighter.png" },
     { "title": "Car Wheel", "url": "/images/reimagine/car-wheel.png", "filename": "car-wheel.png" },
-    { "title": "Floating Astronaut", "url": "/images/reimagine/floating-astronaut.png", "filename": "floating-astronaut.png" }
+    { "title": "Floating Astronaut", "url": "/images/reimagine/floating-astronaut.png", "filename": "floating-astronaut.png" },
+    { "title": "Moon", "url": "/images/reimagine/moon.png", "filename": "moon.png" },
+    { "title": "Golf Ball", "url": "/images/reimagine/golf-ball.png", "filename": "golf-ball.png" },
+    { "title": "Moon Cap", "url": "/images/reimagine/moon-cap.png", "filename": "moon-cap.png" },
+    { "title": "Golf Ball Cap", "url": "/images/reimagine/golf-ball-cap.png", "filename": "golf-ball-cap.png" }
   ]
 }

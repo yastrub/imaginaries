@@ -314,7 +314,7 @@ export function MerchDemo() {
       {showDeleteConfirm && (
         <ConfirmDialog
           title="Delete Poster"
-          message="Are you sure you want to delete this image from Cloudinary? This action cannot be undone."
+          message="Are you sure you want to delete this image? This action cannot be undone."
           confirmLabel={isDeleting ? 'Deleting…' : 'Delete'}
           cancelLabel="Cancel"
           onConfirm={async () => {

@@ -2,7 +2,7 @@
 export const MERCH_STYLE_MAP = {
   GTA: 'make them GTA style looking.',
   GLAMOUR: 'make them glamorous, glossy editorial magazine style.',
-  SUPERHERO: 'make them superhero cover style.',
+  SUPERHERO: 'make them superhero style.',
   HIGH_FASHION: 'make them high fashion editorial style, avant-garde.',
 };
 

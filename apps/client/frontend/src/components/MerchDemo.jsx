@@ -249,7 +249,7 @@ export function MerchDemo() {
                 disabled={!activeItem}
                 onClick={async () => {
                   if (!activeItem) return;
-                  const ok = window.confirm('Delete this result from Cloudinary? This cannot be undone.');
+                  const ok = window.confirm('Delete this image? This cannot be undone.');
                   if (!ok) return;
                   try {
                     const resp = await fetch('/api/merch/delete', {

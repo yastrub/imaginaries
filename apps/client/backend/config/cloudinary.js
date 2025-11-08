@@ -179,15 +179,36 @@ export async function addWatermark(imageUrl, userId) {
 // Delete image from storage
 export async function deleteImage(imageUrl) {
   if (isDevelopment) {
-    return devDB.deleteImage(imageUrl);
+    // No-op in development; treat as success
+    return true;
   }
 
   try {
-    // Extract public ID from Cloudinary URL
-    const publicId = imageUrl.split('/upload/')[1].split('.')[0];
-    
-    if (!publicId) {
-      throw new Error('Invalid Cloudinary URL');
+    // Extract public_id from Cloudinary URL, stripping transformations and version
+    // Examples:
+    // https://res.cloudinary.com/<cloud>/image/upload/v1699999999/folder/name.png
+    // https://res.cloudinary.com/<cloud>/image/upload/q_auto:best,f_auto/v169.../folder/name.png
+    // We want: folder/name
+    const url = new URL(imageUrl);
+    const path = url.pathname; // e.g., /<cloud>/image/upload/v123/folder/name.png
+    const uploadIndex = path.indexOf('/upload/');
+    if (uploadIndex === -1) throw new Error('Invalid Cloudinary URL');
+    let after = path.substring(uploadIndex + '/upload/'.length); // may contain transforms + version + public_id.ext
+    // If there's a version segment like v12345/, cut everything before and including it
+    const verMatch = after.match(/v\d+\//);
+    if (verMatch) {
+      after = after.substring(after.indexOf(verMatch[0]) + verMatch[0].length);
+    } else {
+      // If no version, strip any leading transformation segments (contain commas or colons)
+      const parts = after.split('/');
+      while (parts.length && (parts[0].includes(':') || parts[0].includes(','))) parts.shift();
+      after = parts.join('/');
+    }
+    // Remove file extension
+    const dot = after.lastIndexOf('.');
+    const publicId = dot > 0 ? after.substring(0, dot) : after;
+    if (!publicId || publicId.includes('..') || publicId.startsWith('/')) {
+      throw new Error('Invalid Cloudinary public_id');
     }
 
     const result = await cloudinary.uploader.destroy(publicId);
@@ -197,7 +218,7 @@ export async function deleteImage(imageUrl) {
       result: result.result
     });
 
-    return result.result === 'ok';
+    return result.result === 'ok' || result.result === 'not found';
   } catch (error) {
     console.error('Cloudinary delete error:', error);
     throw new Error('Failed to delete image from Cloudinary');

@@ -192,7 +192,12 @@ export function MerchDemo() {
             </div>
             {selfieDataUrl && (
               <div className="mt-2 text-right">
-                <button className="text-sm text-zinc-400 hover:text-white" onClick={() => setSelfieDataUrl(null)}>Retake</button>
+                <button
+                  className="text-sm text-zinc-400 hover:text-white"
+                  onClick={() => { setSelfieDataUrl(null); setIsCameraOpen(true); }}
+                >
+                  Retake
+                </button>
               </div>
             )}
           </div>

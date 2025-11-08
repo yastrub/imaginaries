@@ -5,6 +5,7 @@ import { MERCH_PRESETS, DEFAULT_MERCH_PRESET } from '../config/merchPresets';
 import { Camera, RefreshCcw, Sparkles, ShoppingBag, Trash2 } from 'lucide-react';
 import { MerchOrderModal } from './MerchOrderModal';
 import { showQrModal } from '../lib/qr';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export function MerchDemo() {
   const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
@@ -19,6 +20,8 @@ export function MerchDemo() {
   const [isOrderOpen, setIsOrderOpen] = useState(false);
   const [activeLoaded, setActiveLoaded] = useState(false);
   const [portalGifUrl, setPortalGifUrl] = useState('/images/portal-animation.gif');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const containerRef = useRef(null);
 
@@ -247,25 +250,7 @@ export function MerchDemo() {
                 className="p-2 rounded-md border border-zinc-700 text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
                 title="Delete this result"
                 disabled={!activeItem}
-                onClick={async () => {
-                  if (!activeItem) return;
-                  const ok = window.confirm('Delete this image? This cannot be undone.');
-                  if (!ok) return;
-                  try {
-                    const resp = await fetch('/api/merch/delete', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      credentials: 'include',
-                      body: JSON.stringify({ url: activeItem.url })
-                    });
-                    const data = await resp.json().catch(() => ({}));
-                    if (!resp.ok || data.ok !== true) throw new Error(data.error || 'Delete failed');
-                    await loadList();
-                  } catch (e) {
-                    console.error('Delete failed', e);
-                    alert(e?.message || 'Failed to delete');
-                  }
-                }}
+                onClick={() => { if (activeItem) setShowDeleteConfirm(true); }}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -323,6 +308,38 @@ export function MerchDemo() {
         <CameraCapture
           onCapture={(d) => { setSelfieDataUrl(d); setIsCameraOpen(false); }}
           onCancel={() => setIsCameraOpen(false)}
+        />
+      )}
+
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          title="Delete Poster"
+          message="Are you sure you want to delete this image from Cloudinary? This action cannot be undone."
+          confirmLabel={isDeleting ? 'Deleting…' : 'Delete'}
+          cancelLabel="Cancel"
+          onConfirm={async () => {
+            if (!activeItem || isDeleting) return;
+            try {
+              setIsDeleting(true);
+              const resp = await fetch('/api/merch/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ url: activeItem.url })
+              });
+              const data = await resp.json().catch(() => ({}));
+              if (!resp.ok || data.ok !== true) throw new Error(data.error || 'Delete failed');
+              // Reload list to previous item or placeholder
+              await loadList();
+            } catch (e) {
+              console.error('Delete failed', e);
+              alert(e?.message || 'Failed to delete');
+            } finally {
+              setIsDeleting(false);
+              setShowDeleteConfirm(false);
+            }
+          }}
+          onCancel={() => { if (!isDeleting) setShowDeleteConfirm(false); }}
         />
       )}
     </div>

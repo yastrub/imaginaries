@@ -20,14 +20,21 @@ export function MerchOrderModal({ isOpen, onClose, posterUrl }) {
     if (!posterUrl) return;
     try {
       setIsSubmitting(true);
-      const params = new URLSearchParams({
-        src: posterUrl,
-        color,
-        size,
-        amount: String(price.amount),
-        currency: price.currency
-      }).toString();
-      const url = `/merch/order?${params}`;
+      // Create a draft merch order so we can copy the image to merch/orders and have a stable link
+      const resp = await fetch('/api/merch-orders/orders/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          sourceImageUrl: posterUrl,
+          merchType: 'T-SHIRT',
+          details: { size, color },
+          price
+        })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.error || 'Failed to start order');
+      const url = data?.url || `/merch/order/${data?.id}`;
       const full = `${window.location.origin}${url}`;
       showQrModal({ url: full, title: 'Continue on your phone', subtitle: 'Scan to complete your order', showLink: false });
     } catch (e) {

@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSelector } from 'react-redux';
 import { CameraCapture } from './CameraCapture';
 import { MERCH_PRESETS, DEFAULT_MERCH_PRESET } from '../config/merchPresets';
-import { ChevronLeft, ChevronRight, Camera, RefreshCcw, Sparkles, ShoppingBag } from 'lucide-react';
+import { Camera, RefreshCcw, Sparkles, ShoppingBag, Trash2 } from 'lucide-react';
 import { MerchOrderModal } from './MerchOrderModal';
+import { showQrModal } from '../lib/qr';
 
 export function MerchDemo() {
   const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
@@ -127,36 +128,8 @@ export function MerchDemo() {
     }
   }, [selfieDataUrl, preset, keepPoses, fetchLogoAsDataUrl]);
 
-  // Simple swipe support
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    let startX = null;
-    let startY = null;
-    const onTouchStart = (e) => {
-      const t = e.touches[0];
-      startX = t.clientX; startY = t.clientY;
-    };
-    const onTouchEnd = (e) => {
-      if (startX == null || startY == null) return;
-      const t = e.changedTouches[0];
-      const dx = t.clientX - startX; const dy = t.clientY - startY;
-      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-        if (dx < 0) setActiveIndex((i) => Math.min(i + 1, Math.max(0, items.length - 1)));
-        else setActiveIndex((i) => Math.max(0, i - 1));
-      }
-      startX = null; startY = null;
-    };
-    el.addEventListener('touchstart', onTouchStart, { passive: true });
-    el.addEventListener('touchend', onTouchEnd, { passive: true });
-    return () => {
-      el.removeEventListener('touchstart', onTouchStart);
-      el.removeEventListener('touchend', onTouchEnd);
-    };
-  }, [items.length]);
-
-  const canPrev = activeIndex > 0;
-  const canNext = activeIndex < items.length - 1;
+  // Gallery disabled: always show the latest item (index 0)
+  useEffect(() => { setActiveIndex(0); }, [items.length]);
 
   const activeItem = items[activeIndex] || null;
 
@@ -269,8 +242,33 @@ export function MerchDemo() {
           {/* Right: carousel */}
           <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4" ref={containerRef}>
             <div className="flex items-center justify-between mb-3">
-              <div className="text-white font-medium">4. Gallery</div>
-              <div className="text-sm text-zinc-400">{items.length} items</div>
+              <div className="text-white font-medium">4. Result</div>
+              <button
+                className="p-2 rounded-md border border-zinc-700 text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+                title="Delete this result"
+                disabled={!activeItem}
+                onClick={async () => {
+                  if (!activeItem) return;
+                  const ok = window.confirm('Delete this result from Cloudinary? This cannot be undone.');
+                  if (!ok) return;
+                  try {
+                    const resp = await fetch('/api/merch/delete', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({ url: activeItem.url })
+                    });
+                    const data = await resp.json().catch(() => ({}));
+                    if (!resp.ok || data.ok !== true) throw new Error(data.error || 'Delete failed');
+                    await loadList();
+                  } catch (e) {
+                    console.error('Delete failed', e);
+                    alert(e?.message || 'Failed to delete');
+                  }
+                }}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
             <div className="relative">
               <div className="aspect-[3/4] rounded-md bg-zinc-800 flex items-center justify-center overflow-hidden">
@@ -289,8 +287,8 @@ export function MerchDemo() {
                   <div className="text-zinc-500">No items yet</div>
                 )}
               </div>
-              {/* Order CTA */}
-              <div className="mt-4 flex justify-center">
+              {/* Actions */}
+              <div className="mt-4 flex justify-center gap-3">
                 <button
                   disabled={!activeItem}
                   onClick={() => setIsOrderOpen(true)}
@@ -298,24 +296,17 @@ export function MerchDemo() {
                 >
                   <ShoppingBag className="w-4 h-4"/> Order T-Shirt
                 </button>
+                <button
+                  disabled={!activeItem}
+                  onClick={() => {
+                    if (!activeItem?.url) return;
+                    showQrModal({ url: activeItem.url, title: 'Get this Poster', subtitle: 'Scan to open the poster on your phone', showLink: false, size: 420 });
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-zinc-700 text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+                >
+                  Get this Poster
+                </button>
               </div>
-              {/* Nav */}
-              <button
-                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white disabled:opacity-30"
-                onClick={() => setActiveIndex((i) => Math.max(0, i-1))}
-                disabled={!canPrev}
-                aria-label="Prev"
-              >
-                <ChevronLeft className="w-6 h-6"/>
-              </button>
-              <button
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white disabled:opacity-30"
-                onClick={() => setActiveIndex((i) => Math.min(items.length-1, i+1))}
-                disabled={!canNext}
-                aria-label="Next"
-              >
-                <ChevronRight className="w-6 h-6"/>
-              </button>
             </div>
           </div>
         </div>

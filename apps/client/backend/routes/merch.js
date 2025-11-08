@@ -1,5 +1,5 @@
 import express from 'express';
-import { uploadDataUrlToCloudinary, uploadUrlToCloudinary, listResourcesByPrefix } from '../config/cloudinary.js';
+import { uploadDataUrlToCloudinary, uploadUrlToCloudinary, listResourcesByPrefix, deleteImage } from '../config/cloudinary.js';
 import { generateImage, GENERATORS } from '../config/imageGenerators.js';
 import { buildMerchPrompt } from '../config/merchPresets.js';
 
@@ -52,3 +52,23 @@ router.get('/list', async (req, res) => {
 });
 
 export { router as merchRouter };
+
+// POST /api/merch/delete -> delete a merch image by URL
+router.post('/delete', async (req, res) => {
+  try {
+    const { url } = req.body || {};
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ error: 'Missing url' });
+    }
+    // Optional: ensure it's under expected folder
+    try {
+      const ok = await deleteImage(url);
+      return res.json({ ok: !!ok });
+    } catch (e) {
+      return res.status(500).json({ error: e?.message || 'Failed to delete image' });
+    }
+  } catch (error) {
+    console.error('[Merch] Delete error:', error);
+    return res.status(500).json({ error: 'Failed to delete' });
+  }
+});

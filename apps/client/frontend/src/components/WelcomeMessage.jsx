@@ -1,5 +1,6 @@
 import React, { useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
+import { showQrModal } from '../lib/qr';
 
 // Create a stable random number generator with a fixed seed
 function seededRandom(seed) {
@@ -14,6 +15,7 @@ const WelcomeMessageComponent = () => {
   const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
   const tapCountRef = useRef(0);
   const tapWindowTimerRef = useRef(null);
+  const secondTapTimerRef = useRef(null);
   // The text to animate
   const text = "What would you like to imagine?";
 
@@ -102,14 +104,39 @@ const WelcomeMessageComponent = () => {
             tapWindowTimerRef.current = setTimeout(() => {
               tapCountRef.current = 0;
               tapWindowTimerRef.current = null;
+              if (secondTapTimerRef.current) {
+                try { clearTimeout(secondTapTimerRef.current); } catch {}
+                secondTapTimerRef.current = null;
+              }
             }, 3000);
           }
           tapCountRef.current += 1;
+          if (tapCountRef.current === 2 && !secondTapTimerRef.current) {
+            // Schedule QR after a short delay; cancel if user continues to 5 taps
+            secondTapTimerRef.current = setTimeout(() => {
+              if (tapCountRef.current < 5) {
+                try {
+                  showQrModal({
+                    url: 'https://imaginaries.app/?code=artificial',
+                    title: 'Continue on your phone',
+                    subtitle: 'Scan to open Imaginaries.App',
+                    showLink: false,
+                    size: 420,
+                  });
+                } catch {}
+              }
+              secondTapTimerRef.current = null;
+            }, 900);
+          }
           if (tapCountRef.current >= 5) {
             tapCountRef.current = 0;
             if (tapWindowTimerRef.current) {
               clearTimeout(tapWindowTimerRef.current);
               tapWindowTimerRef.current = null;
+            }
+            if (secondTapTimerRef.current) {
+              try { clearTimeout(secondTapTimerRef.current); } catch {}
+              secondTapTimerRef.current = null;
             }
             try { window.location.href = '/merch'; } catch {}
           }

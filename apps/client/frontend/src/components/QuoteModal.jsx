@@ -14,7 +14,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [step, setStep] = useState(1); // 1: Estimation, 2: Form (non-authed), 3: Success
+  const [step, setStep] = useState(1); // 1: Estimation, 2: Order Details, 3: Success
   const [isEstimating, setIsEstimating] = useState(false);
   const [estimatedCost, setEstimatedCost] = useState(null); // expected CSV: a,b,c,d
   const [parsedPrices, setParsedPrices] = useState(null); // [n1, n2, n3, n4]
@@ -30,9 +30,11 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
   ];
   
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: user?.first_name || '',
+    lastName: user?.last_name || '',
+    phone: user?.phone || '',
+    notes: '',
     email: user?.email || '',
-    message: '',
     estimatedCost: '',
   });
 
@@ -144,46 +146,24 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
     setError(null);
 
     try {
-      // CRITICAL FIX: Ensure all required fields are included for the email template
-      const response = await fetch('/api/quotes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          message: formData.message,
-          image: {
-            id: image.id,
-            prompt: image.prompt,
-            url: image.image_url || image.watermarked_url || image.url, // Ensure imageUrl is provided
-            createdAt: image.created_at || new Date().toISOString(),
-            metadata: image.metadata || {},
-            estimatedCost: formData.estimatedCost || estimatedCost || 'Not available'
-          }
-        }),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to send quote request');
+      // Validate required fields
+      const fn = (formData.firstName || '').trim();
+      const ln = (formData.lastName || '').trim();
+      const ph = (formData.phone || '').trim();
+      if (!fn || !ln || !ph) {
+        throw new Error('Please fill in first name, last name, and phone number');
       }
-
-      toast({
-        title: "Quote request sent",
-        description: "We'll get back to you soon!",
+      // Submit order with details
+      await handleOrder(selectedIdx, {
+        firstName: fn,
+        lastName: ln,
+        phone: ph,
+        notes: (formData.notes || '').trim(),
       });
-
-      onClose();
+      setStep(3);
     } catch (error) {
       setError(error.message);
-      toast({
-        title: "Failed to send quote request",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: 'Order failed', description: error.message, variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
@@ -193,7 +173,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
     try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n); } catch { return `$${Math.round(n).toLocaleString('en-US')}`; }
   };
 
-  const handleOrder = async (idx) => {
+  const handleOrder = async (idx, details = {}) => {
     if (!Array.isArray(parsedPrices) || parsedPrices.length < 4) return;
     if (!isAuthenticated || !isEmailConfirmed) {
       openAuthModal();
@@ -210,10 +190,13 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
         credentials: 'include',
         body: JSON.stringify({
           imageId: image.id,
-          notes: '',
+          notes: details.notes || '',
           estimatedPriceText: estimatedCost || formData.estimatedCost || null,
           selectedOption: option,
           selectedPriceCents: Math.round(price * 100),
+          firstName: details.firstName || undefined,
+          lastName: details.lastName || undefined,
+          phone: details.phone || undefined,
         })
       });
       if (!response.ok) {
@@ -221,7 +204,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
         throw new Error(data.error || 'Failed to place order');
       }
       triggerConfetti(CONFETTI_EVENTS.PRICE_ESTIMATION);
-      setStep(3);
+      // step set handled by caller (submit)
     } catch (e) {
       setError(e.message);
       toast({ title: 'Order failed', description: e.message, variant: 'destructive' });
@@ -239,7 +222,8 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
       return;
     }
     if (selectedIdx == null) return;
-    await handleOrder(selectedIdx);
+    // Move to order details form
+    setStep(2);
   };
   
   // Handle backdrop click to close modal
@@ -259,7 +243,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
       <div className="bg-zinc-900 rounded-xl w-full max-w-lg overflow-hidden shadow-xl relative z-[101]">
         <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-white">
-            {step === 1 ? "Jewelry Price Estimation" : step === 2 ? "Request a Quote (Order)" : "Order Placed"}
+            {step === 1 ? "Jewelry Price Estimation" : step === 2 ? "Order Details" : "Order Placed"}
           </h2>
           <Button
             variant="ghost"
@@ -407,16 +391,42 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                   <p className="text-amber-300 text-lg font-bold">{estimatedCost} USD</p>
                 </div>
               )}
-              
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-medium text-zinc-400 mb-1">First Name</label>
+                  <input
+                    type="text"
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                    className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white"
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="lastName" className="block text-sm font-medium text-zinc-400 mb-1">Last Name</label>
+                  <input
+                    type="text"
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                    className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white"
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-zinc-400 mb-1">
-                  Your Name
-                </label>
+                <label htmlFor="phone" className="block text-sm font-medium text-zinc-400 mb-1">Phone Number</label>
                 <input
-                  type="text"
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  type="tel"
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="e.g., +971 50 123 4567"
                   className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white"
                   required
                   disabled={isSubmitting}
@@ -424,9 +434,19 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-zinc-400 mb-1">
-                  Your Email
-                </label>
+                <label htmlFor="notes" className="block text-sm font-medium text-zinc-400 mb-1">Notes (optional)</label>
+                <textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  rows={4}
+                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white resize-none"
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-zinc-400 mb-1">Email</label>
                 <input
                   type="email"
                   id="email"
@@ -436,43 +456,10 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                 />
               </div>
 
-              <div>
-                <label htmlFor="message" className="block text-sm font-medium text-zinc-400 mb-1">
-                  Message
-                </label>
-                <textarea
-                  id="message"
-                  value={formData.message}
-                  onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                  rows={4}
-                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white resize-none"
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-
               <div className="flex justify-end gap-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setStep(1)}
-                  disabled={isSubmitting}
-                >
-                  Back
-                </Button>
-                <Button 
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    'Send a Request'
-                  )}
+                <Button type="button" variant="secondary" onClick={() => setStep(1)} disabled={isSubmitting}>Back</Button>
+                <Button type="submit" disabled={isSubmitting} className="gap-2">
+                  {isSubmitting ? (<><Loader2 className="w-4 h-4 animate-spin" />Placing order...</>) : 'Place Order'}
                 </Button>
               </div>
             </form>

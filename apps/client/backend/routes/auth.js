@@ -15,6 +15,15 @@ function generateToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
+// Helper: generate a strong random password and hash it (for passwordless creates)
+function generateRandomPassword() {
+  return crypto.randomBytes(24).toString('base64url');
+}
+async function hashRandomPassword() {
+  const pw = generateRandomPassword();
+  return bcrypt.hash(pw, 10);
+}
+
 // Helper function to generate app URL
 function getAppUrl() {
   return process.env.APP_URL || 'http://localhost:5173';
@@ -46,7 +55,7 @@ router.post('/magic/verify-code', authLimiter, async (req, res) => {
     if ((process.env.AUTH_PROVIDER || 'local').toLowerCase() !== 'local') {
       return res.status(404).json({ error: 'Code login only available in local auth mode' });
     }
-    const { email, code } = req.body || {};
+    const { email, code, promoCode } = req.body || {};
     if (!email || !code) return res.status(400).json({ error: 'Email and code are required' });
     const emailNorm = String(email).toLowerCase().trim();
     const codeStr = String(code).replace(/\D/g, '');
@@ -71,11 +80,26 @@ router.post('/magic/verify-code', authLimiter, async (req, res) => {
       const ip = req.headers['cf-connecting-ip'] || req.headers['x-client-ip'] || req.headers['x-real-ip'] || (req.headers['x-forwarded-for']?.split(',')[0].trim()) || req.socket.remoteAddress || 'Unknown';
       const userAgent = req.headers['user-agent'] || 'Unknown';
       if (!user) {
+        const hashed = await hashRandomPassword();
+        // Validate promo (optional)
+        let promoNorm = (promoCode || '').toString().toLowerCase().trim();
+        let subscriptionPlan = 'free';
+        let promoToStore = null;
+        if (promoNorm) {
+          try {
+            const promoRes = await query('SELECT id, plan FROM promo_codes WHERE id = $1 AND is_valid = true', [promoNorm]);
+            if (promoRes.rows.length) {
+              promoToStore = promoRes.rows[0].id;
+              const plan = promoRes.rows[0].plan;
+              if (plan && plan !== 'free') subscriptionPlan = plan;
+            }
+          } catch {}
+        }
         const ins = await query(
-          `INSERT INTO users (email, password, email_confirmed, initial_ip, last_ip, last_user_agent, subscription_plan)
-           VALUES ($1, NULL, $2, $3, $4, $5, $6)
+          `INSERT INTO users (email, password, email_confirmed, initial_ip, last_ip, last_user_agent, subscription_plan, promo_code)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            RETURNING *`,
-          [emailNorm, true, ip, ip, userAgent, 'free']
+          [emailNorm, hashed, true, ip, ip, userAgent, subscriptionPlan, promoToStore]
         );
         user = ins.rows[0];
       } else {
@@ -123,7 +147,7 @@ router.post('/magic/request', authLimiter, async (req, res) => {
     if ((process.env.AUTH_PROVIDER || 'local').toLowerCase() !== 'local') {
       return res.status(404).json({ error: 'Magic links only available in local auth mode' });
     }
-    const { email, redirect } = req.body || {};
+    const { email, redirect, promoCode } = req.body || {};
     if (!email) return res.status(400).json({ error: 'Email is required' });
     const emailNorm = String(email).toLowerCase().trim();
 
@@ -148,9 +172,15 @@ router.post('/magic/request', authLimiter, async (req, res) => {
     // Build verify URL on backend to set cookie then redirect
     const appUrl = getAppUrl();
     const redirectPath = (typeof redirect === 'string' && redirect.startsWith('/')) ? redirect : '/imagine';
-    const verifyUrl = `${process.env.APP_API_URL || ''}/api/auth/magic/verify?token=${rawToken}&r=${encodeURIComponent(redirectPath)}`;
+    const promoNorm = (promoCode || '').toString().toLowerCase().trim();
+    let verifyUrl = `${process.env.APP_API_URL || ''}/api/auth/magic/verify?token=${rawToken}&r=${encodeURIComponent(redirectPath)}`;
+    if (promoNorm) verifyUrl += `&code=${encodeURIComponent(promoNorm)}`;
     // Fallback: if APP_API_URL not set, try relative path on same origin
-    const finalVerifyUrl = verifyUrl.startsWith('http') ? verifyUrl : `${appUrl.replace(/\/$/, '')}/api/auth/magic/verify?token=${rawToken}&r=${encodeURIComponent(redirectPath)}`;
+    let finalVerifyUrl = verifyUrl;
+    if (!finalVerifyUrl.startsWith('http')) {
+      finalVerifyUrl = `${appUrl.replace(/\/$/, '')}/api/auth/magic/verify?token=${rawToken}&r=${encodeURIComponent(redirectPath)}`;
+      if (promoNorm) finalVerifyUrl += `&code=${encodeURIComponent(promoNorm)}`;
+    }
 
     try {
       const mode = (process.env.AUTH_MODE || 'magic').toLowerCase();
@@ -197,11 +227,39 @@ router.get('/magic/verify', async (req, res) => {
         // Create user with confirmed email
         const initialIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'Unknown';
         const userAgent = req.headers['user-agent'] || 'Unknown';
+        const hashed = await hashRandomPassword();
+        // Extract promo code from query (?code=) or from redirect path r
+        let promoNorm = (req.query.code || '').toString().toLowerCase().trim();
+        try {
+          if (!promoNorm) {
+            const r = String(req.query.r || '');
+            if (r) {
+              const qs = r.includes('?') ? r.split('?')[1] : '';
+              if (qs) {
+                const params = new URLSearchParams(qs);
+                const c = params.get('code');
+                if (c) promoNorm = c.toLowerCase().trim();
+              }
+            }
+          }
+        } catch {}
+        let subscriptionPlan = 'free';
+        let promoToStore = null;
+        if (promoNorm) {
+          try {
+            const promoRes = await query('SELECT id, plan FROM promo_codes WHERE id = $1 AND is_valid = true', [promoNorm]);
+            if (promoRes.rows.length) {
+              promoToStore = promoRes.rows[0].id;
+              const plan = promoRes.rows[0].plan;
+              if (plan && plan !== 'free') subscriptionPlan = plan;
+            }
+          } catch {}
+        }
         const ins = await query(
-          `INSERT INTO users (email, password, email_confirmed, initial_ip, last_ip, last_user_agent, subscription_plan)
-           VALUES ($1, NULL, $2, $3, $4, $5, $6)
+          `INSERT INTO users (email, password, email_confirmed, initial_ip, last_ip, last_user_agent, subscription_plan, promo_code)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            RETURNING *`,
-          [email, true, initialIp, initialIp, userAgent, 'free']
+          [email, hashed, true, initialIp, initialIp, userAgent, subscriptionPlan, promoToStore]
         );
         user = ins.rows[0];
       }
@@ -293,12 +351,13 @@ router.post('/clerk/exchange', authLimiter, async (req, res) => {
         // Attach Clerk id to existing user
         await query('UPDATE users SET clerk_user_id = $1, auth_provider = $2, email_confirmed = $3, first_name = COALESCE(first_name, $4), last_name = COALESCE(last_name, $5), last_ip = $6, last_user_agent = $7, last_login_at = CURRENT_TIMESTAMP WHERE id = $8', [clerkUserId, 'clerk', emailVerified || true, firstName || null, lastName || null, ip, userAgent, userRow.id]);
       } else {
-        // Create new user (passwordless) confirmed by Clerk
+        // Create new user confirmed by Clerk (store random hashed password for NOT NULL constraint)
+        const hashed = await hashRandomPassword();
         const ins = await query(
           `INSERT INTO users (email, password, email_confirmed, clerk_user_id, auth_provider, initial_ip, last_ip, last_user_agent, first_name, last_name)
-           VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
            RETURNING *`,
-          [email, true, clerkUserId, 'clerk', ip, ip, userAgent, firstName || null, lastName || null]
+          [email, hashed, true, clerkUserId, 'clerk', ip, ip, userAgent, firstName || null, lastName || null]
         );
         userRow = ins.rows[0];
       }
@@ -523,7 +582,10 @@ router.post('/signin', authLimiter, async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Verify password
+    // Verify password (handle passwordless accounts gracefully)
+    if (!user.password) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid email or password' });

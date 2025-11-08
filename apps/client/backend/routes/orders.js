@@ -16,10 +16,33 @@ router.post('/', auth, async (req, res) => {
       selectedOption = null,
       selectedPriceCents: selectedPriceCentsRaw = null,
       selectedPriceDollars = null,
+      firstName = null,
+      lastName = null,
+      phone = null,
     } = req.body || {};
 
     if (!imageId) {
       return res.status(400).json({ error: 'imageId is required' });
+    }
+
+    // Optionally update user's profile details (first/last/phone)
+    try {
+      const fn = typeof firstName === 'string' ? firstName.trim() : null;
+      const ln = typeof lastName === 'string' ? lastName.trim() : null;
+      const ph = typeof phone === 'string' ? phone.trim() : null;
+      if (fn || ln || ph) {
+        await query(
+          `UPDATE users
+             SET first_name = COALESCE($1, first_name),
+                 last_name = COALESCE($2, last_name),
+                 phone = COALESCE($3, phone)
+           WHERE id = $4`,
+          [fn || null, ln || null, ph || null, user.id]
+        );
+      }
+    } catch (e) {
+      // Don't fail the order on profile update issues
+      console.warn('[orders] profile update skipped:', e?.message);
     }
 
     // Try to fetch user profile name if available
@@ -106,6 +129,8 @@ router.post('/', auth, async (req, res) => {
         estimatedCost: estimatedText || 'Not available',
         selectedOption: selectedOption || undefined,
         selectedPrice: Number.isFinite(selectedPriceCents) ? `$${(selectedPriceCents/100).toFixed(2)} USD` : undefined,
+        notes: notes || undefined,
+        phone: (typeof phone === 'string' && phone.trim()) ? phone.trim() : undefined,
       });
     } catch (e) {
       // Do not fail the request if email sending fails

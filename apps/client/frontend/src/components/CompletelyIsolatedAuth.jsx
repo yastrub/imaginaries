@@ -639,11 +639,12 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
                           setError(null);
                           setLoading(true);
                           const code = codeDigits.join('');
+                          const promoCode = (getPromoCode() || '').trim().toLowerCase();
                           const res = await fetch('/api/auth/magic/verify-code', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             credentials: 'include',
-                            body: JSON.stringify({ email, code })
+                            body: JSON.stringify({ email, code, promoCode: promoCode || undefined })
                           });
                           const data = await res.json().catch(() => ({}));
                           if (!res.ok) throw new Error(data.error || 'Invalid or expired code');
@@ -701,11 +702,12 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
                             setError(null);
                             setLoading(true);
                             // Request a code (uses same endpoint as magic request)
+                            const promoCode = (getPromoCode() || '').trim().toLowerCase();
                             const res = await fetch('/api/auth/magic/request', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               credentials: 'include',
-                              body: JSON.stringify({ email })
+                              body: JSON.stringify({ email, promoCode: promoCode || undefined })
                             });
                             const data = await res.json().catch(() => ({}));
                             if (!res.ok) throw new Error(data.error || 'Failed to send code');
@@ -769,11 +771,12 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
                           try {
                             setError(null);
                             setLoading(true);
+                            const promoCode = (getPromoCode() || '').trim().toLowerCase();
                             const res = await fetch('/api/auth/magic/request', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               credentials: 'include',
-                              body: JSON.stringify({ email, redirect: '/imagine' })
+                              body: JSON.stringify({ email, redirect: '/imagine', promoCode: promoCode || undefined })
                             });
                             if (!res.ok) {
                               const data = await res.json().catch(() => ({}));

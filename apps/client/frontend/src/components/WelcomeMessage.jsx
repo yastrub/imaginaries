@@ -146,7 +146,7 @@ const WelcomeMessageComponent = () => {
                   showQrModal({
                     url: 'https://t.me/+VXMHrPDUo09iZWQy',
                     title: 'Join our Telegram Group',
-                    subtitle: 'Scan to join the ART*FICIAL community',
+                    subtitle: 'Scan to join the ART*FICIAL Community',
                     showLink: false,
                     size: 420,
                   });

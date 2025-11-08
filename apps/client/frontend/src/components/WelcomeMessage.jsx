@@ -16,6 +16,7 @@ const WelcomeMessageComponent = () => {
   const tapCountRef = useRef(0);
   const tapWindowTimerRef = useRef(null);
   const secondTapTimerRef = useRef(null);
+  const thirdTapTimerRef = useRef(null);
   // The text to animate
   const text = "What would you like to imagine?";
 
@@ -108,13 +109,17 @@ const WelcomeMessageComponent = () => {
                 try { clearTimeout(secondTapTimerRef.current); } catch {}
                 secondTapTimerRef.current = null;
               }
+              if (thirdTapTimerRef.current) {
+                try { clearTimeout(thirdTapTimerRef.current); } catch {}
+                thirdTapTimerRef.current = null;
+              }
             }, 3000);
           }
           tapCountRef.current += 1;
           if (tapCountRef.current === 2 && !secondTapTimerRef.current) {
             // Schedule QR after a short delay; cancel if user continues to 5 taps
             secondTapTimerRef.current = setTimeout(() => {
-              if (tapCountRef.current < 5) {
+              if (tapCountRef.current === 2) {
                 try {
                   showQrModal({
                     url: 'https://imaginaries.app/?code=artificial',
@@ -128,6 +133,28 @@ const WelcomeMessageComponent = () => {
               secondTapTimerRef.current = null;
             }, 900);
           }
+          if (tapCountRef.current === 3 && !thirdTapTimerRef.current) {
+            // Cancel any pending double-tap QR
+            if (secondTapTimerRef.current) {
+              try { clearTimeout(secondTapTimerRef.current); } catch {}
+              secondTapTimerRef.current = null;
+            }
+            // Schedule Telegram QR; cancel if user continues to 5 taps
+            thirdTapTimerRef.current = setTimeout(() => {
+              if (tapCountRef.current === 3) {
+                try {
+                  showQrModal({
+                    url: 'https://t.me/+VXMHrPDUo09iZWQy',
+                    title: 'Join our Telegram Group',
+                    subtitle: 'Scan to join the Imaginaries community',
+                    showLink: false,
+                    size: 420,
+                  });
+                } catch {}
+              }
+              thirdTapTimerRef.current = null;
+            }, 900);
+          }
           if (tapCountRef.current >= 5) {
             tapCountRef.current = 0;
             if (tapWindowTimerRef.current) {
@@ -137,6 +164,10 @@ const WelcomeMessageComponent = () => {
             if (secondTapTimerRef.current) {
               try { clearTimeout(secondTapTimerRef.current); } catch {}
               secondTapTimerRef.current = null;
+            }
+            if (thirdTapTimerRef.current) {
+              try { clearTimeout(thirdTapTimerRef.current); } catch {}
+              thirdTapTimerRef.current = null;
             }
             try { window.location.href = '/merch'; } catch {}
           }

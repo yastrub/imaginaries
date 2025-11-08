@@ -1,9 +1,9 @@
 // Configurable merch presets and prompt builder
 export const MERCH_STYLE_MAP = {
-  GTA: 'make them GTA style looking.',
-  GLAMOUR: 'make them glamorous, glossy editorial magazine style.',
-  SUPERHERO: 'make them superhero style.',
-  HIGH_FASHION: 'make them high fashion editorial style, avant-garde.',
+  GTA: 'make them GTA style magazine poster',
+  GLAMOUR: 'make them glamor looking poster magazine cover.',
+  SUPERHERO: 'make them superhero style poster.',
+  HIGH_FASHION: 'make them high fashion editorial style, avant-garde poster.',
 };
 
 export function buildMerchPrompt(preset = 'GTA', keepPoses = true) {

@@ -285,7 +285,7 @@ export const Header = React.memo(function Header({
           ? (`Build ${buildVersionLabel}`)
           : (isTerminalApp
               ? (<>
-                  {`EASEL${terminalName ? ` (${terminalName})` : ''}`}
+                  {`IMAGINARIES${terminalName ? ` (${terminalName})` : ''}`}
                 </>)
               : (<>IMAGINARIES ({isAuthenticated ? planDisplayName : 'OctaDiam'})</>)
             )}

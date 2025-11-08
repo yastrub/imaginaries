@@ -232,7 +232,7 @@ export function MerchDemo() {
                 {isGenerating ? (
                   <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> Generating...</span>
                 ) : (
-                  <span className="flex items-center gap-2"><Sparkles className="w-4 h-4"/> Generate Magazine</span>
+                  <span className="flex items-center gap-2"><Sparkles className="w-4 h-4"/> Generate Poster</span>
                 )}
               </button>
               {error && <div className="mt-2 text-sm text-red-400">{error}</div>}
@@ -275,7 +275,7 @@ export function MerchDemo() {
                 {activeItem ? (
                   <img
                     src={activeItem.url}
-                    alt="Magazine"
+                    alt="Poster"
                     className={
                       activeItem.isPlaceholder
                         ? 'w-full h-full object-cover opacity-100'

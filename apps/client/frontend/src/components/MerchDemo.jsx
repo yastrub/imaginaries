@@ -253,9 +253,9 @@ export function MerchDemo() {
               <div className="text-white font-medium">4. Result</div>
               <button
                 className="p-2 rounded-md border border-zinc-700 text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
-                title="Delete this result"
-                disabled={!activeItem}
-                onClick={() => { if (activeItem) setShowDeleteConfirm(true); }}
+                title="Delete this poster from Cloudinary"
+                disabled={!activeItem || activeItem.isPlaceholder || !(activeItem.url || '').includes('/upload/')}
+                onClick={() => { if (activeItem && !activeItem.isPlaceholder && (activeItem.url || '').includes('/upload/')) setShowDeleteConfirm(true); }}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -326,6 +326,7 @@ export function MerchDemo() {
             if (!activeItem || isDeleting) return;
             try {
               setIsDeleting(true);
+              let ok = false;
               const resp = await fetch('/api/merch/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -334,14 +335,20 @@ export function MerchDemo() {
               });
               const data = await resp.json().catch(() => ({}));
               if (!resp.ok || data.ok !== true) throw new Error(data.error || 'Delete failed');
+              ok = true;
               // Reload list to previous item or placeholder
               await loadList();
             } catch (e) {
               console.error('Delete failed', e);
-              alert(e?.message || 'Failed to delete');
+              // Show inline error under controls; no native prompts
+              setError(e?.message || 'Failed to delete');
             } finally {
               setIsDeleting(false);
-              setShowDeleteConfirm(false);
+              // Close dialog only on success; keep open to allow retry on error
+              if (ok) {
+                setShowDeleteConfirm(false);
+                setError(null);
+              }
             }
           }}
           onCancel={() => { if (!isDeleting) setShowDeleteConfirm(false); }}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
-import { X, Loader2, DollarSign, BadgeCheck } from 'lucide-react';
+import { X, Loader2, DollarSign, BadgeCheck, Info } from 'lucide-react';
 import { Button } from './ui/button';
 import { useReduxAuth } from '../hooks/useReduxAuth';
 import { useToast } from './ui/use-toast';
@@ -22,6 +22,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
   const [selectedIdx, setSelectedIdx] = useState(null);
   const initialPriceIdxRef = useRef(null);
   const isTerminalApp = useSelector((state) => state?.env?.isTerminalApp);
+  const [showFactoryVideo, setShowFactoryVideo] = useState(false);
   const OPTION_LABELS = [
     'Sterling Silver + Moissanites',
     'Gold Vermeil + Moissanites',
@@ -255,6 +256,34 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
             <X className="w-6 h-6" />
           </Button>
         </div>
+      {showFactoryVideo && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowFactoryVideo(false)} />
+          <div className="relative bg-zinc-900 rounded-xl w-full max-w-3xl mx-4 overflow-hidden shadow-2xl border border-zinc-800">
+            <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+              <h3 className="text-white text-base font-medium">OctaDiam Factory</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowFactoryVideo(false)}
+                className="text-zinc-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+              <iframe
+                className="absolute inset-0 w-full h-full"
+                src="https://www.youtube.com/embed/M_hpIZYApOY?autoplay=1&rel=0&modestbranding=1&playsinline=1&color=white"
+                title="OctaDiam Factory"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      )}
         
         <div className="p-6 flex-1 overflow-y-auto min-h-0">
           <div className="flex gap-4 mb-6">
@@ -359,7 +388,20 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                         {isTerminalApp ? 'Continue' : 'Order Selected'}
                       </Button>
                     </div>
-                    <p className="text-zinc-500 text-xs mt-3 text-center">Final pricing may vary based on precise materials, sizing, and customization. Production by <strong>OCTADIAM</strong>, Dubai, UAE.</p>
+                    <div className="text-zinc-500 text-xs mt-3 text-center flex items-center justify-center gap-2">
+                      <span>
+                        Final pricing may vary based on precise materials, sizing, and customization. Production by <strong>OCTADIAM</strong>, Dubai, UAE.
+                      </span>
+                      <button
+                        type="button"
+                        aria-label="About OctaDiam factory"
+                        title="About OctaDiam factory"
+                        onClick={() => setShowFactoryVideo(true)}
+                        className="p-1 rounded-full border border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <Info className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (

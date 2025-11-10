@@ -159,8 +159,11 @@ async function generateWithFalGeminiEdit(prompt, imageUrls = []) {
 
   const systemPrompt = config.system_prompt || '';
   let fullPrompt;
-  if (systemPrompt.includes('USER_PROMPT_HERE')) {
-    fullPrompt = systemPrompt.replace('USER_PROMPT_HERE', String(prompt || '').trim());
+  if (systemPrompt.includes('USER_INPUT_HERE') || systemPrompt.includes('USER_PROMPT_HERE')) {
+    const userText = String(prompt || '').trim();
+    fullPrompt = systemPrompt
+      .replace('USER_INPUT_HERE', userText)
+      .replace('USER_PROMPT_HERE', userText);
   } else {
     const enhancedPrompt = enhancePrompt(prompt);
     fullPrompt = systemPrompt ? `${systemPrompt}\n\nUser request: ${enhancedPrompt}` : enhancedPrompt;

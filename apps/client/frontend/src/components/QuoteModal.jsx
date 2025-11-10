@@ -378,7 +378,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                         aria-label="About OctaDiam factory"
                         title="About OctaDiam factory"
                         onClick={() => setShowFactoryVideo(true)}
-                        className="p-1.5 rounded-full border border-amber-400/60 text-amber-300 hover:text-white hover:bg-amber-500/10 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                        className="p-1.5 rounded-full text-amber-300 hover:text-white hover:bg-amber-500/10 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                       >
                         <Info className="w-5 h-5" />
                       </button>
@@ -411,7 +411,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                       aria-label="About OctaDiam factory"
                       title="About OctaDiam factory"
                       onClick={() => setShowFactoryVideo(true)}
-                      className="p-1.5 rounded-full border border-amber-400/60 text-amber-300 hover:text-white hover:bg-amber-500/10 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                      className="p-1.5 rounded-full text-amber-300 hover:text-white hover:bg-amber-500/10 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                     >
                       <Info className="w-5 h-5" />
                     </button>

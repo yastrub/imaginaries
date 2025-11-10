@@ -1,7 +1,7 @@
 // Configurable merch presets and prompt builder
 export const MERCH_STYLE_MAP = {
   GTA: 'convert them into 100% GTA-style illustration poster.',
-  GLAMOUR: 'convert them into 100% glamour style poster.',
+  GLAMOUR: 'convert them into 100% PRO grade GLAMOUR style, improve scene, lighting, composition, outfit.',
   SUPERHERO: 'convert them into 100% superhero themed poster.',
   HIGH_FASHION: 'convert them into 100% high fashion editorial style, avant-garde poster.',
   MINECRAFT: 'convert them into 100% Minecraft-style voxel art poster.',

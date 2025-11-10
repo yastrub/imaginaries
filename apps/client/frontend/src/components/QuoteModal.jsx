@@ -287,36 +287,19 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
         
         <div className="p-6 flex-1 overflow-y-auto min-h-0">
           <div className="flex gap-4 mb-6">
-            <div className="w-1/3">
+            <div className="w-24 sm:w-28 md:w-32 flex-shrink-0">
               <img
                 src={image.image_url || image.url}
                 alt={image.prompt}
                 className="w-full aspect-square object-cover rounded-lg"
               />
             </div>
-            <div className="w-2/3 flex flex-col">
+            <div className="flex-1 flex flex-col">
               {!fromSharePage && image.prompt && (
                 <div className="max-h-[120px] overflow-y-auto pr-2 mb-2 scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent scrollbar-track-rounded-md scrollbar-thumb-rounded-md">
-                  <p className="text-zinc-300 text-sm">{image.prompt}</p>
+                  <p className="text-zinc-100 text-base sm:text-lg font-medium leading-snug">{image.prompt}</p>
                 </div>
               )}
-              {/* Only show date if it exists and is a valid date */}
-              {!fromSharePage && (() => {
-                // Get the date value, if any
-                const dateValue = image.created_at || image.createdAt;
-                
-                // Check if it exists and is a valid date
-                if (dateValue && !isNaN(new Date(dateValue).getTime())) {
-                  return (
-                    <p className="text-zinc-500 text-xs mt-auto">
-                      Created on {new Date(dateValue).toLocaleDateString()}
-                    </p>
-                  );
-                }
-                
-                // Return null if no valid date
-                return null;
-              })()}
             </div>
           </div>
 
@@ -388,10 +371,8 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                         {isTerminalApp ? 'Continue' : 'Order Selected'}
                       </Button>
                     </div>
-                    <div className="text-zinc-500 text-xs mt-3 text-center flex items-center justify-center gap-2">
-                      <span>
-                        Final pricing may vary based on precise materials, sizing, and customization. Production by <strong>OCTADIAM</strong>, Dubai, UAE.
-                      </span>
+                    <div className="text-zinc-500 text-xs mt-3 flex items-center justify-between gap-2">
+                      <span>Final pricing may vary based on precise materials, sizing, and customization. Production by <strong>OCTADIAM</strong>, Dubai, UAE.</span>
                       <button
                         type="button"
                         aria-label="About OctaDiam factory"
@@ -422,6 +403,18 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                     ) : (
                       <Button className="w-full max-w-xs" disabled>Order Selected</Button>
                     )}
+                  </div>
+                  <div className="text-zinc-500 text-xs mt-3 flex items-center justify-between gap-2">
+                    <span>Final pricing may vary based on precise materials, sizing, and customization. Production by <strong>OCTADIAM</strong>, Dubai, UAE.</span>
+                    <button
+                      type="button"
+                      aria-label="About OctaDiam factory"
+                      title="About OctaDiam factory"
+                      onClick={() => setShowFactoryVideo(true)}
+                      className="p-1 rounded-full border border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <Info className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               )}

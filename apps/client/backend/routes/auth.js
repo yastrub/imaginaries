@@ -182,8 +182,9 @@ router.post('/magic/request', authLimiter, async (req, res) => {
       if (promoNorm) finalVerifyUrl += `&code=${encodeURIComponent(promoNorm)}`;
     }
 
+    // Determine server auth mode once so we can return it to the client
+    const mode = (process.env.AUTH_MODE || 'magic').toLowerCase();
     try {
-      const mode = (process.env.AUTH_MODE || 'magic').toLowerCase();
       if (mode === 'code') {
         await sendEmail('codeLogin', { email: emailNorm, code, expiresMinutes: 15 });
       } else {

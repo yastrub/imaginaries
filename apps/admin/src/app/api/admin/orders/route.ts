@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
         o.estimated_price_text,
         o.selected_option,
         o.selected_price_cents,
+        o.option_text,
         o.actual_price_cents,
         o.created_at,
         o.updated_at,

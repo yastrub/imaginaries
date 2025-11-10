@@ -85,16 +85,25 @@ router.post('/', auth, async (req, res) => {
 
     // Persist the order
     const hasSelected = typeof selectedOption === 'string' && selectedOption.length > 0 && Number.isFinite(selectedPriceCents);
+    // Build human-readable option text for admin visibility
+    let optionText = null;
+    if (hasSelected) {
+      const dollars = (selectedPriceCents / 100);
+      let priceStr;
+      try { priceStr = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(dollars); }
+      catch { priceStr = `$${dollars.toFixed(2)} USD`; }
+      optionText = `${selectedOption} — ${priceStr}`;
+    }
     const sql = hasSelected
-      ? `INSERT INTO orders (user_id, image_id, notes, estimated_price_text, selected_option, selected_price_cents)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING id, created_at, selected_option, selected_price_cents`
+      ? `INSERT INTO orders (user_id, image_id, notes, estimated_price_text, selected_option, selected_price_cents, option_text)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id, created_at, selected_option, selected_price_cents, option_text`
       : `INSERT INTO orders (user_id, image_id, notes, estimated_price_text)
          VALUES ($1, $2, $3, $4)
          RETURNING id, created_at`;
 
     const values = hasSelected
-      ? [user.id, String(imageId), notes || null, estimatedText || null, selectedOption, selectedPriceCents]
+      ? [user.id, String(imageId), notes || null, estimatedText || null, selectedOption, selectedPriceCents, optionText]
       : [user.id, String(imageId), notes || null, estimatedText || null];
 
     const ins = await query(sql, values);

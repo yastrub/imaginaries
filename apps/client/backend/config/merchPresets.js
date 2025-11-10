@@ -18,6 +18,7 @@ export function buildMerchPrompt(preset = 'GTA', keepPoses = true, brand = 'ARTI
   const baseBKeep = 'RETAIN original POSES and FACES of the people.';
   const baseBChange = 'CHANGE original POSES, but KEEP FACES of the people.';
   const baseC = 'convert person into illustration.';
+  const headlines = 'add only one smart / dope headline related to the scene.';
   const now = new Date();
   const month = now.toLocaleString('en-US', { month: 'short' });
   const day = String(now.getDate()).padStart(2, '0');
@@ -33,5 +34,6 @@ export function buildMerchPrompt(preset = 'GTA', keepPoses = true, brand = 'ARTI
     parts.push(baseC);
   }
   parts.push(baseD);
+  parts.push(headlines);
   return parts.join(' ');
 }

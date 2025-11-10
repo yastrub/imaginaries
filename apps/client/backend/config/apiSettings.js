@@ -135,7 +135,7 @@ export const settings = {
           aspect_ratio: '1:1',
           limit_generations: true
         },
-        system_prompt: "You need to identify the main object (what exactly user wanted to show you) in the picture. If its not a jewelry you need to make a fashion jewelry piece from it, use only precious stones and materials. If it's a jewelry - create a variation of it. USER_INPUT_HERE. Make a professional photo. White plain background."
+        system_prompt: "You need to identify the main object (what exactly user wanted to show you) in the picture. If its not a jewelry you need to make a artistic high jewelry piece from it, use only precious stones and materials. If it's a jewelry - create a variation of it. USER_INPUT_HERE. Make a professional photo. White plain background."
       },
       fal_gemini_edit_text: {
         api_url: 'https://queue.fal.run',
@@ -148,7 +148,7 @@ export const settings = {
           aspect_ratio: '1:1',
           limit_generations: true
         },
-        system_prompt: "Generate modern art conceptual high jewelry USER_PROMPT_HERE. Samples are provided. Professional photo. White plain background."
+        system_prompt: "Generate artistic high jewelry USER_PROMPT_HERE. Samples are provided. Professional photo. White plain background."
       },
       fal_gemini_reimagine: {
         api_url: 'https://queue.fal.run',

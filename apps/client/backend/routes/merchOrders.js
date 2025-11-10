@@ -42,7 +42,8 @@ router.post('/orders/draft', async (req, res) => {
       sourceImageUrl,
       merchType = 'T-SHIRT',
       details = {}, // { size, color }
-      price = { amount: 160, currency: 'AED' }
+      price = { amount: 160, currency: 'AED' },
+      qty = 1,
     } = req.body || {};
 
     if (!sourceImageUrl) return res.status(400).json({ error: 'Missing sourceImageUrl' });
@@ -67,9 +68,9 @@ router.post('/orders/draft', async (req, res) => {
       const amount = Number(price?.amount ?? 160);
       const currency = (price?.currency || 'AED').toString().toUpperCase();
       await query(
-        `INSERT INTO merch_orders (id, status, merch_type, color, size, price_amount, price_currency, source_image_url, order_image_url, created_at, updated_at)
-         VALUES ($1, 'draft', $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())`,
-        [id, merchType, color, size, amount, currency, sourceImageUrl, orderImageUrl]
+        `INSERT INTO merch_orders (id, status, merch_type, color, size, price_amount, price_currency, source_image_url, order_image_url, qty, created_at, updated_at)
+         VALUES ($1, 'draft', $2, $3, $4, $5, $6, $7, $8, COALESCE($9, 1), NOW(), NOW())`,
+        [id, merchType, color, size, amount, currency, sourceImageUrl, orderImageUrl, Number.isFinite(Number(qty)) ? Number(qty) : 1]
       );
       const order = {
         id,
@@ -79,6 +80,7 @@ router.post('/orders/draft', async (req, res) => {
         order_image: orderImageUrl,
         merch_details: { size, color },
         merch_price: { amount, currency },
+        qty: Number.isFinite(Number(qty)) ? Number(qty) : 1,
         order_details: null,
         created_at,
         updated_at: created_at
@@ -95,6 +97,7 @@ router.post('/orders/draft', async (req, res) => {
         order_image: orderImageUrl,
         merch_details: details,
         merch_price: price,
+        qty: Number.isFinite(Number(qty)) ? Number(qty) : 1,
         order_details: null,
         created_at,
         updated_at: created_at
@@ -125,7 +128,8 @@ router.get('/orders/:id', async (req, res) => {
         order_image: row.order_image_url,
         merch_details: { size: row.size, color: row.color },
         merch_price: { amount: Number(row.price_amount), currency: row.price_currency },
-        order_details: row.name || row.phone || row.email || row.notes ? { name: row.name, phone: row.phone, email: row.email, comments: row.notes } : null,
+        qty: row.qty != null ? Number(row.qty) : 1,
+        order_details: row.name || row.phone || row.email || row.notes ? { name: row.name, phone: row.phone, email: row.email, comments: row.notes, first_name: row.first_name || null, last_name: row.last_name || null } : null,
         created_at: row.created_at,
         updated_at: row.updated_at,
       };
@@ -147,12 +151,25 @@ router.get('/orders/:id', async (req, res) => {
 router.post('/orders/:id/submit', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, phone, email, comments } = req.body || {};
-    if (!name || !phone || !email) return res.status(400).json({ error: 'Missing required fields' });
+    const { name, firstName, lastName, phone, email, comments, qty } = req.body || {};
+    const fn = (firstName || '').trim();
+    const ln = (lastName || '').trim();
+    let nameCombined = (name || '').trim();
+    let f = fn, l = ln;
+    if (!f || !l) {
+      // Fallback: try to split provided name into first/last
+      if (nameCombined) {
+        const parts = nameCombined.split(/\s+/).filter(Boolean);
+        f = f || parts[0] || '';
+        l = l || parts.slice(1).join(' ') || '';
+      }
+    }
+    if (!f || !l || !phone || !email) return res.status(400).json({ error: 'Missing required fields' });
+    nameCombined = `${f} ${l}`.trim();
     const now = new Date().toISOString();
     try {
       // Update DB
-      const r = await query('UPDATE merch_orders SET name=$1, phone=$2, email=$3, notes=$4, status=$5, updated_at=NOW() WHERE id=$6 RETURNING *', [name, phone, email, comments || '', 'submitted', id]);
+      const r = await query('UPDATE merch_orders SET name=$1, first_name=$2, last_name=$3, phone=$4, email=$5, notes=$6, qty=COALESCE($7, qty), status=$8, updated_at=NOW() WHERE id=$9 RETURNING *', [nameCombined, f, l, phone, email, comments || '', (Number.isFinite(Number(qty)) ? Number(qty) : null), 'submitted', id]);
       if (!r.rows.length) return res.status(404).json({ error: 'Not found' });
       const row = r.rows[0];
       // Email admin
@@ -180,7 +197,8 @@ router.post('/orders/:id/submit', async (req, res) => {
         order_image: row.order_image_url,
         merch_details: { size: row.size, color: row.color },
         merch_price: { amount: Number(row.price_amount), currency: row.price_currency },
-        order_details: { name: row.name, phone: row.phone, email: row.email, comments: row.notes },
+        qty: row.qty != null ? Number(row.qty) : 1,
+        order_details: { name: row.name, first_name: row.first_name || null, last_name: row.last_name || null, phone: row.phone, email: row.email, comments: row.notes },
         created_at: row.created_at,
         updated_at: row.updated_at,
       };
@@ -190,7 +208,8 @@ router.post('/orders/:id/submit', async (req, res) => {
       const orders = await readOrders();
       const idx = orders.orders.findIndex(o => o.id === id);
       if (idx === -1) return res.status(404).json({ error: 'Not found' });
-      orders.orders[idx].order_details = { name, phone, email, comments: comments || '' };
+      orders.orders[idx].order_details = { name: `${f} ${l}`.trim(), first_name: f, last_name: l, phone, email, comments: comments || '' };
+      orders.orders[idx].qty = Number.isFinite(Number(qty)) ? Number(qty) : (orders.orders[idx].qty || 1);
       orders.orders[idx].status = 'submitted';
       orders.orders[idx].updated_at = now;
       await writeOrders(orders);

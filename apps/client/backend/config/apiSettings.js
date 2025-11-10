@@ -135,7 +135,7 @@ export const settings = {
           aspect_ratio: '1:1',
           limit_generations: true
         },
-        system_prompt: "generate a jewelry piece. inspired by provided picture (try to catch patterns, colors, style, etc). the piece should be a perfect match to the picture, try to identify and understand the main subject or idea of the picture (do not replicate people, only things). If you detect a jewelry piece in the image, create an alternative version of this piece, a variation. only use 18k gold (white / yellow / rose) and precious stones (if needed) for jewelry materials. User might provide additional information in the prompt, use it if needed, also user might provide desired jewelry sketch image (drawn by hand, so try to catch what is drawn). generate a professional jewerly photo, white plain background."
+        system_prompt: "Generate modern art conceptual high jewelry USER_PROMPT_HERE. Samples are provided. Professional photo. White plain background."
       },
       fal_gemini_reimagine: {
         api_url: 'https://queue.fal.run',

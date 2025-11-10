@@ -9,12 +9,14 @@ export function MerchOrderPage() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [comments, setComments] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [qty, setQty] = useState(1);
 
   useEffect(() => {
     let mounted = true;
@@ -27,6 +29,12 @@ export function MerchOrderPage() {
           if (!resp.ok) throw new Error(data?.error || 'Failed to load order');
           if (!mounted) return;
           setOrder(data.order);
+          const od = data.order?.order_details || {};
+          if (od.first_name) setFirstName(od.first_name);
+          if (od.last_name) setLastName(od.last_name);
+          if (od.phone) setPhone(od.phone);
+          if (od.email) setEmail(od.email);
+          setQty(Number.isFinite(Number(data.order?.qty)) ? Number(data.order.qty) : 1);
         } else {
           // Query-based flow: src, color, size, amount, currency
           const sp = new URLSearchParams(location.search);
@@ -47,6 +55,7 @@ export function MerchOrderPage() {
             created_at: now,
             updated_at: now
           });
+          setQty(1);
         }
       } catch (e) {
         if (!mounted) return;
@@ -77,7 +86,7 @@ export function MerchOrderPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ name, phone, email, comments })
+          body: JSON.stringify({ firstName, lastName, phone, email, comments, qty })
         });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data?.error || 'Failed to submit order');
@@ -91,7 +100,8 @@ export function MerchOrderPage() {
             sourceImageUrl: posterUrl,
             merchType: 'T-SHIRT',
             details: { size, color },
-            price
+            price,
+            qty
           })
         });
         const draftData = await draftResp.json();
@@ -101,7 +111,7 @@ export function MerchOrderPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ name, phone, email, comments })
+          body: JSON.stringify({ firstName, lastName, phone, email, comments, qty })
         });
         const submitData = await submitResp.json();
         if (!submitResp.ok) throw new Error(submitData?.error || 'Failed to submit order');
@@ -147,7 +157,7 @@ export function MerchOrderPage() {
                 </div>
               </div>
               <div className="mt-4 text-sm text-zinc-400">
-                Color: <span className="text-zinc-200">{color}</span> · Size: <span className="text-zinc-200">{size}</span>
+                Color: <span className="text-zinc-200">{color}</span> · Size: <span className="text-zinc-200">{size}</span> · Qty: <span className="text-zinc-200">{qty}</span>
               </div>
               <div className="text-sm text-zinc-400">Price: <span className="text-zinc-200">{price.amount} {price.currency}</span></div>
             </div>
@@ -157,9 +167,15 @@ export function MerchOrderPage() {
               <form onSubmit={onSubmit} className="space-y-4">
                 <div className="text-lg font-semibold">Complete Order</div>
                 <div className="text-sm text-zinc-400 -mt-1">We will contact you to confirm and provide payment information.</div>
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-1">Name</label>
-                  <input className="w-full px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-600" value={name} onChange={(e) => setName(e.target.value)} required />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-1">First Name</label>
+                    <input className="w-full px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-600" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-1">Last Name</label>
+                    <input className="w-full px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-600" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm text-zinc-400 mb-1">Phone</label>
@@ -168,6 +184,10 @@ export function MerchOrderPage() {
                 <div>
                   <label className="block text-sm text-zinc-400 mb-1">Email</label>
                   <input type="email" className="w-full px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-600" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                </div>
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-1">Quantity</label>
+                  <input type="number" min={1} className="w-full px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-600" value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value)||1))} required />
                 </div>
                 <div>
                   <label className="block text-sm text-zinc-400 mb-1">Comments</label>

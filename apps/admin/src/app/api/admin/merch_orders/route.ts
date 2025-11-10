@@ -35,10 +35,13 @@ export async function GET(req: NextRequest) {
         price_currency,
         source_image_url,
         order_image_url,
+        first_name,
+        last_name,
         name,
         phone,
         email,
         notes,
+        qty,
         created_at,
         updated_at
       FROM merch_orders

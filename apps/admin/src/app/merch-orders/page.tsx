@@ -14,10 +14,13 @@ export type MerchOrder = {
   price_currency?: string | null;
   source_image_url: string;
   order_image_url: string;
+  first_name?: string | null;
+  last_name?: string | null;
   name?: string | null;
   phone?: string | null;
   email?: string | null;
   notes?: string | null;
+  qty?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -64,6 +67,7 @@ export default function MerchOrdersPage() {
         <Table.Column<MerchOrder> dataIndex="merch_type" title="Type" width={120} />
         <Table.Column<MerchOrder> dataIndex="size" title="Size" width={80} />
         <Table.Column<MerchOrder> dataIndex="color" title="Color" width={100} />
+        <Table.Column<MerchOrder> dataIndex="qty" title="Qty" width={70} render={(v: number|undefined|null)=> (v ?? 1)} />
         <Table.Column<MerchOrder>
           title="Price"
           render={(_: any, row: MerchOrder) => (
@@ -71,7 +75,15 @@ export default function MerchOrdersPage() {
           )}
         />
         <Table.Column<MerchOrder> dataIndex="status" title="Status" width={120} render={(v: string)=> <Tag color={v==='submitted'?'green':'blue'}>{v||'draft'}</Tag>} />
-        <Table.Column<MerchOrder> dataIndex="name" title="Name" />
+        <Table.Column<MerchOrder>
+          title="Name"
+          render={(_: any, row: MerchOrder) => {
+            const fn = (row.first_name || '').trim();
+            const ln = (row.last_name || '').trim();
+            const combined = `${fn} ${ln}`.trim();
+            return <span>{combined || row.name || '—'}</span>;
+          }}
+        />
         <Table.Column<MerchOrder> dataIndex="phone" title="Phone" />
         <Table.Column<MerchOrder> dataIndex="email" title="Email" />
         <Table.Column<MerchOrder> dataIndex="created_at" title="Created" />

@@ -572,6 +572,7 @@ router.post('/', auth, generateLimiter, checkGenerationLimits, async (req, res) 
           `${baseUrl}/api/public/jewelry-samples/02.jpg`,
           `${baseUrl}/api/public/jewelry-samples/03.jpg`,
           `${baseUrl}/api/public/jewelry-samples/04.jpg`,
+          `${baseUrl}/api/public/jewelry-samples/05.jpg`,
         ];
         imageUrl = await generateImage(finalPrompt, GENERATORS.FAL_GEMINI_EDIT_TEXT, { imageUrls: sampleUrls });
       } catch (e) {

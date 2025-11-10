@@ -564,7 +564,7 @@ router.post('/', auth, generateLimiter, checkGenerationLimits, async (req, res) 
         imageUrl = await generateImage(finalPrompt, model, size, quality);
       }
     } else {
-      // No sketch/camera/upload: use FAL Gemini Edit with sample images (PNG, 1:1)
+      // No sketch/camera/upload: use FAL Gemini Edit (text-only) with sample images (PNG, 1:1)
       try {
         const baseUrl = `${req.protocol}://${req.get('host')}`;
         const sampleUrls = [
@@ -573,10 +573,10 @@ router.post('/', auth, generateLimiter, checkGenerationLimits, async (req, res) 
           `${baseUrl}/api/public/jewelry-samples/03.jpg`,
           `${baseUrl}/api/public/jewelry-samples/04.jpg`,
         ];
-        imageUrl = await generateImage(finalPrompt, GENERATORS.FAL_GEMINI_EDIT, { imageUrls: sampleUrls });
+        imageUrl = await generateImage(finalPrompt, GENERATORS.FAL_GEMINI_EDIT_TEXT, { imageUrls: sampleUrls });
       } catch (e) {
         // Fallback to configured model if samples or edit path fail
-        console.warn('[Generate] FAL Gemini Edit with samples failed, falling back to configured model:', e?.message);
+        console.warn('[Generate] FAL Gemini Edit (text) with samples failed, falling back to configured model:', e?.message);
         imageUrl = await generateImage(finalPrompt, model, size, quality);
       }
     }

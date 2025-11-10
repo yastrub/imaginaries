@@ -13,6 +13,7 @@ export const GENERATORS = {
   REPLICATE: 'replicate',
   FAL: 'fal',
   FAL_GEMINI_EDIT: 'fal_gemini_edit',
+  FAL_GEMINI_EDIT_TEXT: 'fal_gemini_edit_text',
   FAL_GEMINI_REIMAGINE: 'fal_gemini_reimagine',
   FAL_GEMINI_COLLAGE: 'fal_gemini_collage'
 };
@@ -75,6 +76,78 @@ async function generateWithOpenAI(prompt) {
 
   console.log('OpenAI Result:', result);
 
+  return image.url;
+}
+
+// Fal.ai Gemini Edit (text-only variant using separate provider config)
+async function generateWithFalGeminiEditText(prompt, imageUrls = []) {
+  if (!settings.imageGeneration.enabledProviders.fal) {
+    throw new Error('Fal.ai generator is disabled');
+  }
+
+  const config = settings.imageGeneration.providers.fal_gemini_edit_text;
+  if (!config) throw new Error('Fal Gemini Edit (text) provider is not configured');
+  const falApiBase = `${config.api_url}/${config.model}`;
+  const falApiUrlFull = `${falApiBase}/${config.version}`;
+  const falKey = process.env.FAL_KEY;
+
+  const systemPrompt = config.system_prompt || '';
+  let fullPrompt;
+  if (systemPrompt.includes('USER_INPUT_HERE') || systemPrompt.includes('USER_PROMPT_HERE')) {
+    const userText = String(prompt || '').trim();
+    fullPrompt = systemPrompt
+      .replace('USER_INPUT_HERE', userText)
+      .replace('USER_PROMPT_HERE', userText);
+  } else {
+    const enhancedPrompt = enhancePrompt(prompt);
+    fullPrompt = systemPrompt ? `${systemPrompt}\n\nUser request: ${enhancedPrompt}` : enhancedPrompt;
+  }
+
+  const body = {
+    prompt: fullPrompt,
+    image_urls: imageUrls,
+    num_images: config.params?.num_images ?? 1,
+    output_format: config.params?.output_format ?? 'jpeg',
+    sync_mode: false,
+    limit_generations: true,
+    aspect_ratio: config.params?.aspect_ratio ?? undefined
+  };
+
+  const initialResponse = await fetch(falApiUrlFull, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Key ${falKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  const initialText = await initialResponse.text();
+  if (!initialResponse.ok) {
+    let error; try { error = JSON.parse(initialText); } catch {}
+    throw new Error(`Fal Gemini (text) enqueue error: ${error?.detail || initialText}`);
+  }
+  let initialResult; try { initialResult = JSON.parse(initialText); } catch { throw new Error(`Fal Gemini (text) enqueue parse error: ${initialText}`); }
+  const requestId = initialResult.request_id; if (!requestId) throw new Error('Fal Gemini (text): missing request_id');
+
+  const statusUrl = `${falApiBase}/requests/${requestId}/status`;
+  const maxAttempts = 20; const interval = 6;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const statusResp = await fetch(statusUrl, { headers: { 'Authorization': `Key ${falKey}` } });
+    const statusText = await statusResp.text();
+    if (!statusResp.ok) throw new Error(`Fal Gemini (text) status error: ${statusText}`);
+    let statusJson; try { statusJson = JSON.parse(statusText); } catch { throw new Error('Fal Gemini (text) status parse error'); }
+    if (statusJson.status === 'COMPLETED') break;
+    if (statusJson.status === 'failed' || statusJson === 'error') throw new Error(`Fal Gemini (text) failed: ${statusJson.status}`);
+    await new Promise(r => setTimeout(r, interval * 1000));
+  }
+
+  const resultUrl = `${falApiBase}/requests/${requestId}`;
+  const resultResp = await fetch(resultUrl, { headers: { 'Authorization': `Key ${falKey}` } });
+  const resultText = await resultResp.text();
+  if (!resultResp.ok) throw new Error(`Fal Gemini (text) result error: ${resultText}`);
+  let result; try { result = JSON.parse(resultText); } catch { throw new Error('Fal Gemini (text) result parse error'); }
+  const image = result.images?.[0]; if (!image?.url) throw new Error('Fal Gemini (text): no image url');
   return image.url;
 }
 
@@ -591,6 +664,9 @@ export async function generateImage(prompt, generator = DEFAULT_GENERATOR, optio
           throw new Error('Fal Gemini Edit requires imageUrls');
         }
         return await generateWithFalGeminiEdit(prompt, options.imageUrls);
+      case GENERATORS.FAL_GEMINI_EDIT_TEXT:
+        // Text-only path may still provide imageUrls (e.g., guidance samples)
+        return await generateWithFalGeminiEditText(prompt, options.imageUrls || []);
       case GENERATORS.FAL_GEMINI_REIMAGINE:
         if (!options.imageUrls || options.imageUrls.length === 0) {
           throw new Error('Fal Gemini Reimagine requires imageUrls');

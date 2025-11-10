@@ -137,6 +137,19 @@ export const settings = {
         },
         system_prompt: "You need to identify the main object (what exactly user wanted to show you) in the picture. If its not a jewelry you need to make a fashion jewelry piece from it, use only precious stones and materials. If it's a jewelry - create a variation of it. USER_INPUT_HERE. Make a professional photo. White plain background."
       },
+      fal_gemini_edit_text: {
+        api_url: 'https://queue.fal.run',
+        model: 'fal-ai/gemini-25-flash-image',
+        version: 'edit',
+        params: {
+          sync_mode: false,
+          num_images: 1,
+          output_format: 'png',
+          aspect_ratio: '1:1',
+          limit_generations: true
+        },
+        system_prompt: "Generate modern art conceptual high jewelry USER_PROMPT_HERE. Samples are provided. Professional photo. White plain background."
+      },
       fal_gemini_reimagine: {
         api_url: 'https://queue.fal.run',
         model: 'fal-ai/gemini-25-flash-image',

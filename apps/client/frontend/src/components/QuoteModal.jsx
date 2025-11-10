@@ -241,7 +241,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose}></div>
       
       {/* Modal content */}
-      <div className="bg-zinc-900 rounded-xl w-full max-w-lg overflow-hidden shadow-xl relative z-[101]">
+      <div className="bg-zinc-900 rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden shadow-xl relative z-[101]">
         <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-white">
             {step === 1 ? "Jewelry Price Estimation" : step === 2 ? "Order Details" : "Order Placed"}
@@ -256,7 +256,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
           </Button>
         </div>
         
-        <div className="p-6">
+        <div className="p-6 flex-1 overflow-y-auto min-h-0">
           <div className="flex gap-4 mb-6">
             <div className="w-1/3">
               <img

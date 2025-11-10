@@ -194,7 +194,7 @@ router.post('/magic/request', authLimiter, async (req, res) => {
       return res.status(500).json({ error: 'Failed to send magic link' });
     }
 
-    return res.json({ success: true, message: 'Magic link sent if the email is registered' });
+    return res.json({ success: true, mode, message: mode === 'code' ? 'Code sent if the email is registered' : 'Magic link sent if the email is registered' });
   } catch (error) {
     console.error('Magic link request error:', error);
     return res.status(500).json({ error: 'Failed to process request' });

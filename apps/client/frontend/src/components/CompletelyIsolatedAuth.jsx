@@ -38,6 +38,7 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
   const [ClerkSignInButton, setClerkSignInButton] = useState(null);
   const [codeSent, setCodeSent] = useState(false);
   const [codeDigits, setCodeDigits] = useState(['', '', '', '', '', '']);
+  const [mode, setMode] = useState(AUTH_MODE);
   const codeRefs = useRef([]);
   
   // Refs
@@ -86,12 +87,6 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
   
   // Callbacks
   const openModal = useCallback(() => {
-    // Check if promo code exists in localStorage and set to signup mode if it does
-    const promoCode = localStorage.getItem('promo_code');
-    if (promoCode && promoCode.trim()) {
-      console.log('Promo code found in localStorage, opening in signup mode:', promoCode);
-      setIsSignUp(true);
-    }
     setIsOpen(true);
   }, []);
   
@@ -575,7 +570,7 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
                   <Button className="w-full h-10 gap-2" disabled>Loading…</Button>
                 )}
               </div>
-            ) : AUTH_MODE === 'code' ? (
+            ) : mode === 'code' ? (
               <>
                 {codeSent ? (
                   <>
@@ -711,9 +706,14 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
                             });
                             const data = await res.json().catch(() => ({}));
                             if (!res.ok) throw new Error(data.error || 'Failed to send code');
-                            setCodeDigits(['','','','','','']);
-                            setCodeSent(true);
-                            setTimeout(() => codeRefs.current[0]?.focus(), 0);
+                            if (data && typeof data.mode === 'string') setMode(data.mode.toLowerCase());
+                            if ((data?.mode || '').toLowerCase() === 'code') {
+                              setCodeDigits(['','','','','','']);
+                              setCodeSent(true);
+                              setTimeout(() => codeRefs.current[0]?.focus(), 0);
+                            } else {
+                              setMagicSent(true);
+                            }
                           } catch (e) {
                             setError(e.message || 'Failed to send code');
                           } finally {
@@ -736,7 +736,7 @@ const CompletelyIsolatedAuthComponent = memo(function CompletelyIsolatedAuthComp
                   </>
                 )}
               </>
-            ) : AUTH_MODE === 'magic' ? (
+            ) : mode === 'magic' ? (
               <>
                 {magicSent ? (
                   <>

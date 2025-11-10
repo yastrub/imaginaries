@@ -15,6 +15,9 @@ type Order = {
   image_id: string;
   notes?: string | null;
   estimated_price_text?: string | null;
+  selected_option?: string | null;
+  selected_price_cents?: number | null;
+  option_text?: string | null;
   actual_price_cents?: number | null;
   created_at: string;
   updated_at: string;
@@ -67,6 +70,8 @@ export default function OrdersPage() {
   const [open, setOpen] = React.useState(false);
   const [record, setRecord] = React.useState<Order | null>(null);
   const [form] = Form.useForm();
+  const [orderViewOpen, setOrderViewOpen] = React.useState(false);
+  const [orderViewRecord, setOrderViewRecord] = React.useState<Order | null>(null);
   const [viewOpen, setViewOpen] = React.useState(false);
   const [viewRecord, setViewRecord] = React.useState<AdminImage | null>(null);
   const [detailsLoading, setDetailsLoading] = React.useState(false);
@@ -87,6 +92,20 @@ export default function OrdersPage() {
 
   const onSearch = () => {
     setFilters([{ field: "q", operator: "contains", value: search }], "replace");
+  };
+
+  const buildOptionText = (row: Partial<Order>): string => {
+    if (row.option_text && row.option_text.trim()) return row.option_text;
+    const name = (row.selected_option || '').trim();
+    const cents = row.selected_price_cents;
+    if (!name && (cents == null)) return '—';
+    const price = cents != null ? formatPriceCents(cents) : '';
+    return [name, price].filter(Boolean).join(' — ') || '—';
+  };
+
+  const openOrderView = (row: Order) => {
+    setOrderViewRecord(row);
+    setOrderViewOpen(true);
   };
 
   // Status is edited via the drawer form, not inline in the table
@@ -219,14 +238,9 @@ export default function OrdersPage() {
           )}
         />
         <Table.Column<Order>
-          dataIndex="estimated_price_text"
-          title="Estimated"
-          render={(v?: string)=> formatEstimatedText(v)}
-        />
-        <Table.Column<Order>
-          dataIndex="actual_price_cents"
-          title="Actual"
-          render={(v?: number)=> formatPriceCents(v)}
+          dataIndex="option_text"
+          title="Option"
+          render={(_: any, row: Order)=> buildOptionText(row)}
         />
         <Table.Column<Order>
           dataIndex="status"
@@ -258,6 +272,7 @@ export default function OrdersPage() {
           title="Actions"
           render={(_: any, row: Order) => (
             <Space>
+              <Button onClick={() => openOrderView(row)}>View</Button>
               <Button icon={<EditOutlined />} onClick={() => onEdit(row)}>Edit</Button>
             </Space>
           )}
@@ -282,6 +297,23 @@ export default function OrdersPage() {
             <Button type="primary" htmlType="submit">Save</Button>
           </Space>
         </Form>
+      </Drawer>
+
+      <Drawer title={orderViewRecord ? `Order ${orderViewRecord.id}` : 'Order'} open={orderViewOpen} onClose={()=>setOrderViewOpen(false)} width={520} destroyOnClose>
+        {orderViewRecord ? (
+          <div style={{ display: 'grid', rowGap: 8 }}>
+            <div><strong>User:</strong> {orderViewRecord.user_email || orderViewRecord.user_id}</div>
+            <div><strong>Option:</strong> {buildOptionText(orderViewRecord)}</div>
+            <div><strong>Estimated:</strong> {formatEstimatedText(orderViewRecord.estimated_price_text)}</div>
+            <div><strong>Actual:</strong> {formatPriceCents(orderViewRecord.actual_price_cents)}</div>
+            <div><strong>Status:</strong> {orderViewRecord.status || 'New'}</div>
+            <div><strong>Image ID:</strong> {orderViewRecord.image_id}</div>
+            <div><strong>Notes:</strong> {orderViewRecord.notes || '—'}</div>
+            <div><strong>Created:</strong> <AdminDate value={orderViewRecord.created_at} /></div>
+            <div><strong>Updated:</strong> <AdminDate value={orderViewRecord.updated_at} /></div>
+            <div><strong>Order ID:</strong> {orderViewRecord.id}</div>
+          </div>
+        ) : null}
       </Drawer>
 
       <Drawer title={viewRecord ? `Image: ${viewRecord.id}` : 'Image'} open={viewOpen} onClose={() => setViewOpen(false)} width={510} destroyOnClose zIndex={token.zIndexPopupBase + 1000}>

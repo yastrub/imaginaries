@@ -6,7 +6,7 @@ export const MERCH_STYLE_MAP = {
   HIGH_FASHION: 'convert them into 100% high fashion editorial style, avant-garde poster.',
   MINECRAFT: 'convert them into 100% Minecraft-style voxel art poster.',
   '007_AGENT': 'convert them into 100% James Bond 007 spy movie poster.',
-  BARBIE: 'convert them into 100% Barbie-style pink glamorous poster.',
+  BARBIE: 'convert them into 100% photorealistic editorial Barbie-style pink glamorous poster.',
   ANIME: 'convert them into 100% anime style illustration poster.',
 };
 
@@ -17,12 +17,16 @@ export function buildMerchPrompt(preset = 'GTA', keepPoses = true, brand = 'ARTI
     : 'create a magazine cover with a logo provided and people on the photo.';
   const baseBKeep = 'RETAIN original POSES and FACES of the people.';
   const baseBChange = 'CHANGE original POSES, but KEEP FACES of the people.';
+  const baseC = 'convert person into illustration.';
   const baseD = brandUpper === 'TECHTUESDAYS' ? 'Add magazine ISSUE 71.' : 'Add magazine date Nov 08.';
   const style = MERCH_STYLE_MAP[preset] || MERCH_STYLE_MAP.GTA;
   const pose = keepPoses ? baseBKeep : baseBChange;
   const parts = [baseA, style, pose];
   if (brandUpper === 'TECHTUESDAYS') {
     parts.push('Use TECHTUESDAYS magazine title prominently at the top.');
+  }
+  if (["GTA", "ANIME", "SUPERHERO"].includes(String(preset || '').toUpperCase())) {
+    parts.push(baseC);
   }
   parts.push(baseD);
   return parts.join(' ');

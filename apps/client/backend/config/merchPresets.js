@@ -1,22 +1,28 @@
 // Configurable merch presets and prompt builder
 export const MERCH_STYLE_MAP = {
-  GTA: 'make them GTA style poster',
-  GLAMOUR: 'make them glamour style poster',
-  SUPERHERO: 'make them superhero style poster.',
-  HIGH_FASHION: 'make them high fashion editorial style, avant-garde poster.',
+  GTA: 'convert them into 100% GTA-style illustration poster.',
+  GLAMOUR: 'convert them into 100% glamour style poster.',
+  SUPERHERO: 'convert them into 100% superhero themed poster.',
+  HIGH_FASHION: 'convert them into 100% high fashion editorial style, avant-garde poster.',
+  MINECRAFT: 'convert them into 100% Minecraft-style voxel art poster.',
+  '007_AGENT': 'convert them into 100% James Bond 007 spy movie poster.',
+  BARBIE: 'convert them into 100% Barbie-style pink glamorous poster.',
+  ANIME: 'convert them into 100% anime style illustration poster.',
 };
 
-export function buildMerchPrompt(preset = 'GTA', keepPoses = true) {
-  const baseA = 'create a magazine cover with a logo provided and people on the photo.';
-  const baseBKeep = 'retain original poses and faces of the people.';
-  const baseBChange = 'change original poses, but keep faces of the people.';
-  const baseC = 'Convert people into illustrations.';
-  const baseD = 'Add magazine date Nov 08.';
+export function buildMerchPrompt(preset = 'GTA', keepPoses = true, brand = 'ARTIFICIAL') {
+  const brandUpper = (brand || 'ARTIFICIAL').toUpperCase();
+  const baseA = brandUpper === 'TECHTUESDAYS'
+    ? 'create a magazine cover with people on the photo.'
+    : 'create a magazine cover with a logo provided and people on the photo.';
+  const baseBKeep = 'RETAIN original POSES and FACES of the people.';
+  const baseBChange = 'CHANGE original POSES, but KEEP FACES of the people.';
+  const baseD = brandUpper === 'TECHTUESDAYS' ? 'Add magazine ISSUE 71.' : 'Add magazine date Nov 08.';
   const style = MERCH_STYLE_MAP[preset] || MERCH_STYLE_MAP.GTA;
   const pose = keepPoses ? baseBKeep : baseBChange;
   const parts = [baseA, style, pose];
-  if ((preset || '').toUpperCase() === 'GTA') {
-    parts.push(baseC);
+  if (brandUpper === 'TECHTUESDAYS') {
+    parts.push('Use TECHTUESDAYS magazine title prominently at the top.');
   }
   parts.push(baseD);
   return parts.join(' ');

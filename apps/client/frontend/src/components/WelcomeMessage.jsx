@@ -133,28 +133,7 @@ const WelcomeMessageComponent = () => {
               secondTapTimerRef.current = null;
             }, 900);
           }
-          if (tapCountRef.current === 3 && !thirdTapTimerRef.current) {
-            // Cancel any pending double-tap QR
-            if (secondTapTimerRef.current) {
-              try { clearTimeout(secondTapTimerRef.current); } catch {}
-              secondTapTimerRef.current = null;
-            }
-            // Schedule Telegram QR; cancel if user continues to 5 taps
-            thirdTapTimerRef.current = setTimeout(() => {
-              if (tapCountRef.current === 3) {
-                try {
-                  showQrModal({
-                    url: 'https://t.me/+VXMHrPDUo09iZWQy',
-                    title: 'Join our Telegram Group',
-                    subtitle: 'Scan to join the ART*FICIAL Community',
-                    showLink: false,
-                    size: 420,
-                  });
-                } catch {}
-              }
-              thirdTapTimerRef.current = null;
-            }, 900);
-          }
+          
           if (tapCountRef.current >= 5) {
             tapCountRef.current = 0;
             if (tapWindowTimerRef.current) {

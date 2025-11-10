@@ -22,8 +22,11 @@ export function MerchDemo() {
   const [portalGifUrl, setPortalGifUrl] = useState('/images/portal-animation.gif');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isTechMode, setIsTechMode] = useState(false);
 
   const containerRef = useRef(null);
+  const titleTapCountRef = useRef(0);
+  const titleTapTimerRef = useRef(null);
 
   const fetchLogoAsDataUrl = useCallback(async () => {
     try {
@@ -40,9 +43,10 @@ export function MerchDemo() {
     }
   }, []);
 
-  const loadList = useCallback(async () => {
+  const loadList = useCallback(async (brand) => {
     try {
-      const resp = await fetch(`/api/merch/list?_=${Date.now()}`, {
+      const b = (brand || (isTechMode ? 'TECHTUESDAYS' : 'ARTIFICIAL'));
+      const resp = await fetch(`/api/merch/list?brand=${encodeURIComponent(b)}&_=${Date.now()}`, {
         credentials: 'include',
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' }
@@ -55,7 +59,7 @@ export function MerchDemo() {
     } catch (e) {
       console.error('Failed to load merch list', e);
     }
-  }, []);
+  }, [isTechMode]);
 
   useEffect(() => {
     // Load existing magazines on mount
@@ -98,13 +102,13 @@ export function MerchDemo() {
       setItems((prev) => [placeholder, ...prev]);
       setActiveIndex(0);
       setTimeout(() => { try { containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {} }, 0);
-
-      const logoDataUrl = await fetchLogoAsDataUrl();
+      // Only use client-provided logo for ARTIFICIAL; TECHTUESDAYS handled on backend
+      const logoDataUrl = isTechMode ? null : await fetchLogoAsDataUrl();
       const resp = await fetch('/api/merch/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ selfieDataUrl, logoDataUrl, preset, keepPoses })
+        body: JSON.stringify({ selfieDataUrl, logoDataUrl, preset, keepPoses, brand: isTechMode ? 'TECHTUESDAYS' : 'ARTIFICIAL' })
       });
       if (!resp.ok) {
         throw new Error('Failed to generate');
@@ -129,7 +133,7 @@ export function MerchDemo() {
     } finally {
       setIsGenerating(false);
     }
-  }, [selfieDataUrl, preset, keepPoses, fetchLogoAsDataUrl]);
+  }, [selfieDataUrl, preset, keepPoses, fetchLogoAsDataUrl, isTechMode]);
 
   // Gallery disabled: always show the latest item (index 0)
   useEffect(() => { setActiveIndex(0); }, [items.length]);
@@ -149,13 +153,34 @@ export function MerchDemo() {
           >
             Imagine
           </button>
-          <div className="text-white font-medium">ART*FICIAL Merch</div>
+          <div
+            className="text-white font-medium select-none"
+            onClick={() => {
+              // Double-tap to toggle TECHTUESDAYS mode
+              if (!titleTapTimerRef.current) {
+                titleTapTimerRef.current = setTimeout(() => {
+                  titleTapCountRef.current = 0;
+                  try { clearTimeout(titleTapTimerRef.current); } catch {}
+                  titleTapTimerRef.current = null;
+                }, 600);
+              }
+              titleTapCountRef.current += 1;
+              if (titleTapCountRef.current >= 2) {
+                titleTapCountRef.current = 0;
+                try { clearTimeout(titleTapTimerRef.current); } catch {}
+                titleTapTimerRef.current = null;
+                const next = !isTechMode;
+                setIsTechMode(next);
+                // Reload list for the selected brand
+                loadList(next ? 'TECHTUESDAYS' : 'ARTIFICIAL');
+              }
+            }}
+          >
+            {isTechMode ? 'TECHTUESDAYS Merch' : 'ART*FICIAL Merch'}
+          </div>
           <button
             className="px-3 py-2 rounded-md border border-zinc-700 text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
-            onClick={() => {
-              // Force refetch and, as a fallback, hard reload
-              loadList();
-            }}
+            onClick={() => { loadList(); }}
             title="Reload"
           >
             <RefreshCcw className="w-4 h-4" /> Reload
@@ -205,17 +230,30 @@ export function MerchDemo() {
           {/* Middle: presets */}
           <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
             <div className="text-white font-medium mb-3">2. Preset</div>
-            <div className="grid grid-cols-2 gap-2">
-              {MERCH_PRESETS.map((p) => (
-                <button
-                  key={p.key}
-                  className={`px-3 py-2 rounded-md border ${preset===p.key? 'border-indigo-500 text-white bg-indigo-500/10':'border-zinc-700 text-zinc-200 hover:bg-zinc-800'}`}
-                  onClick={() => setPreset(p.key)}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
+            {(() => {
+              const extra = isTechMode ? [
+                { key: 'MINECRAFT', label: 'MINECRAFT' },
+                { key: '007_AGENT', label: '007 AGENT' },
+                { key: 'BARBIE', label: 'BARBIE' },
+                { key: 'ANIME', label: 'ANIME' },
+              ] : [];
+              const all = [...MERCH_PRESETS, ...extra];
+              return (
+                <div className="-mx-2 px-2 overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-zinc-700/60">
+                  <div className="inline-flex gap-2">
+                    {all.map((p) => (
+                      <button
+                        key={p.key}
+                        className={`px-3 py-2 rounded-md border min-w-[140px] text-center ${preset===p.key? 'border-indigo-500 text-white bg-indigo-500/10':'border-zinc-700 text-zinc-200 hover:bg-zinc-800'}`}
+                        onClick={() => setPreset(p.key)}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
             <div className="mt-5 text-white font-medium mb-2">3. Poses</div>
             <div className="flex gap-2">
               <button

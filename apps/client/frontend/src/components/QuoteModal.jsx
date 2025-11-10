@@ -150,8 +150,9 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
       const fn = (formData.firstName || '').trim();
       const ln = (formData.lastName || '').trim();
       const ph = (formData.phone || '').trim();
-      if (!fn || !ln || !ph) {
-        throw new Error('Please fill in first name, last name, and phone number');
+      const em = (user?.email || '').trim();
+      if (!fn || !ln || !ph || !em) {
+        throw new Error('Please fill in first name, last name, phone number, and email');
       }
       // Submit order with details
       await handleOrder(selectedIdx, {
@@ -385,16 +386,23 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
             </div>
           ) : step === 2 ? (
             <form onSubmit={handleSubmit} className="space-y-4">
-              {estimatedCost && (
-                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                  <p className="text-amber-400 text-sm font-medium">Estimated Price Range:</p>
-                  <p className="text-amber-300 text-lg font-bold">{estimatedCost} USD</p>
-                </div>
-              )}
+              {(() => {
+                if (selectedIdx != null && Array.isArray(parsedPrices) && parsedPrices.length >= 4) {
+                  const price = Number(parsedPrices[selectedIdx]) || 0;
+                  const label = OPTION_LABELS[selectedIdx];
+                  return (
+                    <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                      <p className="text-amber-400 text-sm font-medium">Selected Option:</p>
+                      <p className="text-amber-300 text-lg font-bold">{label} — {formatUSD(price)}</p>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-zinc-400 mb-1">First Name</label>
+                  <label htmlFor="firstName" className="block text-sm font-medium text-zinc-400 mb-1">First Name *</label>
                   <input
                     type="text"
                     id="firstName"
@@ -406,7 +414,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-zinc-400 mb-1">Last Name</label>
+                  <label htmlFor="lastName" className="block text-sm font-medium text-zinc-400 mb-1">Last Name *</label>
                   <input
                     type="text"
                     id="lastName"
@@ -420,7 +428,7 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
               </div>
 
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-zinc-400 mb-1">Phone Number</label>
+                <label htmlFor="phone" className="block text-sm font-medium text-zinc-400 mb-1">Phone Number *</label>
                 <input
                   type="tel"
                   id="phone"
@@ -434,6 +442,17 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
               </div>
 
               <div>
+                <label htmlFor="email" className="block text-sm font-medium text-zinc-400 mb-1">Email *</label>
+                <input
+                  type="email"
+                  id="email"
+                  value={user?.email || ''}
+                  readOnly
+                  className="w-full px-4 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-zinc-400 cursor-not-allowed"
+                />
+              </div>
+
+              <div>
                 <label htmlFor="notes" className="block text-sm font-medium text-zinc-400 mb-1">Notes (optional)</label>
                 <textarea
                   id="notes"
@@ -442,17 +461,6 @@ export function QuoteModal({ image, onClose, fromSharePage = false }) {
                   rows={4}
                   className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white resize-none"
                   disabled={isSubmitting}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-zinc-400 mb-1">Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  value={user?.email || ''}
-                  readOnly
-                  className="w-full px-4 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-zinc-400 cursor-not-allowed"
                 />
               </div>
 

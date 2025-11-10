@@ -11,6 +11,7 @@ type User = {
   email: string;
   first_name?: string | null;
   last_name?: string | null;
+  phone?: string | null;
   email_confirmed: boolean;
   subscription_plan: string;
   role_id: number;
@@ -148,6 +149,7 @@ export default function UsersList() {
     )}>
       <Table rowKey="id" {...tableProps}>
         <Table.Column dataIndex="email" title="Email" sorter />
+        <Table.Column dataIndex="phone" title="Phone" />
         <Table.Column<User>
           dataIndex="role_name"
           title="Role"
@@ -174,11 +176,14 @@ export default function UsersList() {
       </Table>
 
       <Drawer title={record?.email} open={open} onClose={()=>setOpen(false)} width={400} destroyOnClose>
-        <Form layout="vertical" onFinish={onSubmit} initialValues={{ first_name: record?.first_name, last_name: record?.last_name, role_id: record?.role_id, email_confirmed: record?.email_confirmed, subscription_plan: record?.subscription_plan }}>
+        <Form layout="vertical" onFinish={onSubmit} initialValues={{ first_name: record?.first_name, last_name: record?.last_name, phone: record?.phone, role_id: record?.role_id, email_confirmed: record?.email_confirmed, subscription_plan: record?.subscription_plan }}>
           <Form.Item name="first_name" label="First Name">
             <Input />
           </Form.Item>
           <Form.Item name="last_name" label="Last Name">
+            <Input />
+          </Form.Item>
+          <Form.Item name="phone" label="Phone">
             <Input />
           </Form.Item>
           <Form.Item name="role_id" label="Role" rules={[{ required: true }]}>
@@ -226,6 +231,9 @@ export default function UsersList() {
           <Form.Item name="last_name" label="Last Name">
             <Input />
           </Form.Item>
+          <Form.Item name="phone" label="Phone">
+            <Input />
+          </Form.Item>
           <Form.Item name="role_id" label="Role" rules={[{ required: true }]}>
             <Select options={[{value:1,label:'superuser'},{value:2,label:'public'}]} />
           </Form.Item>
@@ -254,6 +262,7 @@ export default function UsersList() {
             <Descriptions.Item label="Email">{viewRecord.email}</Descriptions.Item>
             <Descriptions.Item label="First Name">{viewRecord.first_name || '—'}</Descriptions.Item>
             <Descriptions.Item label="Last Name">{viewRecord.last_name || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Phone">{viewRecord.phone || '—'}</Descriptions.Item>
             <Descriptions.Item label="Role">{viewRecord.role_name || 'unknown'}</Descriptions.Item>
             <Descriptions.Item label="Plan">{viewRecord.subscription_plan}</Descriptions.Item>
             <Descriptions.Item label="Created"><AdminDate value={viewRecord.created_at} /></Descriptions.Item>

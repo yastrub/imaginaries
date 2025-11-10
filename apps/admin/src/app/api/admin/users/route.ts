@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
         u.email,
         u.first_name,
         u.last_name,
+        u.phone,
         u.email_confirmed,
         u.subscription_plan,
         u.role_id,
@@ -93,6 +94,7 @@ export async function POST(req: NextRequest) {
       email_confirmed,
       first_name,
       last_name,
+      phone,
     } = (body || {}) as {
       email?: string;
       password?: string;
@@ -101,6 +103,7 @@ export async function POST(req: NextRequest) {
       email_confirmed?: boolean;
       first_name?: string | null;
       last_name?: string | null;
+      phone?: string | null;
     };
 
     if (!email || !password || typeof role_id !== 'number') {
@@ -127,13 +130,13 @@ export async function POST(req: NextRequest) {
 
     // Insert user
     const insertSql = `
-      INSERT INTO users (email, password, role_id, subscription_plan, email_confirmed, first_name, last_name, subscription_updated_at)
-      VALUES ($1, $2, $3, COALESCE($4, 'free'), COALESCE($5, true), $6, $7, NOW())
+      INSERT INTO users (email, password, role_id, subscription_plan, email_confirmed, first_name, last_name, phone, subscription_updated_at)
+      VALUES ($1, $2, $3, COALESCE($4, 'free'), COALESCE($5, true), $6, $7, $8, NOW())
       RETURNING id
     `;
     let userId: string;
     try {
-      const ins = await query<{ id: string }>(insertSql, [emailNorm, hash, role_id, planForInsert, email_confirmed ?? true, first_name ?? null, last_name ?? null]);
+      const ins = await query<{ id: string }>(insertSql, [emailNorm, hash, role_id, planForInsert, email_confirmed ?? true, first_name ?? null, last_name ?? null, phone ?? null]);
       userId = ins.rows[0].id;
     } catch (e: any) {
       if (e?.code === '23505') {
@@ -149,6 +152,7 @@ export async function POST(req: NextRequest) {
          u.email,
          u.first_name,
          u.last_name,
+         u.phone,
          u.email_confirmed,
          u.subscription_plan,
          u.role_id,

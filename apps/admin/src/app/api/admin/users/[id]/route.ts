@@ -14,6 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
          u.email,
          u.first_name,
          u.last_name,
+         u.phone,
          u.email_confirmed,
          u.subscription_plan,
          u.role_id,
@@ -40,7 +41,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const { id } = params;
     const body = await req.json();
-    const { role_id, email_confirmed, subscription_plan, first_name, last_name } = (body || {}) as { role_id?: number; email_confirmed?: boolean; subscription_plan?: string; first_name?: string | null; last_name?: string | null };
+    const { role_id, email_confirmed, subscription_plan, first_name, last_name, phone } = (body || {}) as { role_id?: number; email_confirmed?: boolean; subscription_plan?: string; first_name?: string | null; last_name?: string | null; phone?: string | null };
 
     const result = await withTransaction(async (tx) => {
       // Helpers: safe checks inside transaction that won't abort
@@ -168,6 +169,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       if (typeof last_name === 'string' || last_name === null) {
         updates.push(`last_name = $${idx++}`); values.push(last_name ?? null);
       }
+      if (typeof phone === 'string' || phone === null) {
+        updates.push(`phone = $${idx++}`); values.push(phone ?? null);
+      }
       if (updates.length) {
         values.push(id);
         await tx(`UPDATE users SET ${updates.join(', ')} WHERE id = $${idx}`, values);
@@ -180,6 +184,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
            u.email,
            u.first_name,
            u.last_name,
+           u.phone,
            u.email_confirmed,
            u.subscription_plan,
            u.role_id,

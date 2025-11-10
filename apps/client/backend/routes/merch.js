@@ -6,20 +6,22 @@ import { buildMerchPrompt } from '../config/merchPresets.js';
 const router = express.Router();
 
 // POST /api/merch/generate
-// Body: { selfieDataUrl: string (data URL), logoDataUrl?: string (data URL), preset?: string, keepPoses?: boolean }
+// Body: { selfieDataUrl: string (data URL), logoDataUrl?: string (data URL), preset?: string, keepPoses?: boolean, brand?: 'ARTIFICIAL'|'TECHTUESDAYS' }
 router.post('/generate', async (req, res) => {
   try {
-    const { selfieDataUrl, logoDataUrl, preset = 'GTA', keepPoses = true } = req.body || {};
+    const { selfieDataUrl, logoDataUrl, preset = 'GTA', keepPoses = true, brand = 'ARTIFICIAL' } = req.body || {};
     if (!selfieDataUrl) {
       return res.status(400).json({ error: 'Missing selfieDataUrl' });
     }
 
-    const folderBase = 'artificial/events/01';
+    const folderBase = String(brand).toUpperCase() === 'TECHTUESDAYS' ? 'techtuesdays/events/71' : 'artificial/events/01';
     const ts = Date.now();
 
     // Do NOT persist selfie/logo. Use data URLs directly for generation.
-    const imageUrls = logoDataUrl ? [selfieDataUrl, logoDataUrl] : [selfieDataUrl];
-    const prompt = buildMerchPrompt(preset, !!keepPoses);
+    // For TECHTUESDAYS we rely on prompt title and ignore client logo
+    const useLogo = !!logoDataUrl && String(brand).toUpperCase() !== 'TECHTUESDAYS';
+    const imageUrls = useLogo ? [selfieDataUrl, logoDataUrl] : [selfieDataUrl];
+    const prompt = buildMerchPrompt(preset, !!keepPoses, String(brand || 'ARTIFICIAL'));
 
     // Generate with FAL Gemini Collage (png, 3:4) using both images
     const generatedUrl = await generateImage(prompt, GENERATORS.FAL_GEMINI_COLLAGE, { imageUrls });
@@ -37,7 +39,8 @@ router.post('/generate', async (req, res) => {
 // GET /api/merch/list -> latest magazines list
 router.get('/list', async (req, res) => {
   try {
-    const folderBase = 'artificial/events/01';
+    const brand = (req.query?.brand || 'ARTIFICIAL').toString().toUpperCase();
+    const folderBase = brand === 'TECHTUESDAYS' ? 'techtuesdays/events/71' : 'artificial/events/01';
     const items = await listResourcesByPrefix(folderBase, 100);
     // Sort by created_at desc if available
     const sorted = items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));

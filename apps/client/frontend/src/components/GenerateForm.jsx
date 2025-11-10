@@ -179,24 +179,8 @@ export const GenerateForm = React.memo(function GenerateForm({
     setIsTyping(false);
   };
 
-  const maskedFirstWord = useMemo(() => {
-    const txt = typeof prompt === 'string' ? prompt.trim() : '';
-    if (!txt) return '';
-    const tokenMatch = txt.match(/^(\S+)/);
-    const rawFirst = tokenMatch ? tokenMatch[1] : '';
-    const first = rawFirst.replace(/[,:.]+$/, '');
-    // Remainder after the first token
-    const remainder = txt.slice(rawFirst.length);
-    // Remove any leading punctuation and whitespace from remainder
-    const restAfterPunct = remainder.replace(/^[,:.\s]+/, '');
-    if (restAfterPunct.length > 0) {
-      return first ? `${first}...` : '';
-    }
-    return first;
-  }, [prompt]);
-
-  const showIcons = !isTyping;
-  const showMask = !isTyping && !!prompt;
+  // Always show full prompt text; no masking
+  const showIcons = true;
 
   const handleDrawingComplete = (dataUrl, svgData) => {
     setDrawingThumbnail(dataUrl);
@@ -289,6 +273,73 @@ export const GenerateForm = React.memo(function GenerateForm({
         />
       ) : (
         <form onSubmit={handleSubmit} className="w-full">
+          {/* Action toolbar above prompt area */}
+          <div className="w-full flex justify-center mb-4">
+            <div className={`flex items-center gap-2 flex-wrap justify-center`}>
+              <button
+                type="button"
+                onClick={handleDrawingClick}
+                className="p-2 rounded-full border border-zinc-700 bg-zinc-800/60 text-zinc-300 hover:text-white hover:bg-zinc-700/60 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                aria-label="Open drawing board"
+                title="Sketch"
+              >
+                <Pencil className="w-5 h-5" />
+              </button>
+              {shouldShowCamera && (
+                <button
+                  type="button"
+                  onClick={handleCameraClick}
+                  className="p-2 rounded-full border border-zinc-700 bg-zinc-800/60 text-zinc-300 hover:text-white hover:bg-zinc-700/60 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  aria-label="Open camera"
+                  title="Take a photo"
+                >
+                  <Camera className="w-5 h-5" />
+                </button>
+              )}
+              {shouldShowUpload && (
+                <>
+                  <button
+                    type="button"
+                    onClick={onUploadClick}
+                    className="p-2 rounded-full border border-zinc-700 bg-zinc-800/60 text-zinc-300 hover:text-white hover:bg-zinc-700/60 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    aria-label="Upload image"
+                    title="Upload image"
+                  >
+                    <Upload className="w-5 h-5" />
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/jpg"
+                    className="hidden"
+                    onChange={onFileSelected}
+                  />
+                </>
+              )}
+              {isAuthenticated && canUsePrivateImages && (
+                <button
+                  type="button"
+                  onClick={() => setIsPrivate(!isPrivate)}
+                  className={`p-2 rounded-full border border-zinc-700 bg-zinc-800/60 ${isPrivate ? 'text-primary' : 'text-zinc-300 hover:text-white hover:bg-zinc-700/60'} focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                  aria-label={isPrivate ? 'Set image as public' : 'Set image as private'}
+                  title={isPrivate ? 'Private image (only visible to you)' : 'Public image (visible to everyone)'}
+                  data-privacy-state={isPrivate ? 'private' : 'public'}
+                >
+                  {isPrivate ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={openPresetsModal}
+                className={`p-2 rounded-full border border-zinc-700 bg-zinc-800/60 ${selectedPresets.length > 0 ? 'text-primary' : 'text-zinc-300 hover:text-white hover:bg-zinc-700/60'} focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                aria-label="Open presets"
+                title="Presets"
+              >
+                <Settings2 className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="input-wrapper flex">
               {(drawingThumbnail || cameraThumbnail || uploadedThumbnail || reimagineImageUrl) && (
@@ -340,47 +391,14 @@ export const GenerateForm = React.memo(function GenerateForm({
                   name="prompt"
                   data-qa="prompt-textarea"
                   required
-                  className={showMask ? 'text-transparent caret-white opacity-0' : undefined}
-                  fixedHeightPx={showMask ? 64 : null}
-                  spellCheck={!showMask}
-                  autoCorrect={showMask ? 'off' : 'on'}
-                  autoCapitalize={showMask ? 'none' : undefined}
-                  data-gramm={showMask ? 'false' : undefined}
-                  data-enable-grammarly={showMask ? 'false' : undefined}
+                  className={undefined}
+                  fixedHeightPx={null}
+                  spellCheck={true}
+                  autoCorrect={'on'}
+                  autoCapitalize={undefined}
+                  data-gramm={undefined}
+                  data-enable-grammarly={undefined}
                 />
-                {showMask && (
-                  <div className="pointer-events-none absolute inset-0 px-6 py-4 pr-24 text-foreground text-xl leading-relaxed whitespace-pre-wrap break-words select-none">
-                    {maskedFirstWord}
-                  </div>
-                )}
-                <div className="absolute right-4 top-0 h-[4rem] flex items-center">
-                  <div className={`flex items-center gap-1 bg-zinc-800/50 p-1 rounded-lg transition-opacity ${showIcons ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                    <button type="button" onClick={handleDrawingClick} className="p-2 text-zinc-400 hover:text-white transition-colors">
-                      <Pencil className="w-5 h-5" />
-                    </button>
-                    {shouldShowCamera && (
-                      <button type="button" onClick={handleCameraClick} className={`p-2 transition-colors text-zinc-400 hover:text-white`} title={'Take a photo'}>
-                        <Camera className="w-5 h-5" />
-                      </button>
-                    )}
-                    {shouldShowUpload && (
-                      <>
-                        <button type="button" onClick={onUploadClick} className={`p-2 transition-colors text-zinc-400 hover:text-white`} title={'Upload image'}>
-                          <Upload className="w-5 h-5" />
-                        </button>
-                        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" onChange={onFileSelected} />
-                      </>
-                    )}
-                    {isAuthenticated && canUsePrivateImages && (
-                      <button type="button" onClick={() => setIsPrivate(!isPrivate)} className={`p-2 transition-colors ${isPrivate ? 'text-primary' : 'text-zinc-400 hover:text-white'}`} title={isPrivate ? 'Private image (only visible to you)' : 'Public image (visible to everyone)'} data-privacy-state={isPrivate ? 'private' : 'public'}>
-                        {isPrivate ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    )}
-                    <button type="button" onClick={openPresetsModal} className={`p-2 transition-colors ${selectedPresets.length > 0 ? 'text-primary' : 'text-zinc-400 hover:text-white'}`}>
-                      <Settings2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
             <button

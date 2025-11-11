@@ -193,7 +193,6 @@ export function MerchOrderPage() {
                   <label className="block text-sm text-zinc-400 mb-1">Email</label>
                   <input type="email" className="w-full px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-600" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </div>
-                {/* Quantity is preselected on terminal; show under image only, not editable here */}
                 <div>
                   <label className="block text-sm text-zinc-400 mb-1">Comments</label>
                   <textarea rows={4} className="w-full px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-600" value={comments} onChange={(e) => setComments(e.target.value)} placeholder="Anything we should know?" />

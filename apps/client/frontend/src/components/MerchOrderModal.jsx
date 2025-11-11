@@ -88,11 +88,42 @@ export function MerchOrderModal({ isOpen, onClose, posterUrl }) {
             <div className="text-zinc-400">Price {price.amount} {price.currency}</div>
           </div>
 
-          <div>
-            <div className="text-sm text-zinc-400 mb-2">Color</div>
-            <div className="inline-flex rounded-lg overflow-hidden border border-zinc-700">
-              <button onClick={() => setColor('white')} className={`px-4 py-2 ${color==='white'?'bg-zinc-800 text-white':'bg-zinc-900 text-zinc-300'} border-r border-zinc-700`}>White</button>
-              <button onClick={() => setColor('black')} className={`px-4 py-2 ${color==='black'?'bg-zinc-800 text-white':'bg-zinc-900 text-zinc-300'}`}>Black</button>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="text-sm text-zinc-400 mb-2">Color</div>
+              <div className="inline-flex rounded-lg overflow-hidden border border-zinc-700">
+                <button onClick={() => setColor('white')} className={`px-4 py-2 ${color==='white'?'bg-zinc-800 text-white':'bg-zinc-900 text-zinc-300'} border-r border-zinc-700`}>White</button>
+                <button onClick={() => setColor('black')} className={`px-4 py-2 ${color==='black'?'bg-zinc-800 text-white':'bg-zinc-900 text-zinc-300'}`}>Black</button>
+              </div>
+            </div>
+            <div className="flex-none">
+              <div className="text-sm text-zinc-400 mb-2 text-right">Quantity</div>
+              <div className="inline-flex items-center rounded-lg border border-zinc-700 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setQty((q) => Math.max(1, (Number(q)||1) - 1))}
+                  className="px-3 py-2 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
+                  aria-label="Decrease quantity"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  value={qty}
+                  onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
+                  className="w-16 text-center px-2 py-2 bg-zinc-900 text-white outline-none"
+                  aria-label="Quantity"
+                />
+                <button
+                  type="button"
+                  onClick={() => setQty((q) => Math.max(1, (Number(q)||1) + 1))}
+                  className="px-3 py-2 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
+                  aria-label="Increase quantity"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
 
@@ -109,35 +140,7 @@ export function MerchOrderModal({ isOpen, onClose, posterUrl }) {
             </div>
           </div>
 
-          <div>
-            <div className="text-sm text-zinc-400 mb-2">Quantity</div>
-            <div className="inline-flex items-center rounded-lg border border-zinc-700 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setQty((q) => Math.max(1, (Number(q)||1) - 1))}
-                className="px-3 py-2 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
-                aria-label="Decrease quantity"
-              >
-                −
-              </button>
-              <input
-                type="number"
-                min={1}
-                value={qty}
-                onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
-                className="w-16 text-center px-2 py-2 bg-zinc-900 text-white outline-none"
-                aria-label="Quantity"
-              />
-              <button
-                type="button"
-                onClick={() => setQty((q) => Math.max(1, (Number(q)||1) + 1))}
-                className="px-3 py-2 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
-                aria-label="Increase quantity"
-              >
-                +
-              </button>
-            </div>
-          </div>
+
 
           <div className="pt-2">
             <button

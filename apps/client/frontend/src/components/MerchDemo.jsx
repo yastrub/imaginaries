@@ -239,10 +239,9 @@ export function MerchDemo() {
               ] : [];
               const all = [...MERCH_PRESETS, ...extra];
               const count = all.length;
-              if (count <= 4) {
-                // Grid layout: 2 columns, up to 2 rows. Buttons fit container width like poses.
+              if (count >= 4) {
                 return (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {all.map((p) => (
                       <button
                         key={p.key}
@@ -255,20 +254,17 @@ export function MerchDemo() {
                   </div>
                 );
               }
-              // Carousel for more than 4 presets: single-row scrollable list
               return (
-                <div className="-mx-2 px-2 overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-zinc-700/60">
-                  <div className="inline-flex gap-2">
-                    {all.map((p) => (
-                      <button
-                        key={p.key}
-                        className={`px-3 py-2 rounded-md border min-w-[140px] text-center ${preset===p.key? 'border-indigo-500 text-white bg-indigo-500/10':'border-zinc-700 text-zinc-200 hover:bg-zinc-800'}`}
-                        onClick={() => setPreset(p.key)}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {all.map((p) => (
+                    <button
+                      key={p.key}
+                      className={`w-full px-3 py-2 rounded-md border text-center ${preset===p.key? 'border-indigo-500 text-white bg-indigo-500/10':'border-zinc-700 text-zinc-200 hover:bg-zinc-800'}`}
+                      onClick={() => setPreset(p.key)}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
                 </div>
               );
             })()}

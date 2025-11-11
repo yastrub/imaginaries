@@ -34,7 +34,14 @@ export function MerchOrderPage() {
           if (od.last_name) setLastName(od.last_name);
           if (od.phone) setPhone(od.phone);
           if (od.email) setEmail(od.email);
-          setQty(Number.isFinite(Number(data.order?.qty)) ? Number(data.order.qty) : 1);
+          // Prefer qty from order, but allow explicit override via QR param
+          const sp = new URLSearchParams(location.search);
+          const qrQty = Number(sp.get('qty'));
+          if (Number.isFinite(qrQty) && qrQty > 0) {
+            setQty(qrQty);
+          } else {
+            setQty(Number.isFinite(Number(data.order?.qty)) ? Number(data.order.qty) : 1);
+          }
         } else {
           // Query-based flow: src, color, size, amount, currency
           const sp = new URLSearchParams(location.search);
@@ -55,7 +62,8 @@ export function MerchOrderPage() {
             created_at: now,
             updated_at: now
           });
-          setQty(1);
+          const q = Number(sp.get('qty'));
+          setQty(Number.isFinite(q) && q > 0 ? q : 1);
         }
       } catch (e) {
         if (!mounted) return;
@@ -185,10 +193,7 @@ export function MerchOrderPage() {
                   <label className="block text-sm text-zinc-400 mb-1">Email</label>
                   <input type="email" className="w-full px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-600" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </div>
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-1">Quantity</label>
-                  <input type="number" min={1} className="w-full px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-600" value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value)||1))} required />
-                </div>
+                {/* Quantity is preselected on terminal; show under image only, not editable here */}
                 <div>
                   <label className="block text-sm text-zinc-400 mb-1">Comments</label>
                   <textarea rows={4} className="w-full px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-600" value={comments} onChange={(e) => setComments(e.target.value)} placeholder="Anything we should know?" />

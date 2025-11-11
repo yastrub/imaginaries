@@ -7,6 +7,7 @@ const SIZES = ['XS','S','M','L','XL','XXL'];
 export function MerchOrderModal({ isOpen, onClose, posterUrl }) {
   const [color, setColor] = useState('white'); // 'white' | 'black'
   const [size, setSize] = useState('L');
+  const [qty, setQty] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const price = { amount: 160, currency: 'AED' };
 
@@ -29,13 +30,17 @@ export function MerchOrderModal({ isOpen, onClose, posterUrl }) {
           sourceImageUrl: posterUrl,
           merchType: 'T-SHIRT',
           details: { size, color },
-          price
+          price,
+          qty
         })
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.error || 'Failed to start order');
       const url = data?.url || `/merch/order/${data?.id}`;
-      const full = `${window.location.origin}${url}`;
+      const base = `${window.location.origin}${url}`;
+      const u = new URL(base);
+      u.searchParams.set('qty', String(Math.max(1, Number(qty) || 1)));
+      const full = u.toString();
       showQrModal({ url: full, title: 'Continue on your phone', subtitle: 'Scan to complete your order', showLink: false });
     } catch (e) {
       console.error('QR open failed', e);
@@ -101,6 +106,36 @@ export function MerchOrderModal({ isOpen, onClose, posterUrl }) {
                   className={`px-3 py-2 text-sm rounded-md border ${size===s?'border-white text-white bg-zinc-800':'border-zinc-700 text-zinc-300 hover:border-zinc-500'}`}
                 >{s}</button>
               ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-sm text-zinc-400 mb-2">Quantity</div>
+            <div className="inline-flex items-center rounded-lg border border-zinc-700 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setQty((q) => Math.max(1, (Number(q)||1) - 1))}
+                className="px-3 py-2 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
+                aria-label="Decrease quantity"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                min={1}
+                value={qty}
+                onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
+                className="w-16 text-center px-2 py-2 bg-zinc-900 text-white outline-none"
+                aria-label="Quantity"
+              />
+              <button
+                type="button"
+                onClick={() => setQty((q) => Math.max(1, (Number(q)||1) + 1))}
+                className="px-3 py-2 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
+                aria-label="Increase quantity"
+              >
+                +
+              </button>
             </div>
           </div>
 

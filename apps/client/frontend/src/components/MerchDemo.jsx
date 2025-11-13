@@ -12,7 +12,6 @@ export function MerchDemo() {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [selfieDataUrl, setSelfieDataUrl] = useState(null);
   const [preset, setPreset] = useState(DEFAULT_MERCH_PRESET);
-  const [keepPoses, setKeepPoses] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
   const [items, setItems] = useState([]);
@@ -108,7 +107,7 @@ export function MerchDemo() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ selfieDataUrl, logoDataUrl, preset, keepPoses, brand: isTechMode ? 'TECHTUESDAYS' : 'ARTIFICIAL' })
+        body: JSON.stringify({ selfieDataUrl, logoDataUrl, preset, brand: isTechMode ? 'TECHTUESDAYS' : 'ARTIFICIAL' })
       });
       if (!resp.ok) {
         throw new Error('Failed to generate');
@@ -133,7 +132,7 @@ export function MerchDemo() {
     } finally {
       setIsGenerating(false);
     }
-  }, [selfieDataUrl, preset, keepPoses, fetchLogoAsDataUrl, isTechMode]);
+  }, [selfieDataUrl, preset, fetchLogoAsDataUrl, isTechMode]);
 
   // Gallery disabled: always show the latest item (index 0)
   useEffect(() => { setActiveIndex(0); }, [items.length]);
@@ -261,21 +260,6 @@ export function MerchDemo() {
                 </div>
               );
             })()}
-            <div className="mt-5 text-white font-medium mb-2">3. Poses</div>
-            <div className="flex gap-2">
-              <button
-                className={`flex-1 px-3 py-2 rounded-md border ${keepPoses? 'border-indigo-500 text-white bg-indigo-500/10':'border-zinc-700 text-zinc-200 hover:bg-zinc-800'}`}
-                onClick={() => setKeepPoses(true)}
-              >
-                Keep Poses
-              </button>
-              <button
-                className={`flex-1 px-3 py-2 rounded-md border ${!keepPoses? 'border-indigo-500 text-white bg-indigo-500/10':'border-zinc-700 text-zinc-200 hover:bg-zinc-800'}`}
-                onClick={() => setKeepPoses(false)}
-              >
-                Change Poses
-              </button>
-            </div>
             <div className="mt-6">
               <button
                 disabled={!selfieDataUrl || isGenerating}
@@ -292,10 +276,10 @@ export function MerchDemo() {
             </div>
           </div>
 
-          {/* Right: carousel */}
+          {/* Right: result */}
           <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4" ref={containerRef}>
             <div className="flex items-center justify-between mb-3">
-              <div className="text-white font-medium">4. Result</div>
+              <div className="text-white font-medium">3. Result</div>
               <button
                 className="p-2 rounded-md border border-zinc-700 text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
                 title="Delete this poster from Cloudinary"

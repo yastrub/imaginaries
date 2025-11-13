@@ -6,10 +6,10 @@ import { buildMerchPrompt } from '../config/merchPresets.js';
 const router = express.Router();
 
 // POST /api/merch/generate
-// Body: { selfieDataUrl: string (data URL), logoDataUrl?: string (data URL), preset?: string, keepPoses?: boolean, brand?: 'ARTIFICIAL'|'TECHTUESDAYS' }
+// Body: { selfieDataUrl: string (data URL), logoDataUrl?: string (data URL), preset?: string brand?: 'ARTIFICIAL'|'TECHTUESDAYS' }
 router.post('/generate', async (req, res) => {
   try {
-    const { selfieDataUrl, logoDataUrl, preset = 'GTA', keepPoses = true, brand = 'ARTIFICIAL' } = req.body || {};
+    const { selfieDataUrl, logoDataUrl, preset = 'GTA', brand = 'ARTIFICIAL' } = req.body || {};
     if (!selfieDataUrl) {
       return res.status(400).json({ error: 'Missing selfieDataUrl' });
     }
@@ -21,7 +21,7 @@ router.post('/generate', async (req, res) => {
     // For TECHTUESDAYS we rely on prompt title and ignore client logo
     const useLogo = !!logoDataUrl && String(brand).toUpperCase() !== 'TECHTUESDAYS';
     const imageUrls = useLogo ? [selfieDataUrl, logoDataUrl] : [selfieDataUrl];
-    const prompt = buildMerchPrompt(preset, !!keepPoses, String(brand || 'ARTIFICIAL'));
+    const prompt = buildMerchPrompt(preset, String(brand || 'ARTIFICIAL'));
 
     // Generate with FAL Gemini Collage (png, 3:4) using both images
     const generatedUrl = await generateImage(prompt, GENERATORS.FAL_GEMINI_COLLAGE, { imageUrls });

@@ -20,7 +20,7 @@ export function buildMerchPrompt(preset = 'GTA', brand = 'ARTIFICIAL') {
   const month = now.toLocaleString('en-US', { month: 'short' });
   const day = String(now.getDate()).padStart(2, '0');
   const dateStr = `${month} ${day}`;
-  const baseD = brandUpper === 'TECHTUESDAYS' ? 'Add magazine ISSUE 71.' : `Add magazine date ${dateStr}.`;
+  const title = brandUpper === 'TECHTUESDAYS' ? 'Add magazine ISSUE 71.' : `Add magazine date ${dateStr}.`;
   const style = MERCH_STYLE_MAP[preset] || MERCH_STYLE_MAP.GTA;
   const poses = "Change or improve poses for the maximum effect if needed but KEEP original FACES of the people.";
   const parts = [baseA, style];
@@ -31,7 +31,7 @@ export function buildMerchPrompt(preset = 'GTA', brand = 'ARTIFICIAL') {
     //parts.push(baseC);
   }
   parts.push(poses);
-  parts.push(baseD);
+  parts.push(title);
   parts.push(headlines);
   return parts.join(' ');
 }

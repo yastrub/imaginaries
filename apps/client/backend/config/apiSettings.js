@@ -165,7 +165,7 @@ export const settings = {
       },
       fal_gemini_collage: {
         api_url: 'https://queue.fal.run',
-        model: 'fal-ai/gemini-25-flash-image',
+        model: 'fal-ai/nano-banana',
         version: 'edit',
         params: {
           sync_mode: false,

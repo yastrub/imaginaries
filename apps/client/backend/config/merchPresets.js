@@ -2,7 +2,7 @@
 export const MERCH_STYLE_MAP = {
   GTA: 'convert them into 100% PRO grade GTA style.',
   GLAMOUR: 'convert them into 100% PRO grade GLAMOUR style, improve scene, lighting, composition, outfit.',
-  SUPERHERO: 'convert them into 100% PRO grade superhero comics, improve scene, lighting, composition, outfit.',
+  SUPERHERO: 'convert them into 100% PRO grade superhero photorealistic scene, improve scene, lighting, composition, outfit.',
   HIGH_FASHION: 'convert them into 100% PRO grade high fashion editorial style, avant-garde poster.',
   MINECRAFT: 'convert them into 100% Minecraft-style voxel art poster.',
   '007_AGENT': 'convert them into 100% James Bond 007 spy movie poster.',
@@ -30,7 +30,7 @@ export function buildMerchPrompt(preset = 'GTA', keepPoses = true, brand = 'ARTI
   if (brandUpper === 'TECHTUESDAYS') {
     parts.push('Use TECHTUESDAYS magazine title prominently at the top.');
   }
-  if (["GTA", "ANIME", "SUPERHERO"].includes(String(preset || '').toUpperCase())) {
+  if (["GTA", "ANIME"].includes(String(preset || '').toUpperCase())) {
     parts.push(baseC);
   }
   parts.push(baseD);

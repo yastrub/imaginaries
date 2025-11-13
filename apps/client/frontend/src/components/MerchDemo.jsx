@@ -156,7 +156,6 @@ export function MerchDemo() {
           <div
             className="text-white font-medium select-none"
             onClick={() => {
-              // Double-tap to toggle TECHTUESDAYS mode
               if (!titleTapTimerRef.current) {
                 titleTapTimerRef.current = setTimeout(() => {
                   titleTapCountRef.current = 0;
@@ -165,7 +164,7 @@ export function MerchDemo() {
                 }, 600);
               }
               titleTapCountRef.current += 1;
-              if (titleTapCountRef.current >= 2) {
+              if (titleTapCountRef.current >= 3) {
                 titleTapCountRef.current = 0;
                 try { clearTimeout(titleTapTimerRef.current); } catch {}
                 titleTapTimerRef.current = null;
@@ -231,13 +230,7 @@ export function MerchDemo() {
           <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
             <div className="text-white font-medium mb-3">2. Preset</div>
             {(() => {
-              const extra = isTechMode ? [
-                { key: 'MINECRAFT', label: 'MINECRAFT' },
-                { key: '007_AGENT', label: '007 AGENT' },
-                { key: 'BARBIE', label: 'BARBIE' },
-                { key: 'ANIME', label: 'ANIME' },
-              ] : [];
-              const all = [...MERCH_PRESETS, ...extra];
+              const all = MERCH_PRESETS;
               const count = all.length;
               if (count >= 4) {
                 return (

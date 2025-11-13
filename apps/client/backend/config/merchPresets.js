@@ -17,7 +17,7 @@ export function buildMerchPrompt(preset = 'GTA', keepPoses = true, brand = 'ARTI
     : 'create a magazine cover with a logo provided and people on the photo.';
   const baseBKeep = 'RETAIN original POSES and FACES of the people.';
   const baseBChange = 'CHANGE original POSES, but KEEP original FACES of the people.';
-  const baseC = 'convert people into illustration.';
+  const baseC = 'convert people into illustration / comics.';
   const headlines = 'add only one smart / dope headline related to the scene, no other headlines.';
   const now = new Date();
   const month = now.toLocaleString('en-US', { month: 'short' });

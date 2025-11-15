@@ -22,7 +22,7 @@ export function buildMerchPrompt(preset = 'GTA', brand = 'ARTIFICIAL') {
   const dateStr = `${month} ${day}`;
   const title = brandUpper === 'TECHTUESDAYS' ? 'Add magazine ISSUE 71.' : `Add magazine date ${dateStr}.`;
   const style = MERCH_STYLE_MAP[preset] || MERCH_STYLE_MAP.GTA;
-  const poses = "Change or improve poses for the maximum effect if needed but preserve the original facial features so they can recognize themselves.";
+  const poses = "Change or improve poses for the maximum effect if needed but maintain the original faces of people.";
   const parts = [baseA, style];
   if (brandUpper === 'TECHTUESDAYS') {
     parts.push('Use TECHTUESDAYS magazine title prominently at the top.');
